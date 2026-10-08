@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { FormField } from './FormField';
 import type { RoomType } from '../context/OnboardingContext';
 
@@ -8,9 +9,20 @@ type RoomCardProps = {
   onUpdate: (data: Partial<RoomType>) => void;
   onRemove: () => void;
   index: number;
+  /** When true, show validation errors even if the field hasn't been touched yet. */
+  showErrors?: boolean;
 };
 
-export function RoomCard({ room, onUpdate, onRemove, index }: RoomCardProps) {
+export function RoomCard({ room, onUpdate, onRemove, index, showErrors = false }: RoomCardProps) {
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const touch = (field: string) => setTouched(prev => ({ ...prev, [field]: true }));
+  const shouldShow = (field: string) => showErrors || touched[field];
+
+  const nameError = shouldShow('name') && !room.name.trim() ? 'Room name is required.' : undefined;
+  const totalRoomsError = shouldShow('totalRooms') && room.totalRooms <= 0 ? 'Must be at least 1.' : undefined;
+  const priceError = shouldShow('pricePerNight') && room.pricePerNight <= 0 ? 'Price must be greater than 0.' : undefined;
+
   return (
     <div className="rounded-xl border border-[var(--ob-border)] bg-[var(--ob-surface)] p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
@@ -29,7 +41,9 @@ export function RoomCard({ room, onUpdate, onRemove, index }: RoomCardProps) {
           placeholder="e.g. Deluxe Double"
           value={room.name}
           onChange={e => onUpdate({ name: (e.target as HTMLInputElement).value })}
+          onBlur={() => touch('name')}
           required
+          error={nameError}
         />
         <FormField
           label="Capacity (guests)"
@@ -57,7 +71,9 @@ export function RoomCard({ room, onUpdate, onRemove, index }: RoomCardProps) {
           min={1}
           value={room.totalRooms}
           onChange={e => onUpdate({ totalRooms: Number((e.target as HTMLInputElement).value) })}
+          onBlur={() => touch('totalRooms')}
           required
+          error={totalRoomsError}
         />
         <FormField
           label="Price Per Night (₦)"
@@ -65,7 +81,9 @@ export function RoomCard({ room, onUpdate, onRemove, index }: RoomCardProps) {
           min={0}
           value={room.pricePerNight}
           onChange={e => onUpdate({ pricePerNight: Number((e.target as HTMLInputElement).value) })}
+          onBlur={() => touch('pricePerNight')}
           required
+          error={priceError}
         />
       </div>
     </div>

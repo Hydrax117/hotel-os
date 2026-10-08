@@ -1,42 +1,27 @@
-Build: PASS
-Date: iteration-2 (review findings fix)
-Command: npx next build
-Exit code: 0
+Build run: iteration 3 (room-validation fix)
+Result: PASS
+Timestamp: 2025-07-16
 
-Output summary:
-  ✓ Compiled successfully in 3.2s
-  ✓ TypeScript: no errors (9.2s)
-  ✓ Collected page data (13 routes)
-  ✓ Generated static pages (13/13)
-  ✓ Finalized optimization
+Output:
+▲ Next.js 16.4.0 (Turbopack)
+✓ Running next.config.ts took 72ms
+✓ Compiled successfully in 2.9s
+✓ TypeScript — no errors
+✓ Collecting page data (13/13)
+✓ Generating static pages (13/13)
+✓ Finalizing page optimization
 
 Routes:
-  ○ /
-  ○ /_not-found
-  ○ /onboarding
-  ○ /onboarding/steps/step-1
-  ○ /onboarding/steps/step-2
-  ○ /onboarding/steps/step-3
-  ○ /onboarding/steps/step-4
-  ○ /onboarding/steps/step-5
-  ○ /onboarding/steps/step-6
-  ○ /onboarding/steps/step-7
-  ○ /onboarding/steps/step-8
+  /
+  /_not-found
+  /onboarding
+  /onboarding/steps/step-1
+  /onboarding/steps/step-2
+  /onboarding/steps/step-3
+  /onboarding/steps/step-4
+  /onboarding/steps/step-5
+  /onboarding/steps/step-6
+  /onboarding/steps/step-7
+  /onboarding/steps/step-8
 
-Changes in this iteration (review fixes):
-  - Finding 2 (HIGH):  submit() now clears account.password from state immediately
-                       after submission; password is no longer held in long-lived memory.
-  - Finding 3 (HIGH):  Step-8 has a direct-URL guard (useEffect + null render) that
-                       redirects to step-1 if account.email or subscription are empty,
-                       preventing blank-state submission.
-  - Finding 5 (MED):   Required-but-missing verification docs now render as a red
-                       warning span with an alert icon ("Required — not uploaded")
-                       in the SummarySection, visually distinct from optional skipped docs.
-  - Finding 6 (LOW):   FileUploadSlot object URL lifecycle consolidated to a single
-                       revoke path (cleanup-only). Removed the dual-path ambiguity
-                       (in-effect revoke + cleanup revoke) by creating the URL
-                       unconditionally and revoking only in the useEffect cleanup.
-  - Finding 1 (HIGH):  Kept as-is per user decision (option a).
-                       Added TODO(api) comment in submit() marking where API wiring goes.
-  - Finding 4 (MED):   Kept ephemeral state per user decision (option a).
-                       Added TODO(persistence) comment near context initialization.
+Exit code: 0
