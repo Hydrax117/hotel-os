@@ -1,0 +1,28 @@
+export type Option = { value: string; label: string };
+
+export const AMENITY_OPTIONS: Option[] = [
+  { value: 'wifi', label: 'Free Wi-Fi' },
+  { value: 'parking', label: 'Parking' },
+  { value: 'pool', label: 'Swimming Pool' },
+  { value: 'gym', label: 'Gym / Fitness Center' },
+  { value: 'spa', label: 'Spa' },
+  { value: 'restaurant', label: 'Restaurant' },
+  { value: 'bar', label: 'Bar / Lounge' },
+  { value: 'room_service', label: 'Room Service' },
+  { value: 'laundry', label: 'Laundry Service' },
+  { value: 'ac', label: 'Air Conditioning' },
+  { value: 'airport_shuttle', label: 'Airport Shuttle' },
+  { value: 'concierge', label: 'Concierge' },
+  { value: 'business_center', label: 'Business Center' },
+  { value: 'conference_rooms', label: 'Conference Rooms' },
+  { value: 'pet_friendly', label: 'Pet Friendly' },
+  { value: 'ev_charging', label: 'EV Charging' },
+  { value: 'childcare', label: 'Childcare' },
+  { value: 'atm', label: 'ATM' },
+  { value: 'hot_tub', label: 'Hot Tub' },
+  { value: 'rooftop', label: 'Rooftop Terrace' },
+  { value: 'beach_access', label: 'Beach Access' },
+  { value: 'casino', label: 'Casino' },
+  { value: 'gift_shop', label: 'Gift Shop' },
+  { value: 'safe', label: 'In-Room Safe' },
+];

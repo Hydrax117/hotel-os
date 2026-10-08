@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Onboarding design tokens */
+:root {
+  --ob-bg:        #f9f7f4;   /* warm off-white page background   */
+  --ob-surface:   #ffffff;   /* card / panel surface             */
+  --ob-primary:   #1a1a1a;   /* deep charcoal text + buttons     */
+  --ob-secondary: #6b6560;   /* stone/warm gray                  */
+  --ob-accent:    #3d6b4f;   /* muted earthy green               */
+  --ob-border:    #e8e4df;   /* subtle warm border               */
+  --ob-muted:     #f1ede8;   /* muted surface (chips, slots)     */
+}

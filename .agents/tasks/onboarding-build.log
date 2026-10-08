@@ -1,0 +1,27 @@
+Build date: 2026-10-08
+Command: npx next build
+Working directory: c:\Users\Pkaka\Music\hotel-os
+Result: PASS
+
+Output summary:
+  ▲ Next.js 16.4.0 (Turbopack)
+  ✓ Compiled successfully in 16.8s
+  ✓ Running TypeScript — no errors
+  ✓ Collecting page data (13/13)
+  ✓ Generating static pages (13/13)
+  ✓ Finalizing page optimization
+
+Routes built:
+  ○ /
+  ○ /_not-found
+  ○ /onboarding
+  ○ /onboarding/steps/step-1
+  ○ /onboarding/steps/step-2
+  ○ /onboarding/steps/step-3
+  ○ /onboarding/steps/step-4
+  ○ /onboarding/steps/step-5
+  ○ /onboarding/steps/step-6
+  ○ /onboarding/steps/step-7
+  ○ /onboarding/steps/step-8
+
+Exit code: 0
