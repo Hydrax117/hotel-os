@@ -35,3 +35,22 @@ body {
   --ob-border:    #e8e4df;   /* subtle warm border               */
   --ob-muted:     #f1ede8;   /* muted surface (chips, slots)     */
 }
+
+/* Dashboard design tokens */
+:root {
+  --db-sidebar-bg:     #111110;   /* near-black sidebar              */
+  --db-sidebar-text:   #a8a29e;   /* stone-400 nav text              */
+  --db-sidebar-active: #ffffff;   /* active nav item text            */
+  --db-sidebar-w:      240px;     /* sidebar width (desktop)         */
+  --db-topbar-h:       56px;      /* topbar height                   */
+  --db-surface:        #ffffff;   /* card / panel surface            */
+  --db-bg:             #f5f4f2;   /* warm off-white page bg          */
+  --db-primary:        #1a1a1a;   /* headings + primary text         */
+  --db-secondary:      #6b6560;   /* secondary / muted text          */
+  --db-accent:         #3d6b4f;   /* same earthy green as onboarding */
+  --db-border:         #e8e4df;   /* warm subtle border              */
+  --db-muted:          #f1ede8;   /* muted surface (chips, pills)    */
+  --db-danger:         #dc2626;   /* destructive actions             */
+  --db-warning:        #d97706;   /* caution / pending states        */
+  --db-success:        #16a34a;   /* confirmed / active states       */
+}

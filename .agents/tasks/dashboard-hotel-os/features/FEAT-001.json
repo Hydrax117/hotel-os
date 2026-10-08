@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Dashboard foundation: CSS design tokens, TypeScript types, mock data, shared components (Sidebar, Topbar, StatusBadge, StatCard), and the dashboard layout + root redirect. This FEAT must be complete before FEAT-002 or FEAT-003 can build pages on top of it.",
+  "status": "completed",
+  "steps": [
+    "1. Add `--db-*` CSS design tokens to `app/globals.css` inside the existing `:root` block (after the --ob-* tokens). Tokens: --db-sidebar-bg: #111110; --db-sidebar-text: #a8a29e; --db-sidebar-active: #ffffff; --db-sidebar-w: 240px; --db-topbar-h: 56px; --db-surface: #ffffff; --db-bg: #f5f4f2; --db-primary: #1a1a1a; --db-secondary: #6b6560; --db-accent: #3d6b4f; --db-border: #e8e4df; --db-muted: #f1ede8; --db-danger: #dc2626; --db-warning: #d97706; --db-success: #16a34a.",
+    "2. Create `app/dashboard/types/index.ts` with these exported types: BookingStatus (union), StaffRole (union), Hotel, Reservation, RoomType, InventoryDay, RoomInventory, StaffMember, RevenueDay, PayoutTransaction. See dashboard-plan.md for exact type shapes.",
+    "3. Create `app/dashboard/mock/data.ts`. Export: MOCK_HOTEL (Hotel), MOCK_RESERVATIONS (Reservation[], at least 12 entries mixing all statuses), MOCK_ROOM_TYPES (RoomType[], 4 types: Deluxe King/Executive Suite/Standard Double/Family Room), MOCK_INVENTORY (RoomInventory[], 4 room types × 30 days), MOCK_STAFF (StaffMember[], 6 members with varied roles/statuses), MOCK_REVENUE_DAYS (RevenueDay[], 30 days realistic Nigerian hotel figures), MOCK_PAYOUTS (PayoutTransaction[], 10 entries). All amounts in NGN (naira). Use realistic Nigerian hotel names and guest names.",
+    "4. Create `app/dashboard/components/StatusBadge.tsx` — 'use client'. Props: `{ status: BookingStatus }`. Render a small pill/badge. Color map: pending→amber, confirmed→blue, checked_in→green, checked_out→stone, cancelled→red, no_show→orange. Use inline style with --db-* vars for border/text, Tailwind for layout.",
+    "5. Create `app/dashboard/components/StatCard.tsx` — 'use client'. Props: `{ label: string; value: string; delta?: string; deltaPositive?: boolean; icon?: React.ReactNode }`. Renders a clean metric card: label on top, large value, optional delta with up/down arrow and color. Use var(--db-surface) background, var(--db-border) border, var(--db-primary) for value.",
+    "6. Create `app/dashboard/components/DashboardSidebar.tsx` — 'use client'. Uses `usePathname()` from 'next/navigation' to highlight active nav item. Nav items (label + href): Overview /dashboard/overview, Reservations /dashboard/reservations, Calendar /dashboard/inventory, Rooms /dashboard/rooms, Guests /dashboard/guests, Analytics /dashboard/analytics, Hotel Profile /dashboard/profile, Staff /dashboard/staff, Subscription /dashboard/subscription, Payouts /dashboard/payouts. Top: HotelOS logo (same style as onboarding sidebar). Bottom: hotel name from MOCK_HOTEL. Each nav item: inline SVG icon (keep icons simple — use basic geometric SVGs), label. Active: white text on slightly lighter dark bg. Inactive: --db-sidebar-text. Sidebar bg: var(--db-sidebar-bg). Width on desktop: 240px, sticky full-height. On mobile: hidden (toggle handled by topbar). No third-party icon library.",
+    "7. Create `app/dashboard/components/DashboardTopbar.tsx` — 'use client'. Props: `{ onMenuToggle: () => void }`. Shows: hamburger button (mobile only, calls onMenuToggle), page title derived from `usePathname()`, hotel name chip, notification bell SVG button, user avatar circle with initials. Bg: var(--db-surface), border-bottom: var(--db-border), height: var(--db-topbar-h).",
+    "8. Create `app/dashboard/layout.tsx` — server component (no 'use client'). Props: `{ children: React.ReactNode }`. Wraps with DashboardSidebarWrapper (a thin 'use client' wrapper that holds the mobile open/close state and passes onMenuToggle to the topbar). Layout: full-height flex row: sidebar (hidden on mobile, visible lg+) + right column (topbar + scrollable main). Background: var(--db-bg). Export metadata: `{ title: 'Hotel OS — Dashboard' }`.",
+    "9. Create `app/dashboard/page.tsx` — server component. Does `import { redirect } from 'next/navigation'; redirect('/dashboard/overview');`. This is the entry point redirect."
+  ],
+  "acceptance_criteria": [
+    "`npx next build` completes with zero TypeScript errors.",
+    "/dashboard and /dashboard/overview appear in the built route list.",
+    "DashboardSidebar renders all 10 nav items and highlights the active one using usePathname.",
+    "StatCard accepts all its props without TypeScript errors.",
+    "StatusBadge renders distinct colors for all 6 booking statuses.",
+    "--db-* CSS tokens are present in globals.css and do not conflict with --ob-* tokens."
+  ],
+  "verification": [
+    "cd c:\\Users\\Pkaka\\Music\\hotel-os && npx next build 2>&1 — expect '✓ Compiled successfully' and zero errors",
+    "npx next build 2>&1 | Select-String 'dashboard' — expect /dashboard and /dashboard/overview in output"
+  ],
+  "blocked_reason": null,
+  "findings": "1) layout.tsx is a server component; mobile state lives in DashboardSidebarWrapper ('use client'). 2) `app/dashboard/overview/page.tsx` stub created as a placeholder — FEAT-002 should replace it with real overview content. 3) MOCK_INVENTORY uses Math.random() seeded at build time — values differ between builds but are structurally correct. 4) All 15 CSS --db-* tokens added to globals.css without conflicting with --ob-* tokens. 5) DashboardSidebar uses `href.startsWith(pathname + '/')` for prefix-matching child routes — works correctly for all 10 nav items."
+}
