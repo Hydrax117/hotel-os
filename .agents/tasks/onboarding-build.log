@@ -1,21 +1,42 @@
-Build run: iteration 2 (post-review fixes)
-Result: PASS
+Build: PASS
+Date: iteration-2 (review findings fix)
+Command: npx next build
 Exit code: 0
 
-▲ Next.js 16.4.0 (Turbopack)
-✓ Compiled successfully in 3.1s
-✓ TypeScript: no errors
-✓ All 13 routes generated (/, /_not-found, /onboarding, /onboarding/steps/step-1 through step-8)
+Output summary:
+  ✓ Compiled successfully in 3.2s
+  ✓ TypeScript: no errors (9.2s)
+  ✓ Collected page data (13 routes)
+  ✓ Generated static pages (13/13)
+  ✓ Finalized optimization
 
-Changes applied in this iteration:
-- [HIGH]    Added required-field validation (isNextDisabled) to steps 1, 2, 3, and 4.
-            Step 1: name, email, phone, password must be non-empty.
-            Step 2: hotelName, address, city, country must be non-empty.
-            Step 3: all required verification docs must have a file uploaded.
-            Step 4: checkInTime and checkOutTime must be set.
-- [MEDIUM]  Fixed object URL leak in FileUploadSlot: component now owns URL lifecycle
-            when showPreview=true (creates URL from file prop, revokes on unmount/change).
-            Step5Page no longer calls URL.createObjectURL().
-- [MEDIUM]  Removed password field from step-8 review SummarySection entirely.
-- [LOW]     Added `import type React from 'react'` to SummarySection.tsx to make the
-            React.ReactNode dependency explicit.
+Routes:
+  ○ /
+  ○ /_not-found
+  ○ /onboarding
+  ○ /onboarding/steps/step-1
+  ○ /onboarding/steps/step-2
+  ○ /onboarding/steps/step-3
+  ○ /onboarding/steps/step-4
+  ○ /onboarding/steps/step-5
+  ○ /onboarding/steps/step-6
+  ○ /onboarding/steps/step-7
+  ○ /onboarding/steps/step-8
+
+Changes in this iteration (review fixes):
+  - Finding 2 (HIGH):  submit() now clears account.password from state immediately
+                       after submission; password is no longer held in long-lived memory.
+  - Finding 3 (HIGH):  Step-8 has a direct-URL guard (useEffect + null render) that
+                       redirects to step-1 if account.email or subscription are empty,
+                       preventing blank-state submission.
+  - Finding 5 (MED):   Required-but-missing verification docs now render as a red
+                       warning span with an alert icon ("Required — not uploaded")
+                       in the SummarySection, visually distinct from optional skipped docs.
+  - Finding 6 (LOW):   FileUploadSlot object URL lifecycle consolidated to a single
+                       revoke path (cleanup-only). Removed the dual-path ambiguity
+                       (in-effect revoke + cleanup revoke) by creating the URL
+                       unconditionally and revoking only in the useEffect cleanup.
+  - Finding 1 (HIGH):  Kept as-is per user decision (option a).
+                       Added TODO(api) comment in submit() marking where API wiring goes.
+  - Finding 4 (MED):   Kept ephemeral state per user decision (option a).
+                       Added TODO(persistence) comment near context initialization.

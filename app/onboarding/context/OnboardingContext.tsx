@@ -124,6 +124,12 @@ const defaultState: OnboardingState = {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
+// NOTE: Onboarding state is intentionally ephemeral (React context only).
+// A hard refresh will lose all entered data. File objects (verification docs,
+// images) cannot be serialized, so sessionStorage cannot fully restore a session.
+// TODO(persistence): serialize scalar fields to sessionStorage on update and restore
+//                    on mount; show a notice if the session is restored mid-flow
+//                    asking users to re-upload any files they had selected.
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
@@ -185,7 +191,16 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const setSubscription = (plan: SubscriptionPlan) =>
     setState(s => ({ ...s, subscription: plan }));
 
-  const submit = () => setState(s => ({ ...s, submitted: true }));
+  const submit = () =>
+    setState(s => ({
+      ...s,
+      submitted: true,
+      // Clear the plaintext password from long-lived state immediately after submission.
+      // The password is no longer needed once submit() is called.
+      // TODO(api): replace this local flag with a real API call (FormData + document files)
+      //            before shipping. Wire up here; keep the submitted flag for optimistic UI.
+      account: { ...s.account, password: '' },
+    }));
 
   const value: OnboardingContextValue = {
     ...state,

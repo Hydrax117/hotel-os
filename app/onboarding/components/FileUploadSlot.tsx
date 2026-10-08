@@ -32,31 +32,20 @@ export function FileUploadSlot({
 
   // When showPreview is true this component owns the object URL lifecycle.
   const [localPreview, setLocalPreview] = useState<string | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!showPreview) return;
-
-    // Revoke the previous URL before creating a new one.
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-
-    if (file) {
-      const url = URL.createObjectURL(file);
-      objectUrlRef.current = url;
-      setLocalPreview(url);
-    } else {
+    if (!showPreview || !file) {
       setLocalPreview(null);
+      return;
     }
+
+    // Create the object URL unconditionally; revoke it only in the cleanup.
+    // This single revoke path (cleanup only) avoids double-revoke on rapid file changes.
+    const url = URL.createObjectURL(file);
+    setLocalPreview(url);
 
     return () => {
-      // Revoke on unmount.
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
+      URL.revokeObjectURL(url);
     };
   }, [file, showPreview]);
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOnboarding } from '@/app/onboarding/context/OnboardingContext';
 import { StepShell } from '@/app/onboarding/components/StepShell';
@@ -26,10 +27,24 @@ export default function Step8Page() {
     setStep,
   } = useOnboarding();
 
+  // Direct-URL gate: if the user navigated here directly without going through
+  // the wizard, account.email and subscription will be empty. Redirect them back
+  // to step 1 to avoid submitting a blank application.
+  useEffect(() => {
+    if (!account.email.trim() || !subscription) {
+      router.replace('/onboarding/steps/step-1');
+    }
+  }, [account.email, subscription, router]);
+
   const handleBack = () => {
     setStep(7);
     router.push('/onboarding/steps/step-7');
   };
+
+  // While the guard effect is still running (or redirect is pending), render nothing.
+  if (!account.email.trim() || !subscription) {
+    return null;
+  }
 
   if (submitted) {
     return (
@@ -99,12 +114,23 @@ export default function Step8Page() {
           ]}
         />
 
-        {/* Verification */}
+        {/* Verification — required-but-missing docs are highlighted in red */}
         <SummarySection
           title="Verification Documents"
           items={verification.map(doc => ({
             label: doc.label,
-            value: doc.file ? doc.file.name : (doc.required ? 'Not uploaded' : 'Skipped'),
+            value: doc.file
+              ? doc.file.name
+              : doc.required
+                ? (
+                  <span className="flex items-center gap-1 text-red-600 font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    Required — not uploaded
+                  </span>
+                )
+                : 'Skipped',
           }))}
         />
 
