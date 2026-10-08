@@ -81,7 +81,6 @@ export default function Step8Page() {
             { label: 'Name', value: account.name },
             { label: 'Email', value: account.email },
             { label: 'Phone', value: account.phone },
-            { label: 'Password', value: account.password ? '••••••••' : '' },
           ]}
         />
 

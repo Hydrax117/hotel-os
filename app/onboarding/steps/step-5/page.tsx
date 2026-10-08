@@ -20,8 +20,9 @@ export default function Step5Page() {
   };
 
   const handleFileChange = (id: string, file: File) => {
-    const preview = URL.createObjectURL(file);
-    updateImageSlot(id, file, preview);
+    // FileUploadSlot manages its own preview URL lifecycle when showPreview=true.
+    // We store the file in context; preview is managed locally in the component.
+    updateImageSlot(id, file, '');
   };
 
   return (
@@ -40,7 +41,6 @@ export default function Step5Page() {
             label={slot.label}
             accept="image/*"
             file={slot.file}
-            preview={slot.preview}
             showPreview
             onChange={file => handleFileChange(slot.id, file)}
           />

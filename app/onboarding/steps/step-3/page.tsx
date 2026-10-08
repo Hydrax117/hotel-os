@@ -9,6 +9,9 @@ export default function Step3Page() {
   const router = useRouter();
   const { verification, updateVerification, setStep } = useOnboarding();
 
+  // Continue is disabled until every required document has a file uploaded.
+  const isNextDisabled = verification.some(doc => doc.required && doc.file === null);
+
   const handleBack = () => {
     setStep(2);
     router.push('/onboarding/steps/step-2');
@@ -27,6 +30,7 @@ export default function Step3Page() {
       totalSteps={8}
       onBack={handleBack}
       onNext={handleNext}
+      isNextDisabled={isNextDisabled}
     >
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {verification.map(doc => (

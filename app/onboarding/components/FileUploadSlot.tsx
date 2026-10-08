@@ -1,14 +1,20 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type FileUploadSlotProps = {
   label: string;
   accept?: string;
   file: File | null;
+  /** Pass a static external preview URL (e.g. from context) when showPreview=false. */
   preview?: string | null;
   required?: boolean;
   onChange: (file: File) => void;
+  /**
+   * When true, the component creates and manages its own object URL for the
+   * thumbnail preview, revoking it on unmount or when the file changes.
+   * The `preview` prop is ignored when showPreview=true.
+   */
   showPreview?: boolean;
 };
 
@@ -23,16 +29,36 @@ export function FileUploadSlot({
 }: FileUploadSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
+
+  // When showPreview is true this component owns the object URL lifecycle.
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
   const objectUrlRef = useRef<string | null>(null);
 
-  // Clean up any locally created object URLs on unmount
   useEffect(() => {
+    if (!showPreview) return;
+
+    // Revoke the previous URL before creating a new one.
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      objectUrlRef.current = url;
+      setLocalPreview(url);
+    } else {
+      setLocalPreview(null);
+    }
+
     return () => {
+      // Revoke on unmount.
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
-  }, []);
+  }, [file, showPreview]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -57,6 +83,9 @@ export function FileUploadSlot({
     handleFiles(e.target.files);
   };
 
+  // Decide which preview URL to display.
+  const displayPreview = showPreview ? localPreview : (preview ?? null);
+
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium text-[var(--ob-primary)]">
@@ -76,10 +105,10 @@ export function FileUploadSlot({
         }
         style={{ minHeight: '100px' }}
       >
-        {showPreview && preview ? (
+        {showPreview && displayPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={preview}
+            src={displayPreview}
             alt={label}
             className="max-h-24 max-w-full rounded object-contain"
           />

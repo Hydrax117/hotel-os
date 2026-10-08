@@ -9,6 +9,12 @@ export default function Step1Page() {
   const router = useRouter();
   const { account, updateAccount, setStep } = useOnboarding();
 
+  const isNextDisabled =
+    !account.name.trim() ||
+    !account.email.trim() ||
+    !account.phone.trim() ||
+    !account.password;
+
   const handleNext = () => {
     setStep(2);
     router.push('/onboarding/steps/step-2');
@@ -21,6 +27,7 @@ export default function Step1Page() {
       step={1}
       totalSteps={8}
       onNext={handleNext}
+      isNextDisabled={isNextDisabled}
     >
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <FormField

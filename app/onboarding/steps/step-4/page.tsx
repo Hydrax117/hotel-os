@@ -12,6 +12,10 @@ export default function Step4Page() {
   const router = useRouter();
   const { propertyInfo, updatePropertyInfo, setStep } = useOnboarding();
 
+  // Check-in and check-out times are the only required fields on this step.
+  const isNextDisabled =
+    !propertyInfo.checkInTime || !propertyInfo.checkOutTime;
+
   const handleBack = () => {
     setStep(3);
     router.push('/onboarding/steps/step-3');
@@ -30,6 +34,7 @@ export default function Step4Page() {
       totalSteps={8}
       onBack={handleBack}
       onNext={handleNext}
+      isNextDisabled={isNextDisabled}
     >
       <div className="flex flex-col gap-8">
         {/* Amenities */}

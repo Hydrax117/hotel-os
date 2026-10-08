@@ -9,6 +9,12 @@ export default function Step2Page() {
   const router = useRouter();
   const { property, updateProperty, setStep } = useOnboarding();
 
+  const isNextDisabled =
+    !property.hotelName.trim() ||
+    !property.address.trim() ||
+    !property.city.trim() ||
+    !property.country.trim();
+
   const handleBack = () => {
     setStep(1);
     router.push('/onboarding/steps/step-1');
@@ -27,6 +33,7 @@ export default function Step2Page() {
       totalSteps={8}
       onBack={handleBack}
       onNext={handleNext}
+      isNextDisabled={isNextDisabled}
     >
       <div className="flex flex-col gap-5">
         <FormField

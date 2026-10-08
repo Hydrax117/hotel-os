@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 type SummaryItem = {
   label: string;
   value: string | React.ReactNode;
