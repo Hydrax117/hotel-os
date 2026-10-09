@@ -1,69 +1,387 @@
-import Image from "next/image";
+import React from 'react';
+import { TravelerNav } from './components/TravelerNav';
+import { SearchBar } from './components/SearchBar';
+import { HotelCard } from './components/HotelCard';
+import { DestinationCard } from './components/DestinationCard';
 
-export default function Home() {
+// ── Static mock data ──────────────────────────────────────────────────────────
+
+const destinations = [
+  { city: 'Lagos',          hotelCount: 128, gradientFrom: '#d4a574', gradientTo: '#8b5e3c' },
+  { city: 'Abuja',          hotelCount: 94,  gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
+  { city: 'Port Harcourt',  hotelCount: 67,  gradientFrom: '#6b8cba', gradientTo: '#2d4a6b' },
+  { city: 'Uyo',            hotelCount: 31,  gradientFrom: '#c4956a', gradientTo: '#8b6343' },
+  { city: 'Kano',           hotelCount: 28,  gradientFrom: '#b8956a', gradientTo: '#7a5c3a' },
+  { city: 'Kaduna',         hotelCount: 22,  gradientFrom: '#8a9e8a', gradientTo: '#4a6b4a' },
+];
+
+const featuredHotels = [
+  {
+    name: 'Transcorp Hilton',
+    city: 'Abuja',
+    state: 'FCT',
+    rating: 4.8,
+    reviewCount: 312,
+    pricePerNight: 85000,
+    amenities: ['Pool', 'Gym', 'Restaurant'],
+    featured: true,
+  },
+  {
+    name: 'Eko Hotel',
+    city: 'Lagos Island',
+    state: 'Lagos',
+    rating: 4.6,
+    reviewCount: 287,
+    pricePerNight: 72000,
+    amenities: ['Pool', 'Spa', 'WiFi'],
+    featured: true,
+  },
+  {
+    name: 'Nicon Luxury',
+    city: 'Abuja',
+    state: 'FCT',
+    rating: 4.7,
+    reviewCount: 198,
+    pricePerNight: 95000,
+    amenities: ['Gym', 'Restaurant', 'Bar'],
+    featured: true,
+  },
+  {
+    name: 'Southern Sun',
+    city: 'Lagos',
+    state: 'Lagos',
+    rating: 4.5,
+    reviewCount: 156,
+    pricePerNight: 68000,
+    amenities: ['Pool', 'WiFi', 'Parking'],
+    featured: true,
+  },
+];
+
+// ── Hero collage boxes ────────────────────────────────────────────────────────
+
+const collageBoxes = [
+  'linear-gradient(135deg, #e8e4df, #d4cfc9)',
+  'linear-gradient(135deg, #d4cfc9, #c8c2bb)',
+  'linear-gradient(135deg, #c8c2bb, #b8b1aa)',
+  'linear-gradient(135deg, #e0dbd5, #d4cfc9)',
+  'linear-gradient(135deg, #d8d2cc, #ccc6bf)',
+  'linear-gradient(135deg, #c8c2bb, #bdb6ae)',
+];
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
+      {/* ── Section 1: Navigation ── */}
+      <TravelerNav />
+
+      {/* ── Section 2: Hero ── */}
+      <section
+        className="relative flex min-h-screen items-center"
+        style={{ background: 'var(--tp-bg)' }}
+        aria-label="Hero"
+      >
+        <div className="mx-auto w-full max-w-7xl px-6" style={{ paddingTop: '80px', paddingBottom: '4rem' }}>
+          {/* Desktop: 60/40 split. Mobile: stacked */}
+          <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+            {/* Left 60% — headline + search */}
+            <div className="flex flex-col gap-8 lg:w-[58%]">
+              <div className="flex flex-col gap-4">
+                <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl" style={{ color: 'var(--tp-primary)' }}>
+                  <span style={{ fontFamily: 'var(--font-geist-sans, Arial, sans-serif)' }}>Stay </span>
+                  <span
+                    style={{
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    somewhere worth remembering.
+                  </span>
+                </h1>
+
+                <p className="max-w-xl text-lg leading-relaxed" style={{ color: 'var(--tp-secondary)' }}>
+                  Discover verified hotels across Nigeria and book your next stay with confidence.
+                </p>
+              </div>
+
+              <SearchBar />
+            </div>
+
+            {/* Right 40% — editorial photo collage (desktop only) */}
+            <div className="hidden lg:block lg:w-[42%]" aria-hidden="true">
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateRows: '180px 140px 180px',
+                  gap: '12px',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                }}
+              >
+                {collageBoxes.map((gradient, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: gradient,
+                      borderRadius: '8px',
+                      gridRow: i === 2 ? 'span 2' : 'span 1',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </section>
+
+      {/* ── Section 3: Popular destinations ── */}
+      <section
+        id="explore"
+        className="py-16"
+        style={{ background: 'var(--tp-surface)' }}
+        aria-label="Popular destinations"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <h2
+            className="mb-8 text-3xl font-bold tracking-tight"
+            style={{ color: 'var(--tp-primary)' }}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Popular destinations
+          </h2>
+
+          {/* Desktop: 3-col grid. Mobile: horizontal scroll */}
+          <div className="hidden gap-4 md:grid md:grid-cols-3">
+            {destinations.map(dest => (
+              <DestinationCard key={dest.city} {...dest} />
+            ))}
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 md:hidden">
+            {destinations.map(dest => (
+              <div key={dest.city} className="w-56 shrink-0">
+                <DestinationCard {...dest} />
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+      </section>
+
+      {/* ── Section 4: Featured hotels ── */}
+      <section
+        id="hotels"
+        className="py-16"
+        style={{ background: 'var(--tp-bg)' }}
+        aria-label="Featured hotels"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--tp-primary)' }}>
+              Featured hotels
+            </h2>
+            <a
+              href="#"
+              className="text-sm font-medium transition-opacity hover:opacity-70"
+              style={{ color: 'var(--tp-accent)' }}
+            >
+              View all →
+            </a>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            {featuredHotels.map(hotel => (
+              <HotelCard key={hotel.name} {...hotel} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 5: How it works ── */}
+      <section
+        className="py-16"
+        style={{ background: 'var(--tp-surface)' }}
+        aria-label="List your hotel"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-4 text-center">
+            <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--tp-primary)' }}>
+              List your hotel on Hotel OS
+            </h2>
+            <p className="mt-3 text-lg" style={{ color: 'var(--tp-secondary)' }}>
+              Join hundreds of hotels already reaching travelers across Nigeria.
+            </p>
+          </div>
+
+          {/* Steps */}
+          <div className="mt-12 flex flex-col gap-8 md:flex-row md:gap-6">
+            {[
+              {
+                step: '1',
+                title: 'Create your listing',
+                desc: 'Set up your hotel profile, rooms, and pricing in minutes.',
+              },
+              {
+                step: '2',
+                title: 'Manage your inventory',
+                desc: 'Update availability, block dates, and control your rates in real time.',
+              },
+              {
+                step: '3',
+                title: 'Receive bookings & payments',
+                desc: 'Travelers book directly; payouts arrive on your schedule.',
+              },
+            ].map(({ step, title, desc }) => (
+              <div key={step} className="flex flex-1 flex-col items-center gap-4 text-center">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white"
+                  style={{ background: 'var(--tp-accent)' }}
+                  aria-hidden="true"
+                >
+                  {step}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold" style={{ color: 'var(--tp-primary)' }}>
+                    {title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--tp-secondary)' }}>
+                    {desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div className="mt-12 flex justify-center">
+            <a
+              href="/onboarding"
+              className="rounded-xl px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-80"
+              style={{ background: 'var(--tp-primary)' }}
+            >
+              Get started — it&apos;s free
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 6: Trust bar ── */}
+      <section
+        className="py-10"
+        style={{ background: 'var(--tp-muted)' }}
+        aria-label="Platform statistics"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-wrap items-center justify-center gap-0 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: 'var(--tp-border)' }}>
+            {[
+              { value: '500+',    label: 'Verified hotels' },
+              { value: '50,000+', label: 'Travelers served' },
+              { value: '₦2B+',   label: 'In bookings processed' },
+              { value: '6',       label: 'Cities covered' },
+            ].map(({ value, label }, i) => (
+              <div
+                key={i}
+                className="flex w-1/2 flex-col items-center gap-1 py-6 md:w-auto md:flex-1 md:py-0 md:px-10"
+              >
+                <span
+                  className="text-3xl font-bold"
+                  style={{ color: 'var(--tp-accent)' }}
+                >
+                  {value}
+                </span>
+                <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 7: Footer ── */}
+      <footer aria-label="Footer" style={{ background: '#111110' }}>
+        <div className="mx-auto max-w-7xl px-6 py-16">
+          {/* 4-column grid */}
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
+            {/* Column 1: Brand */}
+            <div className="col-span-2 flex flex-col gap-4 md:col-span-1">
+              <span className="text-xl font-bold text-white">
+                Hotel<span style={{ color: 'var(--tp-accent)' }}>OS</span>
+              </span>
+              <p className="text-sm leading-relaxed" style={{ color: '#a8a29e' }}>
+                Connecting travelers with verified hotels across Nigeria.
+              </p>
+              {/* Social icons (placeholder SVG circles) */}
+              <div className="flex gap-3">
+                {[0, 1, 2].map(i => (
+                  <a
+                    key={i}
+                    href="#"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:border-white/40"
+                    style={{ borderColor: 'rgba(255,255,255,0.15)' }}
+                    aria-label={`Social link ${i + 1}`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ color: '#a8a29e' }}>
+                      <circle cx="12" cy="12" r="4" />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Column 2: For Hotels */}
+            <div className="flex flex-col gap-4">
+              <h4 className="text-sm font-semibold text-white">For Hotels</h4>
+              <ul className="flex flex-col gap-3">
+                {['List hotel', 'Dashboard', 'Pricing'].map(item => (
+                  <li key={item}>
+                    <a href="#" className="text-sm transition-colors hover:text-white" style={{ color: '#a8a29e' }}>
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 3: For Travelers */}
+            <div className="flex flex-col gap-4">
+              <h4 className="text-sm font-semibold text-white">For Travelers</h4>
+              <ul className="flex flex-col gap-3">
+                {['Search hotels', 'How it works', 'Support'].map(item => (
+                  <li key={item}>
+                    <a href="#" className="text-sm transition-colors hover:text-white" style={{ color: '#a8a29e' }}>
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 4: Company */}
+            <div className="flex flex-col gap-4">
+              <h4 className="text-sm font-semibold text-white">Company</h4>
+              <ul className="flex flex-col gap-3">
+                {['About', 'Blog', 'Careers', 'Contact'].map(item => (
+                  <li key={item}>
+                    <a href="#" className="text-sm transition-colors hover:text-white" style={{ color: '#a8a29e' }}>
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div
+            className="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-8 text-xs md:flex-row"
+            style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#a8a29e' }}
+          >
+            <span>© 2025 Hotel OS. All rights reserved.</span>
+            <span>Built for Nigerian hospitality.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

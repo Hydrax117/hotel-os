@@ -54,3 +54,16 @@ body {
   --db-warning:        #d97706;   /* caution / pending states        */
   --db-success:        #16a34a;   /* confirmed / active states       */
 }
+
+/* Traveler platform design tokens */
+:root {
+  --tp-bg:           #faf9f7;   /* warm page background              */
+  --tp-surface:      #ffffff;   /* card / panel surface              */
+  --tp-primary:      #1a1a1a;   /* primary headings / text           */
+  --tp-secondary:    #6b6560;   /* secondary / muted text            */
+  --tp-accent:       #3d6b4f;   /* earthy green CTA                  */
+  --tp-accent-light: #e8f0eb;   /* light tint of accent              */
+  --tp-border:       #e8e4df;   /* subtle warm border                */
+  --tp-muted:        #f5f3f0;   /* muted surface (chips, badges)     */
+  --tp-gold:         #b5935a;   /* star / rating gold                */
+}
