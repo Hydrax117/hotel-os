@@ -35,7 +35,7 @@ export default function Step1Page() {
           placeholder="Jane Doe"
           type="text"
           value={account.name}
-          onChange={e => updateAccount({ name: (e.target as HTMLInputElement).value })}
+          onChange={e => updateAccount({ name: e.currentTarget.value })}
           required
         />
         <FormField
@@ -43,7 +43,7 @@ export default function Step1Page() {
           placeholder="jane@hotel.com"
           type="email"
           value={account.email}
-          onChange={e => updateAccount({ email: (e.target as HTMLInputElement).value })}
+          onChange={e => updateAccount({ email: e.currentTarget.value })}
           required
         />
         <FormField
@@ -51,7 +51,7 @@ export default function Step1Page() {
           placeholder="+234 801 234 5678"
           type="tel"
           value={account.phone}
-          onChange={e => updateAccount({ phone: (e.target as HTMLInputElement).value })}
+          onChange={e => updateAccount({ phone: e.currentTarget.value })}
           required
         />
         <FormField
@@ -59,7 +59,7 @@ export default function Step1Page() {
           placeholder="Create a strong password"
           type="password"
           value={account.password}
-          onChange={e => updateAccount({ password: (e.target as HTMLInputElement).value })}
+          onChange={e => updateAccount({ password: e.currentTarget.value })}
           required
         />
       </div>

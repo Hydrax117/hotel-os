@@ -41,6 +41,10 @@ export default function Step8Page() {
     router.push('/onboarding/steps/step-7');
   };
 
+  // Block submission if any required verification document is missing.
+  const hasMissingRequiredDocs = verification.some(doc => doc.required && doc.file === null);
+  const isSubmitDisabled = hasMissingRequiredDocs;
+
   // While the guard effect is still running (or redirect is pending), render nothing.
   if (!account.email.trim() || !subscription) {
     return null;
@@ -64,8 +68,9 @@ export default function Step8Page() {
         <div>
           <h2 className="text-2xl font-bold text-[var(--ob-primary)]">Application Submitted</h2>
           <p className="mt-2 max-w-sm text-sm text-[var(--ob-secondary)]">
-            Your property is now <strong className="text-[var(--ob-accent)]">pending verification</strong>. Our
-            team will review your submission and reach out within 2–3 business days.
+            Your application has been received and is{' '}
+            <strong className="text-[var(--ob-accent)]">pending verification</strong>. Our team will review
+            your details and contact you within 2–3 business days.
           </p>
         </div>
         <div className="rounded-xl border border-[var(--ob-border)] bg-[var(--ob-muted)] px-6 py-4 text-sm text-[var(--ob-secondary)]">
@@ -87,6 +92,8 @@ export default function Step8Page() {
       onBack={handleBack}
       onNext={submit}
       nextLabel="Submit application"
+      isNextDisabled={isSubmitDisabled}
+      nextHint={isSubmitDisabled ? 'Upload all required verification documents to submit.' : undefined}
     >
       <div className="flex flex-col gap-5">
         {/* Account */}

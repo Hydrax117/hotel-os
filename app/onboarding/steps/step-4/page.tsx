@@ -51,14 +51,14 @@ export default function Step4Page() {
             label="Check-in Time"
             type="time"
             value={propertyInfo.checkInTime}
-            onChange={e => updatePropertyInfo({ checkInTime: (e.target as HTMLInputElement).value })}
+            onChange={e => updatePropertyInfo({ checkInTime: e.currentTarget.value })}
             required
           />
           <FormField
             label="Check-out Time"
             type="time"
             value={propertyInfo.checkOutTime}
-            onChange={e => updatePropertyInfo({ checkOutTime: (e.target as HTMLInputElement).value })}
+            onChange={e => updatePropertyInfo({ checkOutTime: e.currentTarget.value })}
             required
           />
         </div>
@@ -69,7 +69,7 @@ export default function Step4Page() {
           label="Cancellation Policy"
           placeholder="Describe your cancellation terms, e.g. free cancellation up to 48 hours before check-in…"
           value={propertyInfo.cancellationPolicy}
-          onChange={e => updatePropertyInfo({ cancellationPolicy: (e.target as HTMLTextAreaElement).value })}
+          onChange={e => updatePropertyInfo({ cancellationPolicy: e.currentTarget.value })}
         />
 
         {/* House Rules */}
@@ -78,7 +78,7 @@ export default function Step4Page() {
           label="House Rules"
           placeholder="e.g. No smoking, Quiet hours after 10 PM, No parties…"
           value={propertyInfo.houseRules}
-          onChange={e => updatePropertyInfo({ houseRules: (e.target as HTMLTextAreaElement).value })}
+          onChange={e => updatePropertyInfo({ houseRules: e.currentTarget.value })}
         />
 
         {/* Languages Spoken */}

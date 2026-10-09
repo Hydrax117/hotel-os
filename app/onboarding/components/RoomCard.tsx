@@ -40,7 +40,7 @@ export function RoomCard({ room, onUpdate, onRemove, index, showErrors = false }
           label="Room Name"
           placeholder="e.g. Deluxe Double"
           value={room.name}
-          onChange={e => onUpdate({ name: (e.target as HTMLInputElement).value })}
+          onChange={e => onUpdate({ name: e.currentTarget.value })}
           onBlur={() => touch('name')}
           required
           error={nameError}
@@ -50,27 +50,27 @@ export function RoomCard({ room, onUpdate, onRemove, index, showErrors = false }
           type="number"
           min={1}
           value={room.capacity}
-          onChange={e => onUpdate({ capacity: Number((e.target as HTMLInputElement).value) })}
+          onChange={e => onUpdate({ capacity: Number(e.currentTarget.value) })}
           required
         />
         <FormField
           label="Bed Type"
           placeholder="e.g. King, Twin, Bunk"
           value={room.bedType}
-          onChange={e => onUpdate({ bedType: (e.target as HTMLInputElement).value })}
+          onChange={e => onUpdate({ bedType: e.currentTarget.value })}
         />
         <FormField
           label="Bathroom Type"
           placeholder="e.g. En-suite, Shared"
           value={room.bathroomType}
-          onChange={e => onUpdate({ bathroomType: (e.target as HTMLInputElement).value })}
+          onChange={e => onUpdate({ bathroomType: e.currentTarget.value })}
         />
         <FormField
           label="Total Rooms"
           type="number"
           min={1}
           value={room.totalRooms}
-          onChange={e => onUpdate({ totalRooms: Number((e.target as HTMLInputElement).value) })}
+          onChange={e => onUpdate({ totalRooms: Number(e.currentTarget.value) })}
           onBlur={() => touch('totalRooms')}
           required
           error={totalRoomsError}
@@ -80,7 +80,7 @@ export function RoomCard({ room, onUpdate, onRemove, index, showErrors = false }
           type="number"
           min={0}
           value={room.pricePerNight}
-          onChange={e => onUpdate({ pricePerNight: Number((e.target as HTMLInputElement).value) })}
+          onChange={e => onUpdate({ pricePerNight: Number(e.currentTarget.value) })}
           onBlur={() => touch('pricePerNight')}
           required
           error={priceError}

@@ -11,6 +11,7 @@ type StepShellProps = {
   onNext: () => void;
   nextLabel?: string;
   isNextDisabled?: boolean;
+  nextHint?: string;
   children: React.ReactNode;
 };
 
@@ -23,6 +24,7 @@ export function StepShell({
   onNext,
   nextLabel = 'Continue',
   isNextDisabled = false,
+  nextHint,
   children,
 }: StepShellProps) {
   return (
@@ -42,31 +44,36 @@ export function StepShell({
       <div>{children}</div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between border-t border-[var(--ob-border)] pt-6">
-        {onBack ? (
+      <div className="flex flex-col gap-2 border-t border-[var(--ob-border)] pt-6">
+        {nextHint && isNextDisabled && (
+          <p className="text-right text-xs text-amber-600">{nextHint}</p>
+        )}
+        <div className="flex items-center justify-between">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="rounded-lg border border-[var(--ob-border)] px-5 py-2.5 text-sm font-medium text-[var(--ob-primary)] transition-colors hover:bg-[var(--ob-muted)]"
+            >
+              Back
+            </button>
+          ) : (
+            <div /> /* spacer */
+          )}
           <button
             type="button"
-            onClick={onBack}
-            className="rounded-lg border border-[var(--ob-border)] px-5 py-2.5 text-sm font-medium text-[var(--ob-primary)] transition-colors hover:bg-[var(--ob-muted)]"
+            onClick={onNext}
+            disabled={isNextDisabled}
+            className={
+              'rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition-colors ' +
+              (isNextDisabled
+                ? 'cursor-not-allowed bg-[var(--ob-secondary)] opacity-50'
+                : 'bg-[var(--ob-accent)] hover:opacity-90')
+            }
           >
-            Back
+            {nextLabel}
           </button>
-        ) : (
-          <div /> /* spacer */
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={isNextDisabled}
-          className={
-            'rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition-colors ' +
-            (isNextDisabled
-              ? 'cursor-not-allowed bg-[var(--ob-secondary)] opacity-50'
-              : 'bg-[var(--ob-accent)] hover:opacity-90')
-          }
-        >
-          {nextLabel}
-        </button>
+        </div>
       </div>
     </div>
   );

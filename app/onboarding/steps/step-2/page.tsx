@@ -40,7 +40,7 @@ export default function Step2Page() {
           label="Hotel Name"
           placeholder="e.g. The Grand Lagos"
           value={property.hotelName}
-          onChange={e => updateProperty({ hotelName: (e.target as HTMLInputElement).value })}
+          onChange={e => updateProperty({ hotelName: e.currentTarget.value })}
           required
         />
         <FormField
@@ -48,13 +48,13 @@ export default function Step2Page() {
           label="Description"
           placeholder="Describe your property, location highlights, and unique features…"
           value={property.description}
-          onChange={e => updateProperty({ description: (e.target as HTMLTextAreaElement).value })}
+          onChange={e => updateProperty({ description: e.currentTarget.value })}
         />
         <FormField
           label="Street Address"
           placeholder="123 Victoria Island"
           value={property.address}
-          onChange={e => updateProperty({ address: (e.target as HTMLInputElement).value })}
+          onChange={e => updateProperty({ address: e.currentTarget.value })}
           required
         />
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -62,20 +62,20 @@ export default function Step2Page() {
             label="City"
             placeholder="Lagos"
             value={property.city}
-            onChange={e => updateProperty({ city: (e.target as HTMLInputElement).value })}
+            onChange={e => updateProperty({ city: e.currentTarget.value })}
             required
           />
           <FormField
             label="State"
             placeholder="Lagos State"
             value={property.state}
-            onChange={e => updateProperty({ state: (e.target as HTMLInputElement).value })}
+            onChange={e => updateProperty({ state: e.currentTarget.value })}
           />
           <FormField
             label="Country"
             placeholder="Nigeria"
             value={property.country}
-            onChange={e => updateProperty({ country: (e.target as HTMLInputElement).value })}
+            onChange={e => updateProperty({ country: e.currentTarget.value })}
             required
           />
         </div>
@@ -86,7 +86,7 @@ export default function Step2Page() {
             step="any"
             placeholder="6.4541"
             value={property.latitude}
-            onChange={e => updateProperty({ latitude: (e.target as HTMLInputElement).value })}
+            onChange={e => updateProperty({ latitude: e.currentTarget.value })}
             hint="Optional — helps show your property on a map"
           />
           <FormField
@@ -95,7 +95,7 @@ export default function Step2Page() {
             step="any"
             placeholder="3.3947"
             value={property.longitude}
-            onChange={e => updateProperty({ longitude: (e.target as HTMLInputElement).value })}
+            onChange={e => updateProperty({ longitude: e.currentTarget.value })}
             hint="Optional — helps show your property on a map"
           />
         </div>

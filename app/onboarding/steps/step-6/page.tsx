@@ -39,7 +39,7 @@ export default function Step6Page() {
       totalSteps={8}
       onBack={handleBack}
       onNext={handleNext}
-      isNextDisabled={false}
+      isNextDisabled={!allRoomsValid}
     >
       <div className="flex flex-col gap-4">
         {rooms.length === 0 && (
