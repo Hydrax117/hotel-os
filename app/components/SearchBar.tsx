@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
@@ -34,13 +35,34 @@ const IconPlus = () => (
   </svg>
 );
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type SearchBarProps = {
+  initialDestination?: string;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function SearchBar() {
-  const [destination, setDestination] = useState('');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(1);
+export function SearchBar({
+  initialDestination = '',
+  initialCheckIn = '',
+  initialCheckOut = '',
+  initialGuests = 1,
+}: SearchBarProps) {
+  const router = useRouter();
+  const [destination, setDestination] = useState(initialDestination);
+  const [checkIn, setCheckIn] = useState(initialCheckIn);
+  const [checkOut, setCheckOut] = useState(initialCheckOut);
+  const [guests, setGuests] = useState(initialGuests);
+
+  const handleSearch = () => {
+    router.push(
+      `/search?destination=${encodeURIComponent(destination)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}&guests=${guests}`
+    );
+  };
 
   const decrementGuests = () => setGuests(g => Math.max(1, g - 1));
   const incrementGuests = () => setGuests(g => Math.min(20, g + 1));
@@ -155,6 +177,7 @@ export function SearchBar() {
         <div className="flex items-center px-4 py-3">
           <button
             type="button"
+            onClick={handleSearch}
             className="h-full rounded-xl px-6 text-sm font-semibold text-white transition-opacity hover:opacity-80 whitespace-nowrap"
             style={{ background: 'var(--tp-accent)' }}
           >
@@ -252,6 +275,7 @@ export function SearchBar() {
         <div className="p-4">
           <button
             type="button"
+            onClick={handleSearch}
             className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-80"
             style={{ background: 'var(--tp-accent)' }}
           >
