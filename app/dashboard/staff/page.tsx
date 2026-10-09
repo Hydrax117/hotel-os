@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<StaffRole, string> = {
 };
 
 function formatDateTime(iso: string): string {
+  if (!iso || iso === 'Never') return 'Never';
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', {
     month: 'short',

@@ -89,7 +89,7 @@ function RevenueBarChart() {
               y={y}
               width={barWidth}
               height={barH}
-              fill="#3d6b4f"
+              style={{ fill: 'var(--db-accent)' }}
               rx="2"
             />
             <text
@@ -168,7 +168,7 @@ function OccupancyLineChart() {
       <polyline
         points={polylinePoints}
         fill="none"
-        stroke="#3d6b4f"
+        style={{ stroke: 'var(--db-accent)' }}
         strokeWidth="2"
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -176,7 +176,7 @@ function OccupancyLineChart() {
 
       {/* Dots */}
       {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={3} fill="#3d6b4f" />
+        <circle key={i} cx={p.x} cy={p.y} r={3} style={{ fill: 'var(--db-accent)' }} />
       ))}
     </svg>
   );

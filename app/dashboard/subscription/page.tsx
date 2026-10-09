@@ -1,6 +1,57 @@
 import React from 'react';
 import { MOCK_HOTEL } from '../mock/data';
 
+// ── Plan catalogue ─────────────────────────────────────────────────────────────
+
+type PlanKey = 'starter' | 'professional' | 'enterprise';
+
+type PlanDef = {
+  label: string;
+  price: string;
+  priceNum: string;
+  nextBilling: string;
+  features: string[];
+};
+
+const PLANS: Record<PlanKey, PlanDef> = {
+  starter: {
+    label:       'Starter',
+    price:       '₦20,000 / month',
+    priceNum:    '₦20,000',
+    nextBilling: 'November 15, 2024',
+    features:    ['3 staff accounts', 'Basic booking', 'Email support'],
+  },
+  professional: {
+    label:       'Professional Plan',
+    price:       '₦50,000 / month',
+    priceNum:    '₦50,000',
+    nextBilling: 'November 15, 2024',
+    features: [
+      'Up to 10 staff accounts',
+      'Booking management',
+      'Analytics & reporting',
+      'Priority support',
+      'Guest communications',
+    ],
+  },
+  enterprise: {
+    label:       'Enterprise',
+    price:       '₦150,000 / month',
+    priceNum:    '₦150,000',
+    nextBilling: 'November 15, 2024',
+    features: [
+      'Unlimited staff',
+      'Advanced analytics',
+      'Dedicated support',
+      'API access',
+      'White-label',
+    ],
+  },
+};
+
+const currentPlanKey: PlanKey = MOCK_HOTEL.subscription;
+const currentPlan = PLANS[currentPlanKey];
+
 // ── Billing history ────────────────────────────────────────────────────────────
 
 type BillingRow = {
@@ -11,9 +62,9 @@ type BillingRow = {
 };
 
 const BILLING_HISTORY: BillingRow[] = [
-  { date: 'Oct 15, 2024', description: 'Professional Plan — Monthly', amount: '₦50,000', status: 'Paid' },
-  { date: 'Sep 15, 2024', description: 'Professional Plan — Monthly', amount: '₦50,000', status: 'Paid' },
-  { date: 'Nov 15, 2024', description: 'Professional Plan — Monthly', amount: '₦50,000', status: 'Upcoming' },
+  { date: 'Oct 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Paid' },
+  { date: 'Sep 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Paid' },
+  { date: 'Nov 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Upcoming' },
 ];
 
 // ── StatusPill ────────────────────────────────────────────────────────────────
@@ -54,9 +105,6 @@ function FeatureList({ items }: { items: string[] }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionPage() {
-  // Suppress unused variable warning — MOCK_HOTEL is imported as instructed
-  void MOCK_HOTEL;
-
   return (
     <div style={{ padding: '24px 28px' }}>
       <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--db-primary)' }}>
@@ -79,23 +127,15 @@ export default function SubscriptionPage() {
               </span>
             </div>
             <h2 className="text-2xl font-bold" style={{ color: 'var(--db-primary)' }}>
-              Professional Plan
+              {currentPlan.label}
             </h2>
             <p className="text-lg font-semibold mt-1" style={{ color: 'var(--db-accent)' }}>
-              ₦50,000 / month
+              {currentPlan.price}
             </p>
             <p className="text-sm mt-1" style={{ color: 'var(--db-secondary)' }}>
-              Next billing date: <strong>November 15, 2024</strong>
+              Next billing date: <strong>{currentPlan.nextBilling}</strong>
             </p>
-            <FeatureList
-              items={[
-                'Up to 10 staff accounts',
-                'Booking management',
-                'Analytics & reporting',
-                'Priority support',
-                'Guest communications',
-              ]}
-            />
+            <FeatureList items={currentPlan.features} />
           </div>
           <button
             className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white shrink-0 self-start"

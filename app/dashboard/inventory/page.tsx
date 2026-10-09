@@ -7,12 +7,12 @@ import type { RoomInventory } from '../types';
 // ── Helper ─────────────────────────────────────────────────────────────────────
 
 function formatDateHeader(dateStr: string): { day: string; label: string } {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr + 'T00:00:00Z');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return {
-    day: days[d.getDay()],
-    label: `${d.getDate()} ${months[d.getMonth()]}`,
+    day: days[d.getUTCDay()],
+    label: `${d.getUTCDate()} ${months[d.getUTCMonth()]}`,
   };
 }
 

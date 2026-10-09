@@ -11,13 +11,17 @@ export default function CheckInPage() {
 
   const query = searchQuery.trim().toLowerCase();
 
-  // When there is a search query, filter all reservations by ID or guest name.
+  // When there is a search query, filter all reservations by ID or guest name,
+  // but exclude terminal statuses so the check-in button is never shown for them.
   // When empty, show only upcoming (confirmed | pending) reservations.
+  const ACTIONABLE_STATUSES = new Set(['confirmed', 'pending', 'checked_in']);
+
   const displayed: Reservation[] = query
     ? reservations.filter(
         r =>
-          r.id.toLowerCase().includes(query) ||
-          r.guestName.toLowerCase().includes(query),
+          ACTIONABLE_STATUSES.has(r.status) &&
+          (r.id.toLowerCase().includes(query) ||
+            r.guestName.toLowerCase().includes(query)),
       )
     : reservations.filter(r => r.status === 'confirmed' || r.status === 'pending');
 
