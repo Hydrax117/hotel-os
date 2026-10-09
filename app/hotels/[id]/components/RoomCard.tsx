@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { RoomType } from '../../mock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ type RoomCardProps = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RoomCard({ room }: RoomCardProps) {
+export function RoomCard({ room, hotelId }: RoomCardProps) {
   const isFreeCancel = room.cancellationPolicy.toLowerCase().includes('free');
   const isNonRefundable = room.cancellationPolicy.toLowerCase().includes('non-refundable');
 
@@ -148,13 +149,13 @@ export function RoomCard({ room }: RoomCardProps) {
             )}
           </div>
 
-          <a
-            href="#"
+          <Link
+            href={`/checkout?hotelId=${hotelId}&roomId=${room.id}&checkIn=&checkOut=&guests=1`}
             className="inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white text-center transition-opacity hover:opacity-80"
             style={{ background: 'var(--tp-primary)' }}
           >
             Reserve
-          </a>
+          </Link>
         </div>
       </div>
     </div>
