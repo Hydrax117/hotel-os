@@ -131,6 +131,10 @@ function CheckoutInner() {
   const checkOut = searchParams.get('checkOut') ?? '';
   const guests = searchParams.get('guests') ?? '1';
 
+  // Date state — seeded from URL params so a pre-filled link works too
+  const [checkInInput, setCheckInInput] = useState(checkIn);
+  const [checkOutInput, setCheckOutInput] = useState(checkOut);
+
   // Guest details state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -183,9 +187,9 @@ function CheckoutInner() {
   // ── Calculations ─────────────────────────────────────────────────────────────
 
   let nights = 1;
-  if (checkIn && checkOut) {
+  if (checkInInput && checkOutInput) {
     const diff = Math.floor(
-      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000
+      (new Date(checkOutInput).getTime() - new Date(checkInInput).getTime()) / 86400000
     );
     nights = Math.max(1, diff);
   }
@@ -203,7 +207,7 @@ function CheckoutInner() {
     const ref = `HOS-${Math.floor(10000 + Math.random() * 90000)}`;
     router.push(
       `/booking/confirmation?ref=${ref}&hotelId=${hotelId}&roomId=${roomId}` +
-        `&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}&total=${total}`
+        `&checkIn=${checkInInput}&checkOut=${checkOutInput}&guests=${guests}&total=${total}`
     );
   }
 
@@ -238,6 +242,103 @@ function CheckoutInner() {
                 className="flex flex-col gap-6"
                 noValidate
               >
+                {/* Section 0: When are you staying? */}
+                <section
+                  className="rounded-xl p-6"
+                  style={{
+                    background: 'var(--tp-surface)',
+                    border: '1px solid var(--tp-border)',
+                  }}
+                  aria-labelledby="dates-heading"
+                >
+                  <h2
+                    id="dates-heading"
+                    className="mb-5 text-lg font-semibold"
+                    style={{ color: 'var(--tp-primary)' }}
+                  >
+                    When are you staying?
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* Check-in */}
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="checkInDate"
+                        className="text-sm font-medium"
+                        style={{ color: 'var(--tp-primary)' }}
+                      >
+                        Check-in
+                        <span aria-hidden="true" style={{ color: 'var(--tp-accent)' }}> *</span>
+                      </label>
+                      <input
+                        id="checkInDate"
+                        type="date"
+                        value={checkInInput}
+                        onChange={e => {
+                          setCheckInInput(e.target.value);
+                          // If check-out is now before or same as new check-in, clear it
+                          if (checkOutInput && e.target.value >= checkOutInput) {
+                            setCheckOutInput('');
+                          }
+                        }}
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
+                        style={{
+                          border: '1px solid var(--tp-border)',
+                          background: 'var(--tp-surface)',
+                          color: checkInInput ? 'var(--tp-primary)' : 'var(--tp-secondary)',
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+                      />
+                    </div>
+
+                    {/* Check-out */}
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="checkOutDate"
+                        className="text-sm font-medium"
+                        style={{ color: 'var(--tp-primary)' }}
+                      >
+                        Check-out
+                        <span aria-hidden="true" style={{ color: 'var(--tp-accent)' }}> *</span>
+                      </label>
+                      <input
+                        id="checkOutDate"
+                        type="date"
+                        value={checkOutInput}
+                        onChange={e => setCheckOutInput(e.target.value)}
+                        required
+                        min={
+                          checkInInput
+                            ? (() => {
+                                const d = new Date(checkInInput);
+                                d.setDate(d.getDate() + 1);
+                                return d.toISOString().split('T')[0];
+                              })()
+                            : new Date().toISOString().split('T')[0]
+                        }
+                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
+                        style={{
+                          border: '1px solid var(--tp-border)',
+                          background: 'var(--tp-surface)',
+                          color: checkOutInput ? 'var(--tp-primary)' : 'var(--tp-secondary)',
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live nights indicator */}
+                  {checkInInput && checkOutInput && nights >= 1 && (
+                    <p className="mt-3 text-sm" style={{ color: 'var(--tp-accent)' }}>
+                      {nights} night{nights !== 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </section>
+
                 {/* Section 1: Your details */}
                 <section
                   className="rounded-xl p-6"
@@ -624,11 +725,11 @@ function CheckoutInner() {
                 <div className="my-4 flex flex-col gap-2">
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Check-in</span>
-                    <span style={{ color: 'var(--tp-primary)' }}>{formatDate(checkIn)}</span>
+                    <span style={{ color: 'var(--tp-primary)' }}>{formatDate(checkInInput)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Check-out</span>
-                    <span style={{ color: 'var(--tp-primary)' }}>{formatDate(checkOut)}</span>
+                    <span style={{ color: 'var(--tp-primary)' }}>{formatDate(checkOutInput)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Nights</span>
