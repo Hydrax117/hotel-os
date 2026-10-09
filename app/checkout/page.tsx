@@ -150,6 +150,9 @@ function CheckoutInner() {
   const [cvv, setCvv] = useState('');
   const [cardholderName, setCardholderName] = useState('');
 
+  // Form validation error state
+  const [formError, setFormError] = useState('');
+
   // ── Data lookup ──────────────────────────────────────────────────────────────
 
   const hotelDetail = HOTEL_DETAILS[hotelId];
@@ -196,10 +199,29 @@ function CheckoutInner() {
   // ── Pay handler ──────────────────────────────────────────────────────────────
 
   function handlePay() {
+    // Validate required guest details
+    if (!firstName.trim()) { setFormError('Please enter your first name.'); return; }
+    if (!lastName.trim()) { setFormError('Please enter your last name.'); return; }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+    if (!phone.trim()) { setFormError('Please enter your phone number.'); return; }
+    // Validate dates
+    if (!checkInInput) { setFormError('Please select a check-in date.'); return; }
+    if (!checkOutInput) { setFormError('Please select a check-out date.'); return; }
+    // Validate payment fields (card tab only)
+    if (paymentTab === 'card') {
+      if (!cardNumber.trim()) { setFormError('Please enter your card number.'); return; }
+      if (!expiry.trim()) { setFormError('Please enter the card expiry date.'); return; }
+      if (!cvv.trim()) { setFormError('Please enter the CVV.'); return; }
+      if (!cardholderName.trim()) { setFormError('Please enter the cardholder name.'); return; }
+    }
+    setFormError('');
     const ref = `HOS-${Math.floor(10000 + Math.random() * 90000)}`;
     router.push(
       `/booking/confirmation?ref=${ref}&hotelId=${hotelId}&roomId=${roomId}` +
-        `&checkIn=${checkInInput}&checkOut=${checkOutInput}&guests=${guests}&total=${total}`
+        `&checkIn=${checkInInput}&checkOut=${checkOutInput}&guests=${guests}`
     );
   }
 
@@ -232,7 +254,6 @@ function CheckoutInner() {
                   handlePay();
                 }}
                 className="flex flex-col gap-6"
-                noValidate
               >
                 {/* Section 0: When are you staying? */}
                 <section
@@ -569,7 +590,7 @@ function CheckoutInner() {
                           </label>
                           <input
                             id="cvv"
-                            type="text"
+                            type="password"
                             inputMode="numeric"
                             placeholder="CVV"
                             value={cvv}
@@ -643,6 +664,15 @@ function CheckoutInner() {
 
                 {/* Pay button */}
                 <div className="flex flex-col gap-3">
+                  {formError && (
+                    <p
+                      role="alert"
+                      className="rounded-lg px-4 py-3 text-sm"
+                      style={{ background: '#fee2e2', color: '#dc2626' }}
+                    >
+                      {formError}
+                    </p>
+                  )}
                   <button
                     type="submit"
                     className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold text-white transition-opacity hover:opacity-90"

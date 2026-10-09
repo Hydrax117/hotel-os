@@ -154,6 +154,8 @@ export function RoomCard({ room, hotelId }: RoomCardProps) {
             className="inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white text-center transition-opacity hover:opacity-80"
             style={{ background: 'var(--tp-primary)' }}
           >
+            {/* checkIn/checkOut are not available here — the checkout page
+                exposes date pickers so guests select dates during checkout. */}
             Reserve
           </Link>
         </div>
