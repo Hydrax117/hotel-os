@@ -1,0 +1,22 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "severity": "HIGH",
+      "description": "Step 6 `isNextDisabled` is hardcoded `false` — the Continue button is never visually disabled on the Rooms step, even when no rooms exist or rooms fail validation. Set `isNextDisabled={!allRoomsValid}` on StepShell to match the UX contract of every other step."
+    },
+    {
+      "severity": "HIGH",
+      "description": "`submit()` is a no-op — it only flips a local boolean and clears the password; no data reaches any backend. The success screen copy ('Your property is now pending verification') implies a real submission. Wire up the API call before shipping or change the copy to make clear submission is deferred."
+    },
+    {
+      "severity": "MEDIUM",
+      "description": "Step 8 does not gate submission on required verification documents. A user can clear a required document after step 3 and submit from step 8 despite the inline red warning. Add a check that all `required` verification docs have a file before calling `submit()`."
+    },
+    {
+      "severity": "LOW",
+      "description": "`(e.target as HTMLInputElement).value` casts are used throughout step pages instead of `e.currentTarget.value`, which TypeScript already types correctly given `FormField`'s prop signature. Switch to `e.currentTarget.value` to remove the suppressive casts."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\Music\\hotel-os\\.agents\\tasks\\onboarding-review.md"
+}

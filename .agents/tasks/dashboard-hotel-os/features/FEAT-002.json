@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Core dashboard pages: Overview, Reservations list + detail, and Room management. Depends on FEAT-001 (layout, shared components, types, mock data must exist). These are the highest-traffic screens in the hotel dashboard per the product spec.",
+  "status": "pending",
+  "steps": [
+    "1. Create `app/dashboard/overview/page.tsx` — server component. Import MOCK_HOTEL, MOCK_RESERVATIONS, MOCK_REVENUE_DAYS from mock/data.ts. Sections: (a) Greeting header: 'Good morning, [hotel name] 👋' with today's date. (b) Stats row: 5 StatCard components — Occupancy (e.g. '78%'), Today's Revenue (e.g. '₦2,840,000'), Today's Bookings, Upcoming Check-ins, Upcoming Check-outs — derive values from mock data. (c) Revenue sparkline: a simple inline SVG path drawn from MOCK_REVENUE_DAYS last 14 days (no chart library — pure SVG polyline). (d) Upcoming reservations mini-table: next 5 confirmed/pending reservations from MOCK_RESERVATIONS, columns: Guest, Room, Check-in, Check-out, Status (StatusBadge). (e) Room availability overview: 4 RoomType cards showing name, available/total, price.",
+    "2. Create `app/dashboard/reservations/page.tsx` — 'use client'. Import MOCK_RESERVATIONS. Features: (a) Page header 'Reservations' with count badge. (b) Search input filtering by guest name or booking ID (local state). (c) Status filter tabs: All | Pending | Confirmed | Checked In | Checked Out | Cancelled. (d) Sortable table columns: Booking ID, Guest, Room Type, Check-in, Check-out, Nights, Amount, Status, Actions. (e) Actions column: 'View' button linking to /dashboard/reservations/[id]. (f) Empty state when filter returns no results. Amount formatted as ₦X,XXX,XXX.",
+    "3. Create `app/dashboard/reservations/[id]/page.tsx` — server component. `params` is a Promise: `async function Page({ params }: { params: Promise<{ id: string }> })`. Await params, find reservation by id from MOCK_RESERVATIONS. If not found, call `notFound()` from 'next/navigation'. Show: (a) Back link to /dashboard/reservations. (b) Reservation header: booking ID, status badge, created date. (c) Two-column layout: LEFT — Guest info card (name, email, room, dates, nights, amount breakdown), RIGHT — Booking timeline (vertical stepper showing state transitions appropriate to current status). (d) Action buttons row: Confirm (if pending), Check In (if confirmed), Check Out (if checked_in), Cancel (if pending/confirmed). Buttons are visual only — no actual state mutation needed for mock data.",
+    "4. Create `app/dashboard/rooms/page.tsx` — server component. Import MOCK_ROOM_TYPES. Show: (a) 'Rooms' header with 'Add room type' button (visual only). (b) Grid of RoomType cards, each showing: name, bed type, capacity, total/available rooms, price per night formatted as ₦XX,XXX, availability pill (green if >50% available, amber if 20-50%, red if <20%). Each card links to /dashboard/rooms/[id].",
+    "5. Create `app/dashboard/rooms/[id]/page.tsx` — server component. `params` is a Promise — await it. Find room type from MOCK_ROOM_TYPES. If not found, call `notFound()`. Show: (a) Back link to /dashboard/rooms. (b) Room type header: name, price, status pill. (c) Info grid: bed type, capacity, total rooms, available rooms. (d) Photo placeholder section: 3 grey placeholder boxes with dashed border and 'Upload photo' text. (e) Description placeholder textarea (read-only display). (f) Edit button (visual only)."
+  ],
+  "acceptance_criteria": [
+    "`npx next build` completes with zero TypeScript errors after this FEAT.",
+    "/dashboard/overview, /dashboard/reservations, /dashboard/reservations/[id], /dashboard/rooms, /dashboard/rooms/[id] all appear in the build output.",
+    "Reservations page filter tabs correctly show/hide rows by status.",
+    "Reservation detail page uses `await params` (not synchronous params access).",
+    "Room detail page uses `await params` (not synchronous params access).",
+    "notFound() is called for missing reservation/room IDs.",
+    "Overview page renders 5 StatCards and the mini reservations table without TypeScript errors."
+  ],
+  "verification": [
+    "cd c:\\Users\\Pkaka\\Music\\hotel-os && npx next build 2>&1 — expect '✓ Compiled successfully' and zero errors",
+    "npx next build 2>&1 | Select-String 'dashboard' — expect /dashboard/overview, /dashboard/reservations, /dashboard/reservations/\\[id\\], /dashboard/rooms, /dashboard/rooms/\\[id\\] in output"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

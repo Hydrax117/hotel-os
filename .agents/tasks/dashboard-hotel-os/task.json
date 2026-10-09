@@ -1,0 +1,7 @@
+{
+  "task_id": "task-dashboard-hotel-os",
+  "task_description": "Build the Hotel OS hotel dashboard — a complete, premium B2B SaaS dashboard for hotel owners, managers, and staff. Covers: dashboard layout (sidebar + topbar), overview page, reservations list + detail, room management, inventory calendar, staff management, analytics, subscription, payouts, and hotel profile. All pages use mock data. Built in Next.js 16.4 / React 19 / Tailwind CSS 4 under app/dashboard/.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

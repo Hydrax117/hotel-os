@@ -1,0 +1,12 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "`formatDateTime` crash on \"Never\" — `new Date(\"Never\")` is `Invalid Date`; renders as \"Invalid Date Invalid Date\" in the Staff table for any member whose `lastActive` is \"Never\". Guard with `if (!iso || iso === 'Never') return 'Never';` before constructing the Date.",
+    "`export const instant = false` is not a Next.js directive — silently ignored by Next.js. The stated protective intent (opt out of static prerender) is not achieved. Replace with `export const dynamic = 'force-dynamic';`.",
+    "Hardcoded `#3d6b4f` in analytics charts — `RevenueBarChart` and `OccupancyLineChart` use `fill` / `stroke` attributes that don't resolve CSS variables. Replace with `style={{ fill: 'var(--db-accent)' }}` / `style={{ stroke: 'var(--db-accent)' }}`.",
+    "`SubscriptionPage` ignores `MOCK_HOTEL.subscription` — plan name, price, and feature list are hardcoded. `void MOCK_HOTEL` suppresses the lint warning. Derive the current plan from `MOCK_HOTEL.subscription`.",
+    "Inventory `formatDateHeader` uses local time — `new Date(dateStr + 'T00:00:00')` parses in local time; can display the wrong weekday for UTC-offset users. Change to `new Date(dateStr + 'T00:00:00Z')` to match the rest of the codebase.",
+    "Check-in button active on cancelled/no-show bookings — when a search query is active, `check-in/page.tsx` shows all statuses and the \"Confirm Check-in\" button is enabled for `cancelled` and `no_show` records. Filter out terminal statuses from search results or disable the button for non-actionable statuses."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\Music\\hotel-os\\.agents\\tasks\\feat002-003-review.md"
+}

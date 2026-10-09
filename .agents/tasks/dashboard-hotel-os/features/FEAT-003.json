@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Remaining dashboard pages: Staff management, Inventory calendar, Analytics, Subscription, Payouts, Hotel Profile, and Guests. Depends on FEAT-001 (layout + shared components + types) and FEAT-002 (can be authored in parallel with FEAT-002 since pages are independent, but must run after FEAT-001). In practice executed sequentially after FEAT-002.",
+  "status": "pending",
+  "steps": [
+    "1. Create `app/dashboard/staff/page.tsx` — 'use client'. Import MOCK_STAFF. Features: (a) 'Staff' header with 'Invite staff' button (visual, opens no modal). (b) Staff count badge. (c) Table: Avatar circle (initials), Name, Email, Role badge (color per role: owner=charcoal, manager=blue, receptionist=teal, staff=stone), Status pill (active=green, inactive=red), Last Active, Actions (Deactivate/Activate button — visual only). (d) Empty state if no staff. Role badge colors use inline style with --db-* vars.",
+    "2. Create `app/dashboard/inventory/page.tsx` — 'use client'. Import MOCK_INVENTORY. Build a visual 30-day availability calendar grid. Layout: sticky left column with room type names, scrollable columns for each date. Each cell shows availability count. Color code: 0 = red bg, 1-2 = amber, 3+ = green (light tint, with count text). Dates as column headers (show day number + abbreviated month). Title: 'Inventory Calendar'. Add a simple legend below the grid: green=Available, amber=Low, red=Sold out. The grid must be horizontally scrollable on small screens (`overflow-x-auto`). No external date library — derive date labels from the `date` strings in MOCK_INVENTORY.",
+    "3. Create `app/dashboard/analytics/page.tsx` — server component. Import MOCK_REVENUE_DAYS, MOCK_RESERVATIONS, MOCK_ROOM_TYPES. Sections: (a) Summary cards row: Total Revenue (sum of MOCK_REVENUE_DAYS), Average Occupancy, Total Bookings, Cancellation Rate (count cancelled / total), ADR (average daily rate = total revenue / total occupied nights). (b) Revenue over time: SVG area/line chart using MOCK_REVENUE_DAYS (pure SVG, no chart lib). Draw as a 600×120 viewBox polyline/path with labeled axes. (c) Bookings by room type: horizontal bar chart (pure HTML divs with percentage widths, no SVG needed). (d) Occupancy trend: similar SVG line chart from MOCK_REVENUE_DAYS occupancyPercent. Keep charts clean and minimal.",
+    "4. Create `app/dashboard/subscription/page.tsx` — server component. Import MOCK_HOTEL. Sections: (a) Current plan card: plan name (professional), price ₦50,000/month, features list, 'Manage subscription' button. (b) Upgrade / other plans row: show Starter and Enterprise cards side-by-side. Use the same visual style as onboarding's SubscriptionCard but adapted to --db-* vars. (c) Billing history table: 3 mock rows — Date, Plan, Amount, Status (paid/upcoming). (d) Next billing date and payment method (last 4 digits placeholder).",
+    "5. Create `app/dashboard/payouts/page.tsx` — server component. Import MOCK_PAYOUTS. Sections: (a) Balance summary row: Available (sum of settled net), Pending (sum of pending net), Settled (total settled). Use StatCard. (b) 'Request payout' button (visual only). (c) Transaction table: Booking ID, Guest, Date, Gross, Commission (shown as negative), Net, Status badge (settled=green, pending=amber, processing=blue). (d) Total row at bottom. Format all currency as ₦X,XXX,XXX.",
+    "6. Create `app/dashboard/profile/page.tsx` — server component. Import MOCK_HOTEL. Show hotel profile in read-mode: (a) Hotel name + city/state header. (b) Info sections: Property Details (name, description placeholder, address), Contact (phone, email placeholders), Amenities (chip list, placeholder values), Policies (check-in/check-out times, cancellation). (c) 'Edit profile' button (visual only). (d) 'Preview listing' button with external link icon (visual only, links to #).",
+    "7. Create `app/dashboard/guests/page.tsx` — 'use client'. Import MOCK_RESERVATIONS. Derive unique guests by guestEmail. For each guest show: name, email, total stays (count of reservations), last stay date, total spent (sum of amountNgn). Table with search filter by name/email. This page is intentionally simple — no separate mock for guests since the data derives from reservations."
+  ],
+  "acceptance_criteria": [
+    "`npx next build` completes with zero TypeScript errors after this FEAT.",
+    "All 7 new routes appear in build output: /dashboard/staff, /dashboard/inventory, /dashboard/analytics, /dashboard/subscription, /dashboard/payouts, /dashboard/profile, /dashboard/guests.",
+    "Inventory calendar grid renders with room type rows and date columns, horizontally scrollable.",
+    "Analytics SVG charts are valid SVG (polyline or path elements with correct coordinate attributes).",
+    "Guests page correctly deduplicates by email from MOCK_RESERVATIONS without a separate mock array.",
+    "No TypeScript `any` types used anywhere in this FEAT's files."
+  ],
+  "verification": [
+    "cd c:\\Users\\Pkaka\\Music\\hotel-os && npx next build 2>&1 — expect '✓ Compiled successfully' and zero errors",
+    "npx next build 2>&1 | Select-String 'dashboard' — expect all 7 new routes plus the FEAT-001/002 routes in output"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

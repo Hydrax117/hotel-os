@@ -1,0 +1,30 @@
+{
+  "project_type": "Next.js 16.4 App Router + React 19 + Tailwind CSS 4 monolith — hotel management SaaS",
+  "language": "TypeScript 5 / TSX",
+  "build_system": "Next.js 16.4 via `next build`. Turbopack used in dev (`next dev`). `@tailwindcss/turbopack` handles CSS. `cacheComponents: true` and `partialPrefetching: true` are enabled in next.config.ts. Path alias `@/*` → `./` (repo root).",
+  "test_framework": "None — no test runner configured in package.json. Build success + zero TypeScript errors is the only verification gate.",
+  "build_command": "npx next build",
+  "test_command": "npx next build 2>&1 (zero errors = pass)",
+  "verification_instructions": "Run `npx next build` from `c:\\Users\\Pkaka\\Music\\hotel-os`. Expect `✓ Compiled successfully` with all dashboard routes listed. Then run `npx next build 2>&1 | Select-String 'dashboard'` to confirm the route tree includes /dashboard, /dashboard/overview, etc.",
+  "snapshot_or_generated_files": "`.next/` directory is the build output — never committed. `next-env.d.ts` and `.next/dev/types/` are auto-generated type files; do not edit them.",
+  "environment_constraints": "Windows PowerShell. Do NOT run `next dev` or restart any dev server. Always use `npx next build` for verification. No environment variables are required for mock-data builds.",
+  "contribution_requirements": "AGENTS.md: This is Next.js 16.4 — read node_modules/next/dist/docs/ before writing code. `params` and `searchParams` are Promises in this version (await them in server components, use React.use() in client components). Root layout uses `LayoutProps<'/'>` (auto-generated helper) — sub-layouts use `{ children: React.ReactNode }` inline. No `<head>` tags in layouts — use Metadata API.",
+  "key_patterns": "1) Layouts use `{ children: React.ReactNode }` prop inline (see app/onboarding/layout.tsx). 2) Client components get `'use client'` at top of file. 3) CSS uses Tailwind 4 utility classes AND inline `style={{ ... }}` with CSS vars (e.g. `style={{ background: 'var(--ob-bg)' }}`). 4) CSS tokens are declared in `app/globals.css` under `:root` — onboarding uses `--ob-*` prefix; dashboard will use `--db-*`. 5) `@import 'tailwindcss'` at top of globals.css (Tailwind 4 style). 6) `@theme inline { ... }` block maps CSS vars to Tailwind theme tokens. 7) Context files use `createContext` + custom hook pattern (see OnboardingContext.tsx). 8) Icon SVGs are inline (no icon library installed). 9) Routing: `useRouter().push('/path')` for client-side navigation. 10) No animation/chart libraries installed — use CSS/SVG for any visual elements.",
+  "relevant_files": [
+    "app/globals.css",
+    "app/layout.tsx",
+    "app/onboarding/layout.tsx",
+    "app/onboarding/components/StepShell.tsx",
+    "app/onboarding/components/FormField.tsx",
+    "app/onboarding/components/MultiSelectChips.tsx",
+    "app/onboarding/components/SubscriptionCard.tsx",
+    "app/onboarding/components/StepIndicator.tsx",
+    "app/onboarding/context/OnboardingContext.tsx",
+    "app/onboarding/steps/step-1/page.tsx",
+    "app/onboarding/steps/step-2/page.tsx",
+    "next.config.ts",
+    "tsconfig.json",
+    "package.json"
+  ],
+  "directory_structure": "app/ — Next.js App Router root. app/layout.tsx — root layout (html+body). app/globals.css — global styles + CSS vars. app/onboarding/ — complete hotel onboarding wizard (8 steps, context, components, constants). app/page.tsx — root page. .agents/tasks/ — planner/reviewer artifacts (never committed). node_modules/next/dist/docs/ — Next.js 16.4 documentation."
+}
