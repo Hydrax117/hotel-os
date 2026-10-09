@@ -7,6 +7,7 @@ import { TravelerNav } from '../components/TravelerNav';
 import { Footer } from '../components/Footer';
 import { HOTEL_DETAILS, HOTEL_ROOM_TYPES, DEFAULT_ROOM_TYPES } from '../hotels/mock';
 import { SEARCH_MOCK_HOTELS } from '../search/mock';
+import { calcNights, calcBookingCost } from '../lib/booking';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
@@ -186,17 +187,8 @@ function CheckoutInner() {
 
   // ── Calculations ─────────────────────────────────────────────────────────────
 
-  let nights = 1;
-  if (checkInInput && checkOutInput) {
-    const diff = Math.floor(
-      (new Date(checkOutInput).getTime() - new Date(checkInInput).getTime()) / 86400000
-    );
-    nights = Math.max(1, diff);
-  }
-
-  const subtotal = room.pricePerNight * nights;
-  const fee = Math.round(subtotal * 0.03);
-  const total = subtotal + fee;
+  const nights = calcNights(checkInInput, checkOutInput);
+  const { subtotal, fee, total } = calcBookingCost(room.pricePerNight, nights);
 
   const isFreeCancel = room.cancellationPolicy.toLowerCase().includes('free');
   const isNonRefundable = room.cancellationPolicy.toLowerCase().includes('non-refundable');

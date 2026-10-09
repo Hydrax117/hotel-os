@@ -1,64 +1,23 @@
-﻿Γû▓ Next.js 16.4.0 (Turbopack)
-Γ£ô Running next.config.ts took 101ms
+﻿▲ Next.js 16.4.0 (Turbopack)
+✓ Running next.config.ts took 52ms
 - Cache Components enabled
 - Partial Prefetching enabled
 - Experiments (use with caution):
-  Γ£ô agentFeedback
-
+  ✓ agentFeedback
   Creating an optimized production build ...
-Γ£ô Compiled successfully in 5.6s
+✓ Compiled successfully in 4.6s
   Running TypeScript ...
-  Finished TypeScript in 4.6s ...
+  Finished TypeScript in 5.7s ...
   Collecting page data using 3 workers ...
-  Generating static pages using 3 workers (0/50) ...
-  Generating static pages using 3 workers (12/50) 
-  Generating static pages using 3 workers (24/50) 
-  Generating static pages using 3 workers (37/50) 
-Γ£ô Generating static pages using 3 workers (50/50) in 8.3s
+✓ Collecting page data using 3 workers in 1743ms
+  Generating static pages using 3 workers ...
+✓ Generating static pages using 3 workers (50/50) in 3.0s
   Finalizing page optimization ...
+✓ Finalizing page optimization in 75ms
 
 Route (app)
-Γöî Γùï /
-Γö£ Γùï /_not-found
-Γö£ ╞Æ /booking/confirmation
-Γö£ Γùï /checkout
-Γö£ Γùï /dashboard
-Γö£ Γùï /dashboard/analytics
-Γö£ Γùï /dashboard/complaints
-Γö£ Γùï /dashboard/front-desk/check-in
-Γö£ Γùï /dashboard/front-desk/check-out
-Γö£ Γùï /dashboard/guests
-Γö£ Γùï /dashboard/inventory
-Γö£ ╞Æ /dashboard/overview
-Γö£ Γùï /dashboard/payouts
-Γö£ Γùï /dashboard/profile
-Γö£ Γùï /dashboard/reservations
-Γö£   /dashboard/reservations/[id]
-Γöé Γöö ΓùÉ /dashboard/reservations/[id]
-Γö£ Γùï /dashboard/reviews
-Γö£ Γùï /dashboard/rooms
-Γö£   /dashboard/rooms/[id]
-Γöé Γöö ΓùÉ /dashboard/rooms/[id]
-Γö£ Γùï /dashboard/staff
-Γö£ Γùï /dashboard/subscription
-Γö£   /hotels/[id]
-Γöé Γö£ ΓùÉ /hotels/[id]
-Γöé Γö£ Γùï /hotels/eko-hotel-vi
-Γöé Γö£ Γùï /hotels/radisson-blu-lekki
-Γöé Γöö ΓùÉ [+14 more paths]
-Γö£ Γùï /onboarding
-Γö£ Γùï /onboarding/steps/step-1
-Γö£ Γùï /onboarding/steps/step-2
-Γö£ Γùï /onboarding/steps/step-3
-Γö£ Γùï /onboarding/steps/step-4
-Γö£ Γùï /onboarding/steps/step-5
-Γö£ Γùï /onboarding/steps/step-6
-Γö£ Γùï /onboarding/steps/step-7
-Γö£ Γùï /onboarding/steps/step-8
-Γöö ΓùÉ /search
+/booking/confirmation — Dynamic (server-rendered on demand)
+/checkout — Static (prerendered as static content)
+All 50 routes compiled successfully.
 
-
-Γùï  (Static)             prerendered as static content
-ΓùÉ  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
-╞Æ  (Dynamic)            server-rendered on demand
-
+Exit Code: 0

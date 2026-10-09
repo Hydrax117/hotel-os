@@ -150,7 +150,7 @@ export function RoomCard({ room, hotelId }: RoomCardProps) {
           </div>
 
           <Link
-            href={`/checkout?hotelId=${hotelId}&roomId=${room.id}&checkIn=&checkOut=&guests=1`}
+            href={`/checkout?hotelId=${hotelId}&roomId=${room.id}&guests=1`}
             className="inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white text-center transition-opacity hover:opacity-80"
             style={{ background: 'var(--tp-primary)' }}
           >

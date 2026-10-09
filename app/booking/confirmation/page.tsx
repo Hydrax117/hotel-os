@@ -4,6 +4,7 @@ import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
 import { HOTEL_DETAILS, HOTEL_ROOM_TYPES, DEFAULT_ROOM_TYPES } from '../../hotels/mock';
 import { SEARCH_MOCK_HOTELS } from '../../search/mock';
+import { calcNights, calcBookingCost } from '../../lib/booking';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -60,19 +61,66 @@ async function Page({
   const room = rooms.find(r => r.id === roomId);
   const roomName = room?.name ?? 'Room';
 
+  // ── Guard: room not found → render error state ────────────────────────────────
+
+  if (!room) {
+    return (
+      <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
+        <TravelerNav />
+        <main style={{ paddingTop: '64px' }}>
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 py-24 text-center">
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: '#fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-hidden="true"
+            >
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#dc2626"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--tp-primary)' }}>
+              Booking not found
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
+              We couldn&apos;t locate the booking details for this confirmation.
+              Please check your booking reference or try again.
+            </p>
+            <Link
+              href="/hotels"
+              className="rounded-xl px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-80"
+              style={{ background: 'var(--tp-primary)' }}
+            >
+              Back to hotels
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // ── Recompute total server-side (do not trust the URL param) ─────────────────
 
-  let nights = 1;
-  if (checkIn && checkOut) {
-    const diff = Math.floor(
-      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000
-    );
-    nights = Math.max(1, diff);
-  }
-  const pricePerNight = room?.pricePerNight ?? 0;
-  const subtotal = pricePerNight * nights;
-  const fee = Math.round(subtotal * 0.03);
-  const total = subtotal + fee;
+  const nights = calcNights(checkIn, checkOut);
+  const { total } = calcBookingCost(room.pricePerNight, nights);
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
