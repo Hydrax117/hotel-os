@@ -98,3 +98,28 @@ export type PayoutTransaction = {
   netNgn: number;
   status: 'settled' | 'pending' | 'processing';
 };
+
+// ── Complaints ────────────────────────────────────────────────────────────────
+
+export type Complaint = {
+  id: string;
+  guestName: string;
+  roomNumber: string;
+  date: string;           // ISO date
+  category: 'Cleanliness' | 'Noise' | 'Service' | 'Facilities' | 'Other';
+  priority: 'High' | 'Medium' | 'Low';
+  status: 'Open' | 'In Progress' | 'Resolved';
+  description: string;
+};
+
+// ── Guest Reviews ─────────────────────────────────────────────────────────────
+
+export type GuestReview = {
+  id: string;
+  guestName: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  date: string;           // ISO date
+  reviewText: string;
+  verified: boolean;
+  response?: string;
+};
