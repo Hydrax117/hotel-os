@@ -125,7 +125,7 @@ export function TravelerNav() {
               List your hotel
             </Link>
             <Link
-              href="#signin"
+              href="/auth/signin"
               className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-80"
               style={{ background: 'var(--tp-primary)' }}
             >
@@ -184,7 +184,7 @@ export function TravelerNav() {
                 List your hotel
               </Link>
               <Link
-                href="#signin"
+                href="/auth/signin"
                 onClick={() => setMobileOpen(false)}
                 className="rounded-xl px-4 py-3 text-center text-sm font-medium text-white"
                 style={{ background: 'var(--tp-primary)' }}
