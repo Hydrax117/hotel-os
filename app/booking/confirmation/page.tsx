@@ -21,6 +21,10 @@ function formatDate(dateStr: string | undefined): string {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// `instant = false` opts this route out of instant-navigation validation in
+// Next.js 16.4+ Cache Components mode. The confirmation page accesses
+// `searchParams` (a dynamic data source) outside Suspense, so the route blocks
+// on each navigation — this export tells Next.js that is intentional.
 export const instant = false;
 
 async function Page({
@@ -44,7 +48,6 @@ async function Page({
   const checkIn = params.checkIn;
   const checkOut = params.checkOut;
   const guests = params.guests ?? '1';
-  const total = params.total;
 
   // ── Data lookup ──────────────────────────────────────────────────────────────
 
@@ -54,7 +57,22 @@ async function Page({
     'Hotel';
 
   const rooms = HOTEL_ROOM_TYPES[hotelId] ?? DEFAULT_ROOM_TYPES;
-  const roomName = rooms.find(r => r.id === roomId)?.name ?? 'Room';
+  const room = rooms.find(r => r.id === roomId);
+  const roomName = room?.name ?? 'Room';
+
+  // ── Recompute total server-side (do not trust the URL param) ─────────────────
+
+  let nights = 1;
+  if (checkIn && checkOut) {
+    const diff = Math.floor(
+      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000
+    );
+    nights = Math.max(1, diff);
+  }
+  const pricePerNight = room?.pricePerNight ?? 0;
+  const subtotal = pricePerNight * nights;
+  const fee = Math.round(subtotal * 0.03);
+  const total = subtotal + fee;
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
@@ -159,7 +177,7 @@ async function Page({
                 },
                 {
                   label: 'Total paid',
-                  value: total ? `₦${Number(total).toLocaleString()}` : '—',
+                  value: total > 0 ? `₦${total.toLocaleString()}` : '—',
                   accent: true,
                 },
               ].map(({ label, value, accent }, idx, arr) => (
