@@ -1,0 +1,18 @@
+Build: PASS
+Date: 2026-10-10 09:11:15
+Next.js: 16.4.0 (Turbopack)
+TypeScript: PASS (0 errors)
+Total routes: 74
+
+Pages built:
+  /profile                  - static
+  /reviews/new              - static
+  /bookings                 - static
+  /admin/payments           - dynamic (server)
+  /admin/payouts            - dynamic (server)
+  /admin/reviews            - dynamic (server)
+  /admin/cities             - dynamic (server)
+  /admin/reports            - dynamic (server)
+  /admin/audit              - static
+
+AdminSidebar.tsx: already had all required links - no change needed.
