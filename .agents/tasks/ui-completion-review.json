@@ -1,0 +1,8 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "Admin reviews tabs are non-functional — The five filter tabs in /admin/reviews are <div> elements with no onClick or state. Tab switching does nothing at runtime. Convert to a 'use client' wrapper or a URL-param-driven server approach so tabs actually filter the displayed reviews.",
+    "instant = false is an unrecognised export — Every server component in this batch exports `export const instant = false`. Next.js has no `instant` page export; this was likely intended as `export const dynamic = 'force-dynamic'` to opt pages out of static caching, since these pages call connection(). Rename to `dynamic` or remove."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\ui-completion-review.md"
+}

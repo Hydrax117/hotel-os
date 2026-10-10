@@ -1,7 +1,6 @@
-import React from 'react';
-import { connection } from 'next/server';
+'use client';
 
-export const instant = false;
+import React, { useState } from 'react';
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -62,13 +61,17 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'removed', label: 'Removed' },
 ];
 
-const avgRating = (MOCK_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / MOCK_REVIEWS.length).toFixed(1);
-const flaggedCount = MOCK_REVIEWS.filter(r => r.status === 'flagged').length;
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function AdminReviewsPage() {
-  await connection();
+export default function AdminReviewsPage() {
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
+
+  const avgRating = (MOCK_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / MOCK_REVIEWS.length).toFixed(1);
+  const flaggedCount = MOCK_REVIEWS.filter(r => r.status === 'flagged').length;
+
+  const filteredReviews = activeTab === 'all'
+    ? MOCK_REVIEWS
+    : MOCK_REVIEWS.filter(r => r.status === activeTab);
 
   return (
     <div style={{ padding: '32px 24px', maxWidth: '1100px' }}>
@@ -108,6 +111,8 @@ export default async function AdminReviewsPage() {
 
       {/* Filter tabs */}
       <div
+        role="tablist"
+        aria-label="Filter reviews by status"
         style={{
           display: 'flex',
           gap: '4px',
@@ -116,28 +121,40 @@ export default async function AdminReviewsPage() {
           flexWrap: 'wrap',
         }}
       >
-        {TABS.map((tab, i) => (
-          <div
-            key={tab.key}
-            style={{
-              padding: '8px 16px',
-              fontSize: '13px',
-              fontWeight: i === 0 ? 600 : 400,
-              color: i === 0 ? 'var(--ad-accent)' : 'var(--ad-secondary)',
-              borderBottom: i === 0 ? '2px solid var(--ad-accent)' : '2px solid transparent',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              marginBottom: '-1px',
-            }}
-          >
-            {tab.label}
-          </div>
-        ))}
+        {TABS.map(tab => {
+          const isActive = tab.key === activeTab;
+          const count = tab.key === 'all' ? MOCK_REVIEWS.length : MOCK_REVIEWS.filter(r => r.status === tab.key).length;
+          return (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? 'var(--ad-accent)' : 'var(--ad-secondary)',
+                borderBottom: isActive ? '2px solid var(--ad-accent)' : '2px solid transparent',
+                background: 'transparent',
+                border: 'none',
+                borderBottomWidth: '2px',
+                borderBottomStyle: 'solid',
+                borderBottomColor: isActive ? 'var(--ad-accent)' : 'transparent',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                marginBottom: '-1px',
+              }}
+            >
+              {tab.label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Review cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {MOCK_REVIEWS.map(review => {
+        {filteredReviews.map(review => {
           const isFlagged = review.status === 'flagged';
           return (
             <div

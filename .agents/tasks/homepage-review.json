@@ -1,0 +1,12 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "label": "Search button fires no handler",
+      "detail": "SearchBar's 'Search hotels' button has type='button' and no onClick on either the desktop or mobile layout. The four controlled fields collect state that is never used for navigation. Wire it to router.push('/search?...') or wrap the fields in a <form> before going live.",
+      "confidence": "confirmed",
+      "blocking": false
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\homepage-review.md"
+}

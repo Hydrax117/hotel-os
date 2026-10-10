@@ -109,6 +109,13 @@ export function TravelerNav() {
             >
               About
             </Link>
+            <Link
+              href="/bookings"
+              className="text-sm font-medium transition-colors hover:opacity-70"
+              style={{ color: 'var(--tp-secondary)' }}
+            >
+              My Bookings
+            </Link>
           </div>
 
           {/* Desktop CTA buttons */}
@@ -159,6 +166,7 @@ export function TravelerNav() {
               { label: 'Explore', href: '#explore' },
               { label: 'Hotels', href: '#hotels' },
               { label: 'About', href: '#about' },
+              { label: 'My Bookings', href: '/bookings' },
             ].map(link => (
               <Link
                 key={link.href}

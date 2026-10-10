@@ -1,0 +1,21 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": "hardcoded-bank-details",
+      "severity": "warning",
+      "summary": "Hardcoded bank-transfer details — The bank tab displays Paystack Trust / 0123456789 / Hotel OS Escrow with no mock/test label. Any staging or preview deployment shows these as real payment instructions. Add a 'Demo only' banner or replace with an obviously fake account pattern."
+    },
+    {
+      "id": "non-standard-instant-export",
+      "severity": "info",
+      "summary": "`export const instant = false` is not in the Next.js 16.4 public API. The route is already Dynamic due to searchParams access. Verify or remove this export to avoid confusion."
+    },
+    {
+      "id": "reserve-link-missing-dates",
+      "severity": "info",
+      "summary": "RoomCard's Reserve link omits checkIn/checkOut params. Dates from a prior search are silently dropped. Consider threading dates from the hotel detail page through to the Reserve link."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\checkout-review.md"
+}

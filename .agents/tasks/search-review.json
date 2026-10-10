@@ -1,0 +1,34 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "filter-state-disconnected",
+      "label": "Filter state is dead",
+      "description": "SearchFilters holds all filter state locally and never passes it to SearchResults. Price, rating, amenity, property type, and cancellation filters are rendered to the user but have zero effect on the results list.",
+      "blocking": false,
+      "action": "Lift filter state into SearchResults and apply it to the filtered array, or introduce a shared context/callback props on SearchFilters."
+    },
+    {
+      "id": "unused-searchresults-props",
+      "label": "Unused props in SearchResults",
+      "description": "SearchResults declares checkIn, checkOut, and guests in its prop type and page.tsx passes them, but the function body destructures only { destination }, silently discarding the other three values.",
+      "blocking": false,
+      "action": "Either consume the props (display stay details, filter by availability) or remove them from the type signature and the call site."
+    },
+    {
+      "id": "fake-pagination",
+      "label": "Pagination is fake",
+      "description": "The pagination footer always shows page 1 and renders all results. There is no page state, no array slice, and the Next button has no handler.",
+      "blocking": false,
+      "action": "Implement page state with a slice of sorted[], or remove the pagination footer until it is real."
+    },
+    {
+      "id": "label-wrapping-non-input",
+      "label": "Label-wrapping non-input elements",
+      "description": "Amenity checkboxes and the free-cancellation toggle are div elements with role=checkbox wrapped in label tags without htmlFor. Clicking the label text does not activate the div onClick.",
+      "blocking": false,
+      "action": "Replace with a visually hidden input[type=checkbox] plus a sibling styled div, or add an onClick directly on the label element."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\search-review.md"
+}

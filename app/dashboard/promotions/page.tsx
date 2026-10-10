@@ -188,7 +188,7 @@ export default function PromotionsPage() {
       validTo: formValidTo,
       conditions: `Min. ${formMinNights} nights${formAdvanceDays !== '0' ? `, ${formAdvanceDays} days advance` : ''}`,
       active: true,
-      badgeColor: 'var(--db-accent)',
+      badgeColor: '#3d6b4f',
     };
     setPromotions(prev => [newPromo, ...prev]);
     setFormSuccess(true);
@@ -331,7 +331,13 @@ export default function PromotionsPage() {
                   <span className="font-semibold text-base">{promo.name}</span>
                   <span
                     className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{ background: promo.badgeColor + '20', color: promo.badgeColor }}
+                    style={{
+                      background: promo.badgeColor === '#2563eb' ? '#dbeafe'
+                        : promo.badgeColor === '#7c3aed' ? '#ede9fe'
+                        : promo.badgeColor === '#16a34a' ? '#dcfce7'
+                        : '#f3f4f6',
+                      color: promo.badgeColor,
+                    }}
                   >
                     {promo.discountType === 'percentage' ? '% off' : '₦ off'}
                   </span>

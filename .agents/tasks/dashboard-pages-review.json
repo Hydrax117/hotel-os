@@ -1,0 +1,13 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "Missing 'use client' on Integrations page — buttons (Disconnect, Connect, Copy, Regenerate key) are inert. Add 'use client' and wire handlers, or replace with server-compatible elements.",
+    "'badgeColor + '20'' produces invalid CSS in Promotions and Listing Preview — badge backgrounds will be transparent. Use -surface tokens directly or hardcode resolved hex values.",
+    "'Apply to all seasons' is a silent no-op in Rates — button shows a toast but does not propagate the rate to other season buckets. Wire to setRatesBySeason or remove until implemented.",
+    "Promotions CSSToggle aria-label is generic for every toggle — change to `Toggle ${promo.name}` so screen readers can distinguish between promotions.",
+    "#166534 hardcoded green in Settings (SecurityTab, BillingTab) and Integrations (Connected badge) — replace with var(--db-success).",
+    "role='banner' misuse in Listing Preview preview notice — conflicts with actual page header landmark. Change to role='note' or remove the role.",
+    "No test coverage for any of the five new pages — Rates bulk-uplift math, Promotions form validation, and Settings password validation are pure client-side logic with no tests."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\dashboard-pages-review.md"
+}

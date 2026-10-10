@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 // ── Local mock data ───────────────────────────────────────────────────────────
@@ -156,7 +158,7 @@ export default function IntegrationsPage() {
                       fontSize: 11,
                       fontWeight: 500,
                       background: 'var(--db-success-surface)',
-                      color: '#166534',
+                      color: 'var(--db-success)',
                     }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--db-success)', display: 'inline-block' }} />
