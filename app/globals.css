@@ -53,6 +53,9 @@ body {
   --db-danger:         #dc2626;   /* destructive actions             */
   --db-warning:        #d97706;   /* caution / pending states        */
   --db-success:        #16a34a;   /* confirmed / active states       */
+  --db-star:           #b5935a;   /* star / rating gold (dashboard)  */
+  --db-danger-surface: #fee2e2;   /* danger tint surface             */
+  --db-success-surface:#dcfce7;   /* success tint surface            */
 }
 
 /* Traveler platform design tokens */

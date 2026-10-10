@@ -17,12 +17,13 @@ const TABS: { value: Tab; label: string }[] = [
 
 // ── CSS Toggle ────────────────────────────────────────────────────────────────
 
-function CSSToggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id: string }) {
+function CSSToggle({ checked, onChange, id, 'aria-label': ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; id: string; 'aria-label'?: string }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
       id={id}
+      aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       style={{
         display: 'inline-flex',
@@ -164,6 +165,7 @@ function NotificationsTab() {
             checked={toggles[item.id]}
             onChange={v => setToggles(t => ({ ...t, [item.id]: v }))}
             id={`notif-${item.id}`}
+            aria-label={item.label}
           />
         </div>
       ))}
@@ -238,7 +240,7 @@ function SecurityTab() {
           <div>
             <span
               className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium mb-2"
-              style={{ background: '#fee2e2', color: '#991b1b' }}
+            style={{ background: 'var(--db-danger-surface)', color: '#991b1b' }}
             >
               Not enabled
             </span>
@@ -275,7 +277,7 @@ function SecurityTab() {
                 {session.current && (
                   <span
                     className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                    style={{ background: '#dcfce7', color: '#166534' }}
+                    style={{ background: 'var(--db-success-surface)', color: '#166534' }}
                   >
                     Current
                   </span>
@@ -384,7 +386,7 @@ function BillingTab() {
                   <td className="px-4 py-3">
                     <span
                       className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                      style={{ background: '#dcfce7', color: '#166534' }}
+                      style={{ background: 'var(--db-success-surface)', color: '#166534' }}
                     >
                       {row.status}
                     </span>
@@ -423,7 +425,9 @@ export default function SettingsPage() {
             <button
               key={tab.value}
               role="tab"
+              id={`tab-${tab.value}`}
               aria-selected={isActive}
+              aria-controls="settings-tabpanel"
               onClick={() => setActiveTab(tab.value)}
               className="px-4 py-3 text-sm font-medium transition-colors"
               style={{
@@ -442,7 +446,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab content */}
-      <div role="tabpanel">
+      <div role="tabpanel" id="settings-tabpanel" aria-labelledby={`tab-${activeTab}`}>
         {activeTab === 'general'       && <GeneralTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'security'      && <SecurityTab />}

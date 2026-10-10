@@ -56,7 +56,7 @@ function buildInitialRates(season: Season): RateRowState[] {
 
 export default function RatesPage() {
   const [activeSeason, setActiveSeason] = useState<Season>('standard');
-  const [ratesByseason, setRatesBySeason] = useState<Record<Season, RateRowState[]>>({
+  const [ratesBySeason, setRatesBySeason] = useState<Record<Season, RateRowState[]>>({
     standard: buildInitialRates('standard'),
     peak:     buildInitialRates('peak'),
     low:      buildInitialRates('low'),
@@ -66,7 +66,7 @@ export default function RatesPage() {
   const [bulkPercent, setBulkPercent] = useState('');
   const [toast, setToast] = useState<string | null>(null);
 
-  const rows = ratesByseason[activeSeason];
+  const rows = ratesBySeason[activeSeason];
 
   function showToast(msg: string) {
     setToast(msg);

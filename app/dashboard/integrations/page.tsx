@@ -155,11 +155,11 @@ export default function IntegrationsPage() {
                       padding: '2px 10px',
                       fontSize: 11,
                       fontWeight: 500,
-                      background: '#dcfce7',
+                      background: 'var(--db-success-surface)',
                       color: '#166534',
                     }}
                   >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--db-success)', display: 'inline-block' }} />
                     Connected
                   </span>
                 </div>
