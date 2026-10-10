@@ -67,3 +67,22 @@ body {
   --tp-muted:        #f5f3f0;   /* muted surface (chips, badges)     */
   --tp-gold:         #b5935a;   /* star / rating gold                */
 }
+
+/* Admin platform design tokens */
+:root {
+  --ad-sidebar-bg:     #0f1117;
+  --ad-sidebar-text:   #8b92a5;
+  --ad-sidebar-active: #ffffff;
+  --ad-sidebar-w:      256px;
+  --ad-topbar-h:       56px;
+  --ad-surface:        #ffffff;
+  --ad-bg:             #f4f6f9;
+  --ad-primary:        #1a1d2e;
+  --ad-secondary:      #6b7280;
+  --ad-accent:         #2563eb;
+  --ad-border:         #e5e7eb;
+  --ad-muted:          #f9fafb;
+  --ad-danger:         #dc2626;
+  --ad-warning:        #d97706;
+  --ad-success:        #16a34a;
+}
