@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../lib/auth-context';
+import { logout } from '../lib/api/auth';
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
@@ -43,6 +46,14 @@ const IconClose = () => (
 export function TravelerNav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const handleLogout = async () => {
+    await logout();
+    signOut();
+    router.push('/');
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -119,26 +130,40 @@ export function TravelerNav() {
           </div>
 
           {/* Desktop CTA buttons */}
-          <div className="hidden items-center gap-3 md:flex">
-            <Link
-              href="/onboarding"
-              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
-              style={{
-                borderColor: 'var(--tp-border)',
-                color: 'var(--tp-primary)',
-                background: 'transparent',
-              }}
-            >
-              List your hotel
-            </Link>
-            <Link
-              href="/auth/signin"
-              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-80"
-              style={{ background: 'var(--tp-primary)' }}
-            >
-              Sign in
-            </Link>
-          </div>
+          {user ? (
+            <div className="hidden items-center gap-3 md:flex">
+              <Link href="/bookings" className="text-sm font-medium transition-colors hover:opacity-70" style={{color: 'var(--tp-secondary)'}}>
+                My Bookings
+              </Link>
+              <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <div style={{width: 32, height: 32, borderRadius: '50%', background: 'var(--tp-accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0}}>
+                  {user.firstName[0]}{user.lastName[0]}
+                </div>
+                <button onClick={handleLogout} className="text-sm font-medium transition-colors hover:opacity-70" style={{color: 'var(--tp-secondary)', background: 'none', border: 'none', cursor: 'pointer'}}>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="hidden items-center gap-3 md:flex">
+              <Link
+                href="/onboarding"
+                className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+                style={{borderColor: 'var(--tp-border)',
+                  color: 'var(--tp-primary)',
+                  background: 'transparent',}}
+              >
+                List your hotel
+              </Link>
+              <Link
+                href="/auth/signin"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-80"
+                style={{background: 'var(--tp-primary)'}}
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -180,25 +205,46 @@ export function TravelerNav() {
             ))}
 
             <div className="mt-6 flex flex-col gap-3">
-              <Link
-                href="/onboarding"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-xl border px-4 py-3 text-center text-sm font-medium transition-colors"
-                style={{
-                  borderColor: 'var(--tp-border)',
-                  color: 'var(--tp-primary)',
-                }}
-              >
-                List your hotel
-              </Link>
-              <Link
-                href="/auth/signin"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-xl px-4 py-3 text-center text-sm font-medium text-white"
-                style={{ background: 'var(--tp-primary)' }}
-              >
-                Sign in
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    href="/bookings"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-xl border px-4 py-3 text-center text-sm font-medium transition-colors"
+                    style={{borderColor: 'var(--tp-border)',
+                      color: 'var(--tp-primary)',}}
+                  >
+                    My Bookings
+                  </Link>
+                  <button
+                    onClick={() => { setMobileOpen(false); void handleLogout(); }}
+                    className="rounded-xl px-4 py-3 text-center text-sm font-medium text-white"
+                    style={{background: 'var(--tp-primary)', border: 'none', cursor: 'pointer'}}
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/onboarding"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-xl border px-4 py-3 text-center text-sm font-medium transition-colors"
+                    style={{borderColor: 'var(--tp-border)',
+                      color: 'var(--tp-primary)',}}
+                  >
+                    List your hotel
+                  </Link>
+                  <Link
+                    href="/auth/signin"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-xl px-4 py-3 text-center text-sm font-medium text-white"
+                    style={{background: 'var(--tp-primary)'}}
+                  >
+                    Sign in
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>

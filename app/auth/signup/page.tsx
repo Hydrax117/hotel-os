@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { register } from '../../lib/api/auth';
+import { ApiError } from '../../lib/api/client';
+import { useAuth } from '../../lib/auth-context';
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 
@@ -105,12 +108,14 @@ interface FormErrors {
   confirmPassword?: string;
   terms?: string;
   hotelName?: string;
+  general?: string;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { setUser } = useAuth();
 
   const [role, setRole] = useState<Role>('traveler');
   const [firstName, setFirstName] = useState('');
@@ -126,7 +131,7 @@ export default function SignUpPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const newErrors: FormErrors = {};
@@ -150,15 +155,36 @@ export default function SignUpPage() {
     }
 
     setErrors({});
-    setLoading(true);
 
-    setTimeout(() => {
+    try {
+      setLoading(true);
+      const res = await register({
+        email,
+        password,
+        firstName,
+        lastName,
+        phone: phone || undefined,
+        role: role === 'owner' ? 'HOTEL_OWNER' : 'TRAVELER',
+      });
+      setUser(res.user);
       if (role === 'owner') {
         router.push('/onboarding');
       } else {
         router.push('/');
       }
-    }, 1000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setErrors(prev => ({ ...prev, email: 'This email is already registered.' }));
+        } else {
+          setErrors(prev => ({ ...prev, general: err.message }));
+        }
+      } else {
+        setErrors(prev => ({ ...prev, general: 'Something went wrong. Please try again.' }));
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputBase = 'w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors';
@@ -479,6 +505,12 @@ export default function SignUpPage() {
                   </p>
                 )}
               </div>
+
+              {errors.general && (
+                <div style={{background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px'}}>
+                  {errors.general}
+                </div>
+              )}
 
               {/* Submit */}
               <button

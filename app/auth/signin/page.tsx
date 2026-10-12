@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { login } from '../../lib/api/auth';
+import { ApiError } from '../../lib/api/client';
+import { useAuth } from '../../lib/auth-context';
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 
@@ -96,17 +99,18 @@ function AuthLeftPanel() {
 
 export default function SignInPage() {
   const router = useRouter();
+  const { setUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string; password?: string; general?: string } = {};
     if (!email.trim()) newErrors.email = 'Please enter your email address';
     if (!password) newErrors.password = 'Please enter your password';
 
@@ -116,15 +120,32 @@ export default function SignInPage() {
     }
 
     setErrors({});
-    setLoading(true);
 
-    setTimeout(() => {
-      if (email.toLowerCase().includes('hotel')) {
+    try {
+      setLoading(true);
+      const res = await login({ email, password });
+      setUser(res.user);
+      const role = res.user.role;
+      if (role === 'HOTEL_OWNER' || role === 'HOTEL_MANAGER' || role === 'HOTEL_STAFF') {
         router.push('/dashboard/overview');
+      } else if (role === 'SUPER_ADMIN') {
+        router.push('/admin/overview');
       } else {
         router.push('/');
       }
-    }, 1000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setErrors(prev => ({ ...prev, general: 'Invalid email or password.' }));
+        } else {
+          setErrors(prev => ({ ...prev, general: err.message }));
+        }
+      } else {
+        setErrors(prev => ({ ...prev, general: 'Something went wrong. Please try again.' }));
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputBase = 'w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors';
@@ -231,6 +252,12 @@ export default function SignInPage() {
                   Forgot password?
                 </Link>
               </div>
+
+              {errors.general && (
+                <div style={{background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px'}}>
+                  {errors.general}
+                </div>
+              )}
 
               {/* Submit */}
               <button
