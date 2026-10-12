@@ -1,0 +1,72 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "blocking",
+      "label": "Unauthenticated verify endpoint",
+      "detail": "GET /payments/verify/:reference has JwtAuthGuard but no ownership check. Any authenticated user who knows a reference string can confirm or cancel another user's booking. Pass userId through verifyAndConfirmPayment and add payment.booking.userId !== userId guard."
+    },
+    {
+      "id": 2,
+      "severity": "blocking",
+      "label": "Payment.status never set to REFUNDED",
+      "detail": "refundPayment creates a Refund record and calls Paystack but never calls prisma.payment.update to set status to REFUNDED. The payment stays SUCCESS after a refund, breaking all downstream guards that check payment.status !== SUCCESS."
+    },
+    {
+      "id": 3,
+      "severity": "blocking",
+      "label": "cancelBooking not called on refund",
+      "detail": "The refund flow does not call bookingsService.cancelBooking. The booking stays in CONFIRMED status after a refund is issued. The plan requires this transition."
+    },
+    {
+      "id": 4,
+      "severity": "blocking",
+      "label": "Refund not admin-gated",
+      "detail": "The controller uses only JwtAuthGuard; the plan specifies SUPER_ADMIN. Any authenticated user can issue a refund on their own booking without admin involvement. Add RolesGuard + @Roles(UserRole.SUPER_ADMIN) or document the deliberate change."
+    },
+    {
+      "id": 5,
+      "severity": "blocking",
+      "label": "Hardcoded commission rate",
+      "detail": "initializePayment uses Math.round(totalNgn * 0.1) directly. ConfigService is not injected. The rate cannot be changed without a code deploy despite PLATFORM_COMMISSION_RATE being documented in the README and plan."
+    },
+    {
+      "id": 6,
+      "severity": "major",
+      "label": "Refund write ordering",
+      "detail": "refundPayment calls paystackService.createRefund before prisma.refund.update. If the DB update fails after Paystack succeeds, the refund is processed externally but the local record stays PENDING with no indication it was submitted."
+    },
+    {
+      "id": 7,
+      "severity": "major",
+      "label": "Partial-refund amount guard missing",
+      "detail": "refundPayment does not check dto.amountNgn > payment.amountNgn. An over-amount refund will be sent to Paystack, and if Paystack rejects it the Refund record and Payment.status change have already been persisted, leaving inconsistent state."
+    },
+    {
+      "id": 8,
+      "severity": "minor",
+      "label": "@IsNotEmpty() missing on VerifyPaymentDto",
+      "detail": "reference has only @IsString(), so an empty string passes validation and reaches Paystack's verify endpoint. Add @IsNotEmpty()."
+    },
+    {
+      "id": 9,
+      "severity": "minor",
+      "label": "cancelBooking on abandoned — CancelBookingDto shape unverified",
+      "detail": "verifyAndConfirmPayment passes { reason: 'Payment failed' } inline to cancelBooking for Paystack 'abandoned' status. Confirm this matches CancelBookingDto's required fields; a shape mismatch will throw at runtime."
+    },
+    {
+      "id": 10,
+      "severity": "minor",
+      "label": "Webhook payload string vs Buffer",
+      "detail": "handleWebhook converts rawBody to string before signature verification. If rawBody contains non-UTF-8 bytes the HMAC comparison will fail silently. Pass the Buffer directly through to verifyWebhookSignature to remove the encoding dependency."
+    },
+    {
+      "id": 11,
+      "severity": "minor",
+      "label": "No unit tests",
+      "detail": "payments.service.spec.ts does not exist. The plan specified a full test matrix covering guard assertions, idempotency, signature rejection, and refund guards. The webhook idempotency and refund ordering gaps would have been caught by tests."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\payments-review.md"
+}

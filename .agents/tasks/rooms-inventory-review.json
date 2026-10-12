@@ -1,0 +1,7 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "`bulkUpdateInventory` runs upserts outside a transaction — Promise.all with N individual upserts means a partial failure leaves some days updated with no rollback. The response reports dates.length as updated even on partial failure. Wrap in $transaction for all-or-nothing semantics, or add a comment documenting the idempotent retry pattern. Non-blocking."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\rooms-inventory-review.md"
+}
