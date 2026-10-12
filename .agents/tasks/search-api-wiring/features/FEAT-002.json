@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Update app/hotels/[id]/page.tsx to fetch hotel detail and rooms from the real API, remove generateStaticParams, handle 404, and update RoomCard.tsx to use the API RoomAvailability type. Independent of FEAT-001 (no shared code changes).",
+  "status": "completed",
+  "steps": [
+    "1. Add these types to app/lib/api/search.ts (extend it — do not create a new file):\n\n```ts\nexport type RoomAvailability = {\n  id: string;\n  name: string;\n  bedType: string;               // 'King' | 'Twin' | 'Queen' | 'Double'\n  capacity: number;\n  sizeSqm: number;\n  pricePerNight: number;\n  amenities: string[];\n  breakfastIncluded: boolean;\n  cancellationPolicy: string;\n  available: number;             // rooms available; may be 0\n};\n\nexport type NearbyAttraction = { name: string; distance: string };\n\nexport type HotelDetail = {\n  id: string;\n  name: string;\n  city: string;\n  state: string;\n  rating: number;\n  reviewCount: number;\n  description: string;\n  address: string;\n  amenities: string[];\n  checkInTime: string;           // e.g. '3:00 PM'\n  checkOutTime: string;          // e.g. '12:00 PM'\n  policies: string[];\n  nearbyAttractions: NearbyAttraction[];\n  rooms: RoomAvailability[];     // embedded in detail response OR fetched separately\n  imageUrl?: string;\n  featured?: boolean;\n};\n```\n\nAdd these two server-fetch functions to app/lib/api/search.ts:\n\n```ts\nexport async function fetchHotelDetail(id: string): Promise<HotelDetail | null> {\n  try {\n    return await serverFetch<HotelDetail>(`/api/v1/hotels/${id}`);\n  } catch (err) {\n    // 404 = not found, return null so the page can call notFound()\n    if (err instanceof Error && err.message.startsWith('API 404')) return null;\n    throw err;\n  }\n}\n\nexport async function fetchHotelRooms(hotelId: string): Promise<RoomAvailability[]> {\n  try {\n    const data = await serverFetch<{ rooms: RoomAvailability[] }>(`/api/v1/hotels/${hotelId}/rooms`);\n    return data.rooms ?? [];\n  } catch {\n    return [];\n  }\n}\n```",
+
+    "2. UPDATE app/hotels/[id]/page.tsx:\n\n  a) Remove the `generateStaticParams` export entirely — no replacement needed. The page will render dynamically (on-demand) for every id.\n\n  b) Remove all imports from '../mock' and '../../search/mock'.\n\n  c) Import `fetchHotelDetail`, `fetchHotelRooms`, `HotelDetail`, `RoomAvailability` from '@/app/lib/api/search'.\n\n  d) Replace the mock-data lookup at the top of `HotelDetailPage` with:\n  ```ts\n  const [detail, rooms] = await Promise.all([\n    fetchHotelDetail(id),\n    fetchHotelRooms(id),\n  ]);\n  if (!detail) notFound();\n  ```\n\n  e) The `lowestPrice` computation is unchanged — it uses `rooms` array the same way.\n\n  f) The reviews section: the backend does not yet expose a reviews endpoint, so remove the reviews section entirely from the JSX (or render an empty-reviews placeholder: 'No reviews yet. Be the first to share your experience.'). Remove HotelReview import and HOTEL_REVIEWS usage. Remove the `avgRating`, `countFor`, `categoryAvg` computed variables that relied on `reviews`.\n\n  g) `detail.nearbyAttractions`, `detail.policies`, `detail.amenities`, `detail.checkInTime`, `detail.checkOutTime`, `detail.address`, `detail.description` — these map 1:1 from the HotelDetail type. Use null-coalescing where appropriate:\n     - `detail.amenities ?? []`\n     - `detail.nearbyAttractions ?? []`\n     - `detail.policies ?? []`\n\n  h) The RoomCard receives `room: RoomAvailability` — the shape is identical to the old `RoomType`, so no prop changes needed on the call site.",
+
+    "3. UPDATE app/hotels/[id]/components/RoomCard.tsx:\n\n  Replace the import:\n  ```ts\n  // BEFORE:\n  import { RoomType } from '../../mock';\n  type RoomCardProps = { room: RoomType; hotelId: string; };\n\n  // AFTER:\n  import { RoomAvailability } from '@/app/lib/api/search';\n  type RoomCardProps = { room: RoomAvailability; hotelId: string; };\n  ```\n\n  No other changes — `RoomAvailability` has identical field names to `RoomType`: id, name, bedType, capacity, sizeSqm, pricePerNight, amenities, breakfastIncluded, cancellationPolicy, available."
+  ],
+  "acceptance_criteria": [
+    "`npx next build` completes with no TypeScript errors",
+    "app/hotels/[id]/page.tsx imports nothing from ../mock or ../../search/mock",
+    "generateStaticParams is removed from app/hotels/[id]/page.tsx",
+    "RoomCard.tsx imports RoomAvailability from @/app/lib/api/search, not from ../../mock",
+    "fetchHotelDetail returns null on 404 and the page correctly calls notFound()",
+    "Hotel detail page still renders all non-reviews sections (gallery, header, rooms, amenities, location, policies)"
+  ],
+  "verification": [
+    "npx next build from c:\\Users\\Pkaka\\music\\hotel-os — must complete with exit code 0 and no TypeScript errors"
+  ],
+  "blocked_reason": null,
+  "findings": "Next.js 16 with cacheComponents:true requires `export const instant = false` on any page that performs blocking server fetches. Added to hotels/[id]/page.tsx to satisfy the partial-prerender validator during build. Build passes with /hotels/[id] correctly showing as Partial Prerender (◐)."
+}
