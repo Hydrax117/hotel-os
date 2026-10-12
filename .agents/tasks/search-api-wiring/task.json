@@ -1,0 +1,7 @@
+{
+  "task_id": "task-search-api-wiring",
+  "task_description": "Wire Hotel OS Next.js traveler search flow to the real NestJS backend API. Replace mock data in SearchResults, hotel detail page, and homepage featured/cities with real API calls.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

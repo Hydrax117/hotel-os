@@ -1,0 +1,30 @@
+{
+  "project_type": "Next.js 16 App Router (cacheComponents: true) + TailwindCSS",
+  "language": "TypeScript",
+  "build_system": "next build / next dev. cacheComponents + partialPrefetching are both true in next.config.ts. IMPORTANT: `export const dynamic` is NOT available in this version; use `cache: 'no-store'` on fetch calls for dynamic server data. No `unstable_noStore`. Do NOT add route segment config `dynamic` exports.",
+  "test_framework": "none — no test runner configured",
+  "build_command": "npx next build",
+  "test_command": "npx next build",
+  "verification_instructions": "Run `npx next build` from the workspace root c:\\Users\\Pkaka\\music\\hotel-os. A clean build with no TypeScript or compilation errors is the passing criterion. Fix any type errors before committing.",
+  "snapshot_or_generated_files": "none",
+  "environment_constraints": "API base URL: https://hotel-os-api-52qe.onrender.com (stored in NEXT_PUBLIC_API_URL in .env.local). The backend currently returns empty arrays (no seeded data) but the shape is confirmed: GET /api/v1/hotels returns { hotels: Hotel[], total: number, page: number, limit: number }. A 404 on /api/v1/hotels/:id means hotel not found → call notFound(). No Swagger docs available; infer shape from mock data types.",
+  "contribution_requirements": "No AGENTS.md rules beyond reading the next docs first. All files live in app/. Workspace root is c:\\Users\\Pkaka\\music\\hotel-os.",
+  "key_patterns": "apiClient (client-side, uses localStorage tokens) vs serverFetch (bare fetch with no-store for server components). Server components are async functions in app/ that can await data directly. Client components have 'use client' at top. SearchResults is a 'use client' component that must use useEffect + useState to fetch (no async server component). HotelDetail page.tsx is an async server component. HomePage page.tsx is an async server component.",
+  "relevant_files": [
+    "app/lib/api/client.ts",
+    "app/lib/api/auth.ts",
+    "app/lib/api/search.ts (TO CREATE)",
+    "app/search/page.tsx",
+    "app/search/components/SearchResults.tsx",
+    "app/search/components/HotelListCard.tsx",
+    "app/search/mock.ts",
+    "app/page.tsx",
+    "app/hotels/[id]/page.tsx",
+    "app/hotels/[id]/components/RoomCard.tsx",
+    "app/hotels/mock.ts",
+    "app/components/HotelCard.tsx",
+    "app/components/DestinationCard.tsx",
+    "next.config.ts"
+  ],
+  "directory_structure": "app/ — Next.js App Router root. app/lib/api/ — API modules (client.ts, auth.ts). app/search/ — search page + components. app/hotels/[id]/ — hotel detail page + components. app/components/ — shared components. .agents/tasks/ — workflow artifacts."
+}
