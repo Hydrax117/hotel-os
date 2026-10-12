@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCurrentUser, clearTokens, type AuthUser } from './api/client';
+import { getMe } from './api/auth';
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -18,8 +19,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getCurrentUser());
-    setIsLoading(false);
+    // Seed from localStorage immediately so the UI renders without a flash
+    const stored = getCurrentUser();
+    if (!stored) {
+      setIsLoading(false);
+      return;
+    }
+    // Validate the stored token against the server
+    setUser(stored);
+    getMe()
+      .then(serverUser => {
+        // Update with fresh server data in case role/name changed
+        setUser(serverUser);
+      })
+      .catch(() => {
+        // Token is invalid or expired — clear session
+        clearTokens();
+        setUser(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const signOut = useCallback(() => {
@@ -28,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{user, isLoading, setUser, signOut}}>
+    <AuthContext.Provider value={{ user, isLoading, setUser, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -49,7 +49,29 @@ export function getCurrentUser(): AuthUser | null {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// Attempt to refresh the access token using the stored refresh token.
+// Returns the new access token on success, or null if refresh fails.
+async function attemptTokenRefresh(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const refreshToken = localStorage.getItem('hotel_os_refresh_token');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { accessToken: string; refreshToken: string };
+    storeTokens(data.accessToken, data.refreshToken);
+    return data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -58,6 +80,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+
+  // On 401, attempt a one-time token refresh then retry the original request
+  if (res.status === 401 && !isRetry) {
+    const newToken = await attemptTokenRefresh();
+    if (newToken) {
+      // Retry with the fresh token — pass isRetry=true to prevent infinite loops
+      return request<T>(path, options, true);
+    }
+    // Refresh failed — clear everything and throw so the UI can redirect to sign in
+    clearTokens();
+  }
 
   if (!res.ok) {
     let errorBody: { message?: string | string[]; errors?: Record<string, string[]> } = {};
