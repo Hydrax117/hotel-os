@@ -4,10 +4,25 @@ import { SearchBar } from './components/SearchBar';
 import { HotelCard } from './components/HotelCard';
 import { DestinationCard } from './components/DestinationCard';
 import { Footer } from './components/Footer';
+import { fetchFeaturedHotels, fetchCityCounts, HotelSummary } from './lib/api/search';
 
-// ── Static mock data ──────────────────────────────────────────────────────────
+// Allow this route to block during prerender (fetch calls use no-store)
+export const instant = false;
 
-const destinations = [
+// ── City gradient palette ─────────────────────────────────────────────────────
+
+const CITY_GRADIENTS: Record<string, { gradientFrom: string; gradientTo: string }> = {
+  'Lagos':         { gradientFrom: '#d4a574', gradientTo: '#8b5e3c' },
+  'Abuja':         { gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
+  'Port Harcourt': { gradientFrom: '#6b8cba', gradientTo: '#2d4a6b' },
+  'Uyo':           { gradientFrom: '#c4956a', gradientTo: '#8b6343' },
+  'Kano':          { gradientFrom: '#b8956a', gradientTo: '#7a5c3a' },
+  'Kaduna':        { gradientFrom: '#8a9e8a', gradientTo: '#4a6b4a' },
+};
+
+// ── Fallback static data (shown when API returns nothing) ─────────────────────
+
+const FALLBACK_DESTINATIONS = [
   { city: 'Lagos',          hotelCount: 128, gradientFrom: '#d4a574', gradientTo: '#8b5e3c' },
   { city: 'Abuja',          hotelCount: 94,  gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
   { city: 'Port Harcourt',  hotelCount: 67,  gradientFrom: '#6b8cba', gradientTo: '#2d4a6b' },
@@ -16,8 +31,9 @@ const destinations = [
   { city: 'Kaduna',         hotelCount: 22,  gradientFrom: '#8a9e8a', gradientTo: '#4a6b4a' },
 ];
 
-const featuredHotels = [
+const FALLBACK_HOTELS: HotelSummary[] = [
   {
+    id: 'transcorp-hilton',
     name: 'Transcorp Hilton',
     city: 'Abuja',
     state: 'FCT',
@@ -28,6 +44,7 @@ const featuredHotels = [
     featured: true,
   },
   {
+    id: 'eko-hotel',
     name: 'Eko Hotel',
     city: 'Lagos Island',
     state: 'Lagos',
@@ -38,6 +55,7 @@ const featuredHotels = [
     featured: true,
   },
   {
+    id: 'nicon-luxury',
     name: 'Nicon Luxury',
     city: 'Abuja',
     state: 'FCT',
@@ -48,6 +66,7 @@ const featuredHotels = [
     featured: true,
   },
   {
+    id: 'southern-sun',
     name: 'Southern Sun',
     city: 'Lagos',
     state: 'Lagos',
@@ -72,7 +91,27 @@ const collageBoxes = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [featuredResult, citiesResult] = await Promise.allSettled([
+    fetchFeaturedHotels(),
+    fetchCityCounts(),
+  ]);
+
+  const apiHotels = featuredResult.status === 'fulfilled' ? featuredResult.value : [];
+  const apiCities = citiesResult.status === 'fulfilled' ? citiesResult.value : [];
+
+  // Fall back to static data when API returns empty arrays
+  const featured = apiHotels.length > 0 ? apiHotels : FALLBACK_HOTELS;
+
+  const destinations =
+    apiCities.length > 0
+      ? apiCities.map(({ city, hotelCount }) => ({
+          city,
+          hotelCount,
+          ...(CITY_GRADIENTS[city] ?? { gradientFrom: '#a0a0a0', gradientTo: '#606060' }),
+        }))
+      : FALLBACK_DESTINATIONS;
+
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
       {/* ── Section 1: Navigation ── */}
@@ -191,8 +230,8 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            {featuredHotels.map(hotel => (
-              <HotelCard key={hotel.name} {...hotel} />
+            {featured.map(({ id, imageUrl, ...rest }) => (
+              <HotelCard key={id ?? rest.name} imageUrl={imageUrl} {...rest} />
             ))}
           </div>
         </div>
