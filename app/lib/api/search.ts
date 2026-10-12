@@ -1,5 +1,3 @@
-import { apiClient } from './client';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type HotelSummary = {
@@ -49,8 +47,8 @@ async function serverFetch<T>(path: string): Promise<T> {
 // ── Exported API functions ────────────────────────────────────────────────────
 
 /**
- * Search hotels — used by SearchResults (client component) via apiClient.
- * Authenticated, browser-only.
+ * Search hotels — used by SearchResults (client component).
+ * Public endpoint; no auth token required.
  */
 export async function searchHotels(params: SearchHotelsParams): Promise<SearchHotelsResponse> {
   const qs = new URLSearchParams();
@@ -60,7 +58,16 @@ export async function searchHotels(params: SearchHotelsParams): Promise<SearchHo
   if (params.guests)      qs.set('guests', String(params.guests));
   if (params.page)        qs.set('page', String(params.page));
   if (params.limit)       qs.set('limit', String(params.limit));
-  return apiClient.get<SearchHotelsResponse>(`/api/v1/hotels?${qs.toString()}`);
+  const res = await fetch(`${BASE_URL}/api/v1/hotels?${qs.toString()}`, { cache: 'no-store' });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const body = await res.json() as { message?: string | string[] };
+      if (body.message) msg = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+    } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+  return res.json() as Promise<SearchHotelsResponse>;
 }
 
 /**

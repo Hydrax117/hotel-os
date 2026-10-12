@@ -31,6 +31,7 @@ export function SearchResults({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +49,7 @@ export function SearchResults({
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [destination, checkIn, checkOut, guests, page]);
+  }, [destination, checkIn, checkOut, guests, page, retryCount]);
 
   // Client-side sort on the fetched page
   const sorted = [...hotels].sort((a, b) => {
@@ -183,8 +184,7 @@ export function SearchResults({
               <button
                 onClick={() => {
                   setPage(1);
-                  setError(null);
-                  setLoading(true);
+                  setRetryCount(c => c + 1);
                 }}
                 style={{
                   border: '1px solid var(--tp-border)',
