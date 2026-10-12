@@ -1,0 +1,8 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "No access token refresh — The refresh token is stored in localStorage but client.ts has no 401-retry interceptor that calls the refresh endpoint. Expired access tokens produce silent failures. Add a refresh flow in request() that retries once with a new token before throwing.",
+    "Stale session on cold load — AuthProvider trusts the localStorage user blob without verifying it against /api/v1/auth/me. A revoked or expired session shows the user as logged in until an API call fails. Call getMe() in the useEffect and clear the stored user if it throws a 401."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\auth-wiring-review.md"
+}
