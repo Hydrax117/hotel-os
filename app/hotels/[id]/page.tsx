@@ -3,20 +3,12 @@ import { notFound } from 'next/navigation';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
 import { RoomCard } from './components/RoomCard';
-import {
-  HOTEL_DETAILS,
-  HOTEL_ROOM_TYPES,
-  DEFAULT_ROOM_TYPES,
-  HOTEL_REVIEWS,
-  HotelReview,
-} from '../mock';
-import { SEARCH_MOCK_HOTELS } from '../../search/mock';
+import { fetchHotelDetail, fetchHotelRooms } from '@/app/lib/api/search';
 
-// ── Static params ─────────────────────────────────────────────────────────────
-
-export function generateStaticParams() {
-  return SEARCH_MOCK_HOTELS.map(hotel => ({ id: hotel.id }));
-}
+// @next-codemod-ignore
+// This route fetches live data per-request — opt out of instant-navigation
+// prerender validation (Next.js 16 cacheComponents requirement).
+export const instant = false;
 
 // ── Helper: amenity icons & categories ────────────────────────────────────────
 
@@ -175,22 +167,6 @@ const IconStar = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-const IconSmallStar = ({ filled }: { filled: boolean }) => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill={filled ? 'currentColor' : 'none'}
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HotelDetailPage({
@@ -200,13 +176,14 @@ export default async function HotelDetailPage({
 }) {
   const { id } = await params;
 
-  const detail = HOTEL_DETAILS[id];
+  const [detail, rooms] = await Promise.all([
+    fetchHotelDetail(id),
+    fetchHotelRooms(id),
+  ]);
+
   if (!detail) {
     notFound();
   }
-
-  const rooms = HOTEL_ROOM_TYPES[id] ?? DEFAULT_ROOM_TYPES;
-  const reviews = HOTEL_REVIEWS[id] ?? [];
 
   const lowestPrice = rooms.reduce(
     (min, room) => Math.min(min, room.pricePerNight),
@@ -214,20 +191,6 @@ export default async function HotelDetailPage({
   );
 
   const stars = Array.from({ length: 5 }, (_, i) => i + 1 <= Math.floor(detail.rating));
-
-  // Reviews calculations
-  const avgRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-      : 0;
-
-  const countFor = (n: number) =>
-    reviews.filter(r => Math.round(r.rating) === n).length;
-
-  const categoryAvg = (key: keyof HotelReview['categories']) =>
-    reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + r.categories[key], 0) / reviews.length
-      : 0;
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
@@ -282,22 +245,6 @@ export default async function HotelDetailPage({
             <div style={{ background: 'linear-gradient(135deg, #b8a888, #9c8868)', position: 'relative' }}>
               {/* View all photos button overlaid on last thumbnail */}
             </div>
-          </div>
-
-          {/* Hidden thumbnails 3 & 4 + photo button — desktop only */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '3fr 2fr',
-              gridTemplateRows: '240px 240px',
-              gap: '4px',
-              maxHeight: '484px',
-            }}
-            className="hidden"
-            aria-hidden="true"
-          >
-            <div style={{ background: 'linear-gradient(135deg, #a89878, #8c7c58)' }} />
-            <div style={{ background: 'linear-gradient(135deg, #c4b498, #a89878)' }} />
           </div>
 
           {/* Mobile: main image only */}
@@ -413,7 +360,7 @@ export default async function HotelDetailPage({
 
             {/* Amenities highlights */}
             <div className="flex flex-wrap gap-2">
-              {detail.amenities.slice(0, 6).map(amenity => (
+              {(detail.amenities ?? []).slice(0, 6).map(amenity => (
                 <span
                   key={amenity}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium"
@@ -490,7 +437,7 @@ export default async function HotelDetailPage({
               <div>
                 <span className="text-xs" style={{ color: 'var(--tp-secondary)' }}>From</span>
                 <div className="text-2xl font-bold" style={{ color: 'var(--tp-primary)' }}>
-                  ₦{lowestPrice.toLocaleString()}
+                  {isFinite(lowestPrice) ? `₦${lowestPrice.toLocaleString()}` : 'Contact us'}
                   <span className="text-sm font-normal ml-1" style={{ color: 'var(--tp-secondary)' }}>
                     /night
                   </span>
@@ -640,7 +587,7 @@ export default async function HotelDetailPage({
             What&apos;s included
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {detail.amenities
+            {(detail.amenities ?? [])
               .filter(amenity => KNOWN_AMENITIES.has(amenity))
               .map(amenity => (
                 <div
@@ -728,7 +675,7 @@ export default async function HotelDetailPage({
                   Nearby attractions
                 </h3>
                 <ul className="flex flex-col gap-2">
-                  {detail.nearbyAttractions.map(attr => (
+                  {(detail.nearbyAttractions ?? []).map(attr => (
                     <li key={attr.name} className="flex justify-between text-sm">
                       <span style={{ color: 'var(--tp-primary)' }}>{attr.name}</span>
                       <span style={{ color: 'var(--tp-secondary)' }}>{attr.distance}</span>
@@ -747,7 +694,7 @@ export default async function HotelDetailPage({
                 Hotel policies
               </h2>
               <ul className="flex flex-col gap-2">
-                {detail.policies.map(policy => (
+                {(detail.policies ?? []).map(policy => (
                   <li key={policy} className="flex items-start gap-2 text-sm">
                     <span
                       style={{ color: 'var(--tp-accent)', marginTop: '2px', flexShrink: 0 }}
@@ -770,210 +717,7 @@ export default async function HotelDetailPage({
         </div>
       </section>
 
-      {/* ── Section 7: Reviews ── */}
-      <section
-        aria-label="Guest reviews"
-        className="py-12"
-        style={{ background: 'var(--tp-muted)' }}
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <h2
-            className="text-2xl font-bold mb-6"
-            style={{ color: 'var(--tp-primary)' }}
-          >
-            Guest reviews
-          </h2>
-
-          {reviews.length === 0 ? (
-            <div
-              className="rounded-xl border p-10 text-center"
-              style={{ background: 'var(--tp-surface)', borderColor: 'var(--tp-border)' }}
-            >
-              <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                No reviews yet. Be the first to share your experience.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Rating summary */}
-              <div
-                className="rounded-xl border p-6 mb-6 flex flex-col gap-6"
-                style={{ background: 'var(--tp-surface)', borderColor: 'var(--tp-border)' }}
-              >
-                <div className="flex flex-col sm:flex-row gap-6">
-                  {/* Avg rating badge */}
-                  <div className="flex flex-col items-center justify-center gap-1 sm:w-32">
-                    <span
-                      className="text-5xl font-bold"
-                      style={{ color: 'var(--tp-accent)' }}
-                    >
-                      {avgRating.toFixed(1)}
-                    </span>
-                    <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                      out of 5
-                    </span>
-                    <div className="flex gap-0.5 mt-1" style={{ color: 'var(--tp-gold)' }}>
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <IconSmallStar key={i} filled={i + 1 <= Math.round(avgRating)} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Star breakdown */}
-                  <div className="flex-1 flex flex-col gap-2">
-                    {[5, 4, 3, 2, 1].map(n => {
-                      const count = countFor(n);
-                      const pct = reviews.length > 0
-                        ? (count / reviews.length * 100).toFixed(1)
-                        : '0.0';
-                      return (
-                        <div key={n} className="flex items-center gap-3">
-                          <span
-                            className="text-xs w-4 text-right shrink-0"
-                            style={{ color: 'var(--tp-secondary)' }}
-                          >
-                            {n}★
-                          </span>
-                          <div
-                            className="flex-1 rounded-full overflow-hidden"
-                            style={{ height: '8px', background: 'var(--tp-border)' }}
-                          >
-                            <div
-                              style={{
-                                width: `${pct}%`,
-                                height: '100%',
-                                background: 'var(--tp-accent)',
-                                borderRadius: '999px',
-                                transition: 'width 0.3s ease',
-                              }}
-                            />
-                          </div>
-                          <span
-                            className="text-xs w-4 shrink-0"
-                            style={{ color: 'var(--tp-secondary)' }}
-                          >
-                            {count}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Category scores */}
-                <div className="flex flex-wrap gap-4">
-                  {(
-                    [
-                      ['Cleanliness', 'cleanliness'],
-                      ['Location', 'location'],
-                      ['Service', 'service'],
-                      ['Value', 'value'],
-                      ['Facilities', 'facilities'],
-                    ] as [string, keyof HotelReview['categories']][]
-                  ).map(([label, key]) => (
-                    <div key={key} className="flex flex-col items-center gap-1">
-                      <span
-                        className="text-lg font-bold"
-                        style={{ color: 'var(--tp-primary)' }}
-                      >
-                        {categoryAvg(key).toFixed(1)}
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--tp-secondary)' }}>
-                        {label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Review cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {reviews.slice(0, 4).map(review => (
-                  <div
-                    key={review.id}
-                    className="rounded-xl border p-5 flex flex-col gap-3"
-                    style={{ background: 'var(--tp-surface)', borderColor: 'var(--tp-border)' }}
-                  >
-                    {/* Top row: avatar + name + date */}
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                        style={{
-                          background: 'var(--tp-accent-light)',
-                          color: 'var(--tp-accent)',
-                        }}
-                        aria-hidden="true"
-                      >
-                        {review.guestInitials}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold truncate" style={{ color: 'var(--tp-primary)' }}>
-                          {review.guestName}
-                        </div>
-                        <div className="text-xs" style={{ color: 'var(--tp-secondary)' }}>
-                          {review.date}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stars */}
-                    <div className="flex gap-0.5" style={{ color: 'var(--tp-gold)' }}>
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <IconSmallStar key={i} filled={i + 1 <= Math.round(review.rating)} />
-                      ))}
-                    </div>
-
-                    {/* Title */}
-                    <p className="text-sm font-semibold" style={{ color: 'var(--tp-primary)' }}>
-                      {review.title}
-                    </p>
-
-                    {/* Body */}
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--tp-secondary)' }}>
-                      {review.body}
-                    </p>
-
-                    {/* Category pills */}
-                    <div className="flex flex-wrap gap-1.5 pt-2 border-t" style={{ borderColor: 'var(--tp-border)' }}>
-                      {(
-                        [
-                          ['Clean', review.categories.cleanliness],
-                          ['Location', review.categories.location],
-                          ['Service', review.categories.service],
-                          ['Value', review.categories.value],
-                          ['Facilities', review.categories.facilities],
-                        ] as [string, number][]
-                      ).map(([cat, score]) => (
-                        <span
-                          key={cat}
-                          className="rounded-full px-2 py-0.5 text-xs"
-                          style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}
-                        >
-                          {cat}: {score}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Read all reviews button */}
-              {reviews.length > 4 && (
-                <div className="flex justify-center">
-                  <button
-                    className="rounded-xl border px-6 py-2.5 text-sm font-medium transition-colors hover:bg-gray-50"
-                    style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-primary)' }}
-                  >
-                    Read all {reviews.length} reviews
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ── Section 8: Footer ── */}
+      {/* ── Section 7: Footer ── */}
       <Footer />
     </div>
   );

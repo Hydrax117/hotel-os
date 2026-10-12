@@ -91,3 +91,60 @@ export async function fetchCityCounts(): Promise<CityCount[]> {
     return [];
   }
 }
+
+// ── Hotel detail types ────────────────────────────────────────────────────────
+
+export type RoomAvailability = {
+  id: string;
+  name: string;
+  bedType: string;               // 'King' | 'Twin' | 'Queen' | 'Double'
+  capacity: number;
+  sizeSqm: number;
+  pricePerNight: number;
+  amenities: string[];
+  breakfastIncluded: boolean;
+  cancellationPolicy: string;
+  available: number;             // rooms available; may be 0
+};
+
+export type NearbyAttraction = { name: string; distance: string };
+
+export type HotelDetail = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  rating: number;
+  reviewCount: number;
+  description: string;
+  address: string;
+  amenities: string[];
+  checkInTime: string;           // e.g. '3:00 PM'
+  checkOutTime: string;          // e.g. '12:00 PM'
+  policies: string[];
+  nearbyAttractions: NearbyAttraction[];
+  rooms: RoomAvailability[];     // embedded in detail response OR fetched separately
+  imageUrl?: string;
+  featured?: boolean;
+};
+
+// ── Hotel detail fetch functions ──────────────────────────────────────────────
+
+export async function fetchHotelDetail(id: string): Promise<HotelDetail | null> {
+  try {
+    return await serverFetch<HotelDetail>(`/api/v1/hotels/${id}`);
+  } catch (err) {
+    // 404 = not found, return null so the page can call notFound()
+    if (err instanceof Error && err.message.startsWith('API 404')) return null;
+    throw err;
+  }
+}
+
+export async function fetchHotelRooms(hotelId: string): Promise<RoomAvailability[]> {
+  try {
+    const data = await serverFetch<{ rooms: RoomAvailability[] }>(`/api/v1/hotels/${hotelId}/rooms`);
+    return data.rooms ?? [];
+  } catch {
+    return [];
+  }
+}

@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
-import { RoomType } from '../../mock';
+import { RoomAvailability } from '@/app/lib/api/search';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type RoomCardProps = {
-  room: RoomType;
+  room: RoomAvailability;
   hotelId: string;
 };
 
