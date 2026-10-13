@@ -2,9 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
-import { HOTEL_DETAILS, HOTEL_ROOM_TYPES, DEFAULT_ROOM_TYPES } from '../../hotels/mock';
-import { SEARCH_MOCK_HOTELS } from '../../search/mock';
-import { calcNights, calcBookingCost } from '../../lib/booking';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -33,8 +30,8 @@ async function Page({
 }: {
   searchParams: Promise<{
     ref?: string;
-    hotelId?: string;
-    roomId?: string;
+    hotelName?: string;
+    roomName?: string;
     checkIn?: string;
     checkOut?: string;
     guests?: string;
@@ -43,84 +40,13 @@ async function Page({
 }) {
   const params = await searchParams;
 
-  const ref = params.ref ?? 'HOS-00000';
-  const hotelId = params.hotelId ?? '';
-  const roomId = params.roomId ?? '';
-  const checkIn = params.checkIn;
-  const checkOut = params.checkOut;
-  const guests = params.guests ?? '1';
-
-  // ── Data lookup ──────────────────────────────────────────────────────────────
-
-  const hotelName =
-    HOTEL_DETAILS[hotelId]?.name ??
-    SEARCH_MOCK_HOTELS.find(h => h.id === hotelId)?.name ??
-    'Hotel';
-
-  const rooms = HOTEL_ROOM_TYPES[hotelId] ?? DEFAULT_ROOM_TYPES;
-  const room = rooms.find(r => r.id === roomId);
-  const roomName = room?.name ?? 'Room';
-
-  // ── Guard: room not found → render error state ────────────────────────────────
-
-  if (!room) {
-    return (
-      <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
-        <TravelerNav />
-        <main style={{ paddingTop: '64px' }}>
-          <div className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 py-24 text-center">
-            <div
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                background: '#fee2e2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              aria-hidden="true"
-            >
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--tp-primary)' }}>
-              Booking not found
-            </h1>
-            <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-              We couldn&apos;t locate the booking details for this confirmation.
-              Please check your booking reference or try again.
-            </p>
-            <Link
-              href="/hotels"
-              className="rounded-xl px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-80"
-              style={{ background: 'var(--tp-primary)' }}
-            >
-              Back to hotels
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // ── Recompute total server-side (do not trust the URL param) ─────────────────
-
-  const nights = calcNights(checkIn, checkOut);
-  const { total } = calcBookingCost(room.pricePerNight, nights);
+  const ref       = params.ref      ?? 'HOS-00000';
+  const hotelName = params.hotelName ?? 'Hotel';
+  const roomName  = params.roomName  ?? 'Room';
+  const checkIn   = params.checkIn;
+  const checkOut  = params.checkOut;
+  const guests    = params.guests    ?? '1';
+  const totalNgn  = Number(params.total ?? '0');
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
@@ -214,20 +140,12 @@ async function Page({
 
             <dl>
               {[
-                { label: 'Hotel', value: hotelName, accent: false },
-                { label: 'Room type', value: roomName, accent: false },
-                { label: 'Check-in', value: formatDate(checkIn), accent: false },
-                { label: 'Check-out', value: formatDate(checkOut), accent: false },
-                {
-                  label: 'Guests',
-                  value: `${guests} guest${Number(guests) !== 1 ? 's' : ''}`,
-                  accent: false,
-                },
-                {
-                  label: 'Total paid',
-                  value: total > 0 ? `₦${total.toLocaleString()}` : '—',
-                  accent: true,
-                },
+                { label: 'Hotel',      value: hotelName,                                         accent: false },
+                { label: 'Room type',  value: roomName,                                          accent: false },
+                { label: 'Check-in',   value: formatDate(checkIn),                               accent: false },
+                { label: 'Check-out',  value: formatDate(checkOut),                              accent: false },
+                { label: 'Guests',     value: `${guests} guest${Number(guests) !== 1 ? 's' : ''}`, accent: false },
+                { label: 'Total paid', value: totalNgn > 0 ? `₦${totalNgn.toLocaleString()}` : '—', accent: true },
               ].map(({ label, value, accent }, idx, arr) => (
                 <div
                   key={label}
@@ -320,7 +238,7 @@ async function Page({
 
             {/* Contact hotel */}
             <Link
-              href={`/hotels/${hotelId || ''}`}
+              href="/hotels"
               className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-opacity hover:opacity-70"
               style={{
                 border: '1px solid var(--tp-border)',

@@ -1,13 +1,15 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TravelerNav } from '../components/TravelerNav';
 import { Footer } from '../components/Footer';
-import { HOTEL_DETAILS, HOTEL_ROOM_TYPES, DEFAULT_ROOM_TYPES } from '../hotels/mock';
-import { SEARCH_MOCK_HOTELS } from '../search/mock';
+import { useAuth } from '../lib/auth-context';
+import { createBooking, initializePayment, type CreateBookingPayload } from '../lib/api/bookings';
 import { calcNights, calcBookingCost } from '../lib/booking';
+import { ApiError } from '../lib/api/client';
+import type { HotelDetail, RoomAvailability } from '../lib/api/search';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
@@ -25,39 +27,6 @@ const LockIcon = ({ size = 16 }: { size?: number }) => (
   >
     <rect x="3" y="11" width="18" height="11" rx="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
-
-const CardIcon = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <rect x="2" y="5" width="20" height="14" rx="2" />
-    <line x1="2" y1="10" x2="22" y2="10" />
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
   </svg>
 );
 
@@ -132,7 +101,13 @@ function CheckoutInner() {
   const checkOut = searchParams.get('checkOut') ?? '';
   const guests = searchParams.get('guests') ?? '1';
 
-  // Date state — seeded from URL params so a pre-filled link works too
+  // Auth gate
+  const { user, isLoading: authLoading } = useAuth();
+  useEffect(() => {
+    if (!authLoading && !user) router.push('/auth/signin?redirect=/checkout');
+  }, [authLoading, user, router]);
+
+  // Date state — seeded from URL params
   const [checkInInput, setCheckInInput] = useState(checkIn);
   const [checkOutInput, setCheckOutInput] = useState(checkOut);
 
@@ -143,28 +118,81 @@ function CheckoutInner() {
   const [phone, setPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
-  // Payment state
-  const [paymentTab, setPaymentTab] = useState<'card' | 'bank'>('card');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
+  // Pre-fill from auth context
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+  // Hotel/room data state (replaces mock lookup)
+  const [hotelName, setHotelName] = useState('');
+  const [hotelCity, setHotelCity] = useState('');
+  const [roomName, setRoomName] = useState('');
+  const [pricePerNight, setPricePerNight] = useState(0);
+  const [cancellationPolicy, setCancellationPolicy] = useState('');
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState('');
+
+  // Fetch hotel + room data
+  useEffect(() => {
+    if (!hotelId || !roomId) return;
+    setDataLoading(true);
+    const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://hotel-os-api-52qe.onrender.com';
+    Promise.all([
+      fetch(`${BASE}/api/v1/hotels/${hotelId}`).then(r => r.json() as Promise<HotelDetail>),
+      fetch(`${BASE}/api/v1/hotels/${hotelId}/rooms`).then(r => r.json() as Promise<{ rooms: RoomAvailability[] }>),
+    ])
+      .then(([hotel, roomsData]) => {
+        setHotelName(hotel.name);
+        setHotelCity(hotel.city);
+        const room = roomsData.rooms.find(r => r.id === roomId);
+        if (room) {
+          setRoomName(room.name);
+          setPricePerNight(room.pricePerNight);
+          setCancellationPolicy(room.cancellationPolicy);
+        } else {
+          setDataError('Room not found.');
+        }
+      })
+      .catch(() => setDataError('Failed to load booking details.'))
+      .finally(() => setDataLoading(false));
+  }, [hotelId, roomId]);
+
+  // Submit state
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Form validation error state
   const [formError, setFormError] = useState('');
 
-  // ── Data lookup ──────────────────────────────────────────────────────────────
+  // ── Calculations ─────────────────────────────────────────────────────────────
 
-  const hotelDetail = HOTEL_DETAILS[hotelId];
-  const hotelFallback = SEARCH_MOCK_HOTELS.find(h => h.id === hotelId);
-  const hotel = hotelDetail ?? hotelFallback;
+  const nights = calcNights(checkInInput, checkOutInput);
+  const { subtotal, fee, total } = calcBookingCost(pricePerNight, nights);
 
-  const rooms = HOTEL_ROOM_TYPES[hotelId] ?? DEFAULT_ROOM_TYPES;
-  const room = rooms.find(r => r.id === roomId);
+  const isFreeCancel = cancellationPolicy.toLowerCase().includes('free');
+  const isNonRefundable = cancellationPolicy.toLowerCase().includes('non-refundable');
 
-  // ── Error state ──────────────────────────────────────────────────────────────
+  // ── Auth loading / not logged in ─────────────────────────────────────────────
 
-  if (!hotel || !room) {
+  if (authLoading || !user) {
+    return (
+      <div
+        style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}
+        className="flex items-center justify-center"
+      >
+        <TravelerNav />
+        <p style={{ color: 'var(--tp-secondary)' }}>Loading…</p>
+      </div>
+    );
+  }
+
+  // ── Data error state ─────────────────────────────────────────────────────────
+
+  if (!dataLoading && dataError) {
     return (
       <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
         <TravelerNav />
@@ -173,7 +201,7 @@ function CheckoutInner() {
           style={{ paddingTop: '128px' }}
         >
           <p className="text-lg font-semibold" style={{ color: 'var(--tp-primary)' }}>
-            Booking details not found
+            {dataError}
           </p>
           <Link
             href="/hotels"
@@ -188,17 +216,9 @@ function CheckoutInner() {
     );
   }
 
-  // ── Calculations ─────────────────────────────────────────────────────────────
-
-  const nights = calcNights(checkInInput, checkOutInput);
-  const { subtotal, fee, total } = calcBookingCost(room.pricePerNight, nights);
-
-  const isFreeCancel = room.cancellationPolicy.toLowerCase().includes('free');
-  const isNonRefundable = room.cancellationPolicy.toLowerCase().includes('non-refundable');
-
   // ── Pay handler ──────────────────────────────────────────────────────────────
 
-  function handlePay() {
+  async function handlePay(): Promise<void> {
     // Validate required guest details
     if (!firstName.trim()) { setFormError('Please enter your first name.'); return; }
     if (!lastName.trim()) { setFormError('Please enter your last name.'); return; }
@@ -210,25 +230,30 @@ function CheckoutInner() {
     // Validate dates
     if (!checkInInput) { setFormError('Please select a check-in date.'); return; }
     if (!checkOutInput) { setFormError('Please select a check-out date.'); return; }
-    // Validate payment fields (card tab only)
-    if (paymentTab === 'card') {
-      if (!cardNumber.trim()) { setFormError('Please enter your card number.'); return; }
-      if (!expiry.trim()) { setFormError('Please enter the card expiry date.'); return; }
-      if (!cvv.trim()) { setFormError('Please enter the CVV.'); return; }
-      if (!cardholderName.trim()) { setFormError('Please enter the cardholder name.'); return; }
-    }
+
     setFormError('');
-    const ref = `HOS-${Math.floor(10000 + Math.random() * 90000)}`;
-    router.push(
-      `/booking/confirmation?ref=${ref}&hotelId=${hotelId}&roomId=${roomId}` +
-        `&checkIn=${checkInInput}&checkOut=${checkOutInput}&guests=${guests}`
-    );
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const payload: CreateBookingPayload = {
+        roomId,
+        checkIn: checkInInput,
+        checkOut: checkOutInput,
+        guests: Number(guests),
+        specialRequests: specialRequests.trim() || undefined,
+      };
+      const booking = await createBooking(payload);
+      const payment = await initializePayment(booking.id);
+      window.location.href = payment.paymentUrl;
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
+      setSubmitError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
-
-  const hotelName = hotel.name;
-  const hotelCity = hotel.city;
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
@@ -251,7 +276,7 @@ function CheckoutInner() {
               <form
                 onSubmit={e => {
                   e.preventDefault();
-                  handlePay();
+                  void handlePay();
                 }}
                 className="flex flex-col gap-6"
               >
@@ -289,7 +314,6 @@ function CheckoutInner() {
                         value={checkInInput}
                         onChange={e => {
                           setCheckInInput(e.target.value);
-                          // If check-out is now before or same as new check-in, clear it
                           if (checkOutInput && e.target.value >= checkOutInput) {
                             setCheckOutInput('');
                           }
@@ -459,7 +483,7 @@ function CheckoutInner() {
                   </p>
                 </section>
 
-                {/* Section 3: Payment */}
+                {/* Section 3: Secure payment notice */}
                 <section
                   className="rounded-xl p-6"
                   style={{
@@ -468,8 +492,7 @@ function CheckoutInner() {
                   }}
                   aria-labelledby="payment-heading"
                 >
-                  {/* Heading with lock icon */}
-                  <div className="mb-5 flex items-center gap-2">
+                  <div className="mb-3 flex items-center gap-2">
                     <span style={{ color: 'var(--tp-primary)' }}>
                       <LockIcon size={16} />
                     </span>
@@ -481,208 +504,33 @@ function CheckoutInner() {
                       Secure payment
                     </h2>
                   </div>
-
-                  {/* Payment tabs */}
-                  <div className="mb-5 flex gap-2" role="tablist" aria-label="Payment method">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={paymentTab === 'card'}
-                      onClick={() => setPaymentTab('card')}
-                      className="rounded-full px-5 py-2 text-sm font-medium transition-colors"
-                      style={{
-                        background: paymentTab === 'card' ? 'var(--tp-primary)' : 'var(--tp-muted)',
-                        color: paymentTab === 'card' ? '#fff' : 'var(--tp-secondary)',
-                      }}
-                    >
-                      Card
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={paymentTab === 'bank'}
-                      onClick={() => setPaymentTab('bank')}
-                      className="rounded-full px-5 py-2 text-sm font-medium transition-colors"
-                      style={{
-                        background: paymentTab === 'bank' ? 'var(--tp-primary)' : 'var(--tp-muted)',
-                        color: paymentTab === 'bank' ? '#fff' : 'var(--tp-secondary)',
-                      }}
-                    >
-                      Bank transfer
-                    </button>
-                  </div>
-
-                  {/* Card tab */}
-                  {paymentTab === 'card' && (
-                    <div className="flex flex-col gap-4">
-                      {/* Card number with icon */}
-                      <div className="flex flex-col gap-1.5">
-                        <label
-                          htmlFor="cardNumber"
-                          className="text-sm font-medium"
-                          style={{ color: 'var(--tp-primary)' }}
-                        >
-                          Card number
-                        </label>
-                        <div className="relative">
-                          <input
-                            id="cardNumber"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="1234 5678 9012 3456"
-                            value={cardNumber}
-                            onChange={e => setCardNumber(e.target.value)}
-                            autoComplete="cc-number"
-                            className="w-full rounded-lg py-3 pl-4 pr-12 text-sm outline-none transition-colors"
-                            style={{
-                              border: '1px solid var(--tp-border)',
-                              background: 'var(--tp-surface)',
-                              color: 'var(--tp-primary)',
-                            }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                          />
-                          <span
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
-                            style={{ color: 'var(--tp-secondary)' }}
-                            aria-hidden="true"
-                          >
-                            <CardIcon />
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Expiry + CVV */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                          <label
-                            htmlFor="expiry"
-                            className="text-sm font-medium"
-                            style={{ color: 'var(--tp-primary)' }}
-                          >
-                            Expiry
-                          </label>
-                          <input
-                            id="expiry"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="MM/YY"
-                            value={expiry}
-                            onChange={e => setExpiry(e.target.value)}
-                            autoComplete="cc-exp"
-                            className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
-                            style={{
-                              border: '1px solid var(--tp-border)',
-                              background: 'var(--tp-surface)',
-                              color: 'var(--tp-primary)',
-                            }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label
-                            htmlFor="cvv"
-                            className="text-sm font-medium"
-                            style={{ color: 'var(--tp-primary)' }}
-                          >
-                            CVV
-                          </label>
-                          <input
-                            id="cvv"
-                            type="password"
-                            inputMode="numeric"
-                            placeholder="CVV"
-                            value={cvv}
-                            onChange={e => setCvv(e.target.value)}
-                            autoComplete="cc-csc"
-                            className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
-                            style={{
-                              border: '1px solid var(--tp-border)',
-                              background: 'var(--tp-surface)',
-                              color: 'var(--tp-primary)',
-                            }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Cardholder name */}
-                      <FormInput
-                        id="cardholderName"
-                        label="Cardholder name"
-                        placeholder="Name on card"
-                        value={cardholderName}
-                        onChange={setCardholderName}
-                        autoComplete="cc-name"
-                      />
-
-                      {/* Security note */}
-                      <div
-                        className="flex items-center gap-2"
-                        style={{ color: 'var(--tp-secondary)' }}
-                      >
-                        <ShieldIcon />
-                        <span className="text-xs">Your card details are encrypted and secure</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bank transfer tab */}
-                  {paymentTab === 'bank' && (
-                    <div
-                      className="rounded-lg p-4"
-                      style={{ background: 'var(--tp-muted)' }}
-                    >
-                      <dl className="flex flex-col gap-2 text-sm">
-                        <div className="flex justify-between">
-                          <dt style={{ color: 'var(--tp-secondary)' }}>Bank</dt>
-                          <dd style={{ color: 'var(--tp-primary)' }}>Paystack Trust</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt style={{ color: 'var(--tp-secondary)' }}>Account number</dt>
-                          <dd
-                            className="font-mono font-bold"
-                            style={{ color: 'var(--tp-primary)' }}
-                          >
-                            0123456789
-                          </dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt style={{ color: 'var(--tp-secondary)' }}>Account name</dt>
-                          <dd style={{ color: 'var(--tp-primary)' }}>Hotel OS Escrow</dd>
-                        </div>
-                      </dl>
-                      <p className="mt-3 text-xs" style={{ color: 'var(--tp-secondary)' }}>
-                        Transfer the exact amount shown in your booking summary. Your booking will be
-                        confirmed once payment is verified (usually within 5 minutes).
-                      </p>
-                    </div>
-                  )}
+                  <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
+                    You will be redirected to Paystack&apos;s secure payment page to complete your booking.
+                  </p>
                 </section>
 
                 {/* Pay button */}
                 <div className="flex flex-col gap-3">
-                  {formError && (
+                  {(formError || submitError) && (
                     <p
                       role="alert"
                       className="rounded-lg px-4 py-3 text-sm"
                       style={{ background: '#fee2e2', color: '#dc2626' }}
                     >
-                      {formError}
+                      {formError || submitError}
                     </p>
                   )}
                   <button
                     type="submit"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold text-white transition-opacity hover:opacity-90"
+                    disabled={submitting}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     style={{ background: 'var(--tp-primary)' }}
                   >
                     <LockIcon size={18} />
-                    Pay ₦{total.toLocaleString()}
+                    {submitting ? 'Processing…' : `Pay ₦${total.toLocaleString()}`}
                   </button>
                   <p className="text-center text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                    You won&apos;t be charged until you click Pay &amp; reserve
+                    You won&apos;t be charged until payment is completed on Paystack
                   </p>
                   <p className="text-center text-xs" style={{ color: 'var(--tp-secondary)' }}>
                     By booking you agree to our{' '}
@@ -721,23 +569,17 @@ function CheckoutInner() {
                 {/* Hotel info */}
                 <div className="mb-4">
                   <p className="font-semibold" style={{ color: 'var(--tp-primary)' }}>
-                    {hotelName}
+                    {dataLoading ? '—' : hotelName}
                   </p>
                   <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                    {hotelCity}
+                    {dataLoading ? '—' : hotelCity}
                   </p>
                 </div>
 
                 {/* Room info */}
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium" style={{ color: 'var(--tp-primary)' }}>
-                    {room.name}
-                  </span>
-                  <span
-                    className="rounded-full px-2 py-0.5 text-xs"
-                    style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}
-                  >
-                    {room.bedType} bed
+                    {dataLoading ? '—' : roomName}
                   </span>
                 </div>
 
@@ -774,16 +616,22 @@ function CheckoutInner() {
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Room rate</span>
                     <span style={{ color: 'var(--tp-primary)' }}>
-                      ₦{room.pricePerNight.toLocaleString()} × {nights} night{nights !== 1 ? 's' : ''}
+                      {dataLoading
+                        ? '—'
+                        : `₦${pricePerNight.toLocaleString()} × ${nights} night${nights !== 1 ? 's' : ''}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Subtotal</span>
-                    <span style={{ color: 'var(--tp-primary)' }}>₦{subtotal.toLocaleString()}</span>
+                    <span style={{ color: 'var(--tp-primary)' }}>
+                      {dataLoading ? '—' : `₦${subtotal.toLocaleString()}`}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Service fee (3%)</span>
-                    <span style={{ color: 'var(--tp-primary)' }}>₦{fee.toLocaleString()}</span>
+                    <span style={{ color: 'var(--tp-primary)' }}>
+                      {dataLoading ? '—' : `₦${fee.toLocaleString()}`}
+                    </span>
                   </div>
                 </div>
 
@@ -798,25 +646,27 @@ function CheckoutInner() {
                     className="text-xl font-bold"
                     style={{ color: 'var(--tp-accent)' }}
                   >
-                    ₦{total.toLocaleString()}
+                    {dataLoading ? '—' : `₦${total.toLocaleString()}`}
                   </span>
                 </div>
 
                 {/* Cancellation policy chip */}
-                <div className="mb-4">
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-medium"
-                    style={
-                      isFreeCancel
-                        ? { background: 'var(--tp-accent-light)', color: 'var(--tp-accent)' }
-                        : isNonRefundable
-                        ? { background: '#fffbeb', color: '#b45309' }
-                        : { background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }
-                    }
-                  >
-                    {room.cancellationPolicy}
-                  </span>
-                </div>
+                {!dataLoading && cancellationPolicy && (
+                  <div className="mb-4">
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-medium"
+                      style={
+                        isFreeCancel
+                          ? { background: 'var(--tp-accent-light)', color: 'var(--tp-accent)' }
+                          : isNonRefundable
+                          ? { background: '#fffbeb', color: '#b45309' }
+                          : { background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }
+                      }
+                    >
+                      {cancellationPolicy}
+                    </span>
+                  </div>
+                )}
 
                 <p className="text-center text-xs" style={{ color: 'var(--tp-secondary)' }}>
                   Price shown in Nigerian Naira (NGN)
