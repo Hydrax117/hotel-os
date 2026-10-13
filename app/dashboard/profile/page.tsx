@@ -7,6 +7,8 @@ import {
   getMyHotel,
   type DashboardHotel,
 } from '../../lib/api/dashboard';
+import { ImageUploadSlot } from '@/app/components/ImageUploadSlot';
+import { getHotelImages, type HotelImage } from '@/app/lib/api/images';
 
 // ── Info card helper ──────────────────────────────────────────────────────────
 
@@ -62,6 +64,7 @@ export default function ProfilePage() {
   const router = useRouter();
 
   const [hotel,     setHotel]     = useState<DashboardHotel | null>(null);
+  const [images,    setImages]    = useState<HotelImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error,     setError]     = useState<string | null>(null);
 
@@ -89,6 +92,14 @@ export default function ProfilePage() {
           return;
         }
         if (!cancelled) setHotel(myHotel);
+
+        // Fetch images — silently ignore errors to not block the profile load
+        try {
+          const imgs = await getHotelImages(myHotel.id);
+          if (!cancelled) setImages(imgs);
+        } catch {
+          // ignore
+        }
       } catch {
         if (!cancelled) setError('Failed to load profile. Please try again.');
       } finally {
@@ -225,20 +236,28 @@ export default function ProfilePage() {
             Photos
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[1, 2, 3, 4].map(n => (
-              <div
-                key={n}
-                className="flex items-center justify-center rounded-lg border-2 border-dashed text-sm"
-                style={{
-                  aspectRatio: '4/3',
-                  borderColor: 'var(--db-border)',
-                  background:  'var(--db-muted)',
-                  color:       'var(--db-secondary)',
-                }}
-              >
-                Add photo
-              </div>
-            ))}
+            {(() => {
+              const CATEGORIES = ['exterior', 'lobby', 'rooms', 'other'] as const;
+              const slotCount = Math.max(4, images.length + 1);
+              return Array.from({ length: slotCount }).map((_, i) => (
+                <ImageUploadSlot
+                  key={i}
+                  hotelId={hotel!.id}
+                  label={CATEGORIES[i % 4] ?? 'photo'}
+                  category={CATEGORIES[i % 4] ?? 'photo'}
+                  existingImage={images[i] ?? null}
+                  onUploaded={img =>
+                    setImages(prev => {
+                      const next = [...prev];
+                      next[i] = img;
+                      return next;
+                    })
+                  }
+                  onDeleted={id => setImages(prev => prev.filter(x => x.id !== id))}
+                  isPrimary={i === 0}
+                />
+              ));
+            })()}
           </div>
         </section>
 

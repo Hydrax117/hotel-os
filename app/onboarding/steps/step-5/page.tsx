@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useOnboarding } from '@/app/onboarding/context/OnboardingContext';
 import { StepShell } from '@/app/onboarding/components/StepShell';
 import { FileUploadSlot } from '@/app/onboarding/components/FileUploadSlot';
+import { uploadImage } from '@/app/lib/supabase';
 
 export default function Step5Page() {
   const router = useRouter();
@@ -19,10 +20,14 @@ export default function Step5Page() {
     router.push('/onboarding/steps/step-6');
   };
 
-  const handleFileChange = (id: string, file: File) => {
-    // FileUploadSlot manages its own preview URL lifecycle when showPreview=true.
-    // We store the file in context; preview is managed locally in the component.
-    updateImageSlot(id, file, '');
+  const handleFileChange = async (id: string, file: File) => {
+    let url = '';
+    try {
+      url = await uploadImage(file, 'onboarding', id);
+    } catch {
+      url = '';
+    }
+    updateImageSlot(id, file, url);
   };
 
   return (
