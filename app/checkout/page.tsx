@@ -8,7 +8,7 @@ import { Footer } from '../components/Footer';
 import { useAuth } from '../lib/auth-context';
 import { createBooking, initializePayment, type CreateBookingPayload } from '../lib/api/bookings';
 import { calcNights, calcBookingCost } from '../lib/booking';
-import { ApiError } from '../lib/api/client';
+import { ApiError, apiClient } from '../lib/api/client';
 import type { HotelDetail, RoomAvailability } from '../lib/api/search';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -140,10 +140,9 @@ function CheckoutInner() {
   useEffect(() => {
     if (!hotelId || !roomId) return;
     setDataLoading(true);
-    const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://hotel-os-api-52qe.onrender.com';
     Promise.all([
-      fetch(`${BASE}/api/v1/hotels/${hotelId}`).then(r => r.json() as Promise<HotelDetail>),
-      fetch(`${BASE}/api/v1/hotels/${hotelId}/rooms`).then(r => r.json() as Promise<{ rooms: RoomAvailability[] }>),
+      apiClient.get<HotelDetail>(`/api/v1/hotels/${hotelId}`),
+      apiClient.get<{ rooms: RoomAvailability[] }>(`/api/v1/hotels/${hotelId}/rooms`),
     ])
       .then(([hotel, roomsData]) => {
         setHotelName(hotel.name);

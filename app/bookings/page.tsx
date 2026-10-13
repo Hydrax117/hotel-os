@@ -200,7 +200,7 @@ type BookingCardProps = {
 };
 
 function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
-  const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelId=${booking.hotelId}&roomId=${booking.roomId}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}`;
+  const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelName=${encodeURIComponent(booking.hotelName)}&roomName=${encodeURIComponent(booking.roomName)}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}&total=${booking.totalNgn}`;
   const isCancelling = cancellingId === booking.id;
 
   return (
