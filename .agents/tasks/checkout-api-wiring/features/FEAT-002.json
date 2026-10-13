@@ -33,5 +33,13 @@
     "auth_gate_present": true,
     "loading_skeleton_present": true,
     "verified_at": "iteration-1"
+  },
+  "iteration2_verification": {
+    "build_exit_code": 0,
+    "typescript_errors": 0,
+    "detailsHref_passes_hotelName_roomName_total": true,
+    "detailsHref_no_longer_passes_hotelId_roomId": true,
+    "verified_at": "iteration-2",
+    "commit": "6072ae4"
   }
 }

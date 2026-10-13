@@ -36,5 +36,13 @@
     "app_bookings_mock_exists": true,
     "app_hotels_mock_exists": true,
     "verified_at": "iteration-1"
+  },
+  "iteration2_verification": {
+    "build_exit_code": 0,
+    "typescript_errors": 0,
+    "bare_fetch_in_checkout_replaced_with_apiClient": true,
+    "hotel_and_room_requests_use_apiClient_get": true,
+    "verified_at": "iteration-2",
+    "commit": "6072ae4"
   }
 }
