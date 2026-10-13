@@ -1,0 +1,9 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "Fabricated payment status — payments/page.tsx assigns settled/pending/failed by row index (getPaymentStatus(i)), not from real payment data. When the payments endpoint ships, this logic must be replaced; the Status column is misleading in production.",
+    "Static document checklist in verification — hotels/verification/page.tsx renders all four document items as always-checked. AdminHotel returns no document list, so an admin sees a fully ticked checklist even if no documents were uploaded.",
+    "reviews isLoading ordering gap — isLoading initializes to false and is never set to true in the useEffect. When the reviews endpoint is wired, the developer must flip the initial value and add setIsLoading(true) at the top of load() or the skeleton will not render on fetch."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\admin-api-wiring-review.md"
+}
