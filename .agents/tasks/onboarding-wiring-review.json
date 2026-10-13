@@ -1,0 +1,12 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "LOW",
+      "label": "No partial-failure rollback",
+      "detail": "If any step after createHotel fails (document upload, image upload, room type creation, subscription), the hotel record is orphaned in the backend. The wizard has no resume capability. The error message should acknowledge that a partial record may exist and direct the user to contact support, rather than implying a clean retry is safe.",
+      "confidence": "confirmed"
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\onboarding-wiring-review.md"
+}
