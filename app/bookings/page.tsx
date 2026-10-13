@@ -1,11 +1,55 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { TravelerNav } from '../components/TravelerNav';
 import { Footer } from '../components/Footer';
-import { MOCK_TRAVELER_BOOKINGS, TravelerBooking, BookingStatus } from './mock';
+import { TravelerBooking, BookingStatus } from './mock';
+import { useAuth } from '../lib/auth-context';
+import { getMyBookings, cancelBooking, type BookingResponse } from '../lib/api/bookings';
+import { ApiError } from '../lib/api/client';
+import { calcNights } from '../lib/booking';
+
+// ── Status mapping ────────────────────────────────────────────────────────────
+
+function mapStatus(apiStatus: BookingResponse['status']): BookingStatus {
+  switch (apiStatus) {
+    case 'CONFIRMED':
+    case 'HELD':
+    case 'PAYMENT_PENDING':
+    case 'CHECKED_IN':
+    case 'PENDING':
+      return 'upcoming';
+    case 'CHECKED_OUT':
+      return 'completed';
+    case 'CANCELLED':
+    case 'NO_SHOW':
+      return 'cancelled';
+  }
+}
+
+// ── API → UI mapping ──────────────────────────────────────────────────────────
+
+function mapApiBooking(b: BookingResponse): TravelerBooking {
+  return {
+    id: b.id,
+    hotelId: b.hotel?.id ?? b.hotelId,
+    hotelName: b.hotel?.name ?? 'Hotel',
+    hotelCity: b.hotel?.city ?? '—',
+    hotelState: b.hotel?.state ?? '—',
+    roomName: b.room?.name ?? 'Room',
+    roomId: b.roomId,
+    checkIn: b.checkIn,
+    checkOut: b.checkOut,
+    nights: calcNights(b.checkIn, b.checkOut),
+    guests: b.guests,
+    totalNgn: b.totalAmount,
+    status: mapStatus(b.status),
+    createdAt: b.createdAt,
+    specialRequests: b.specialRequests,
+  };
+}
 
 // ── Gradient helper ───────────────────────────────────────────────────────────
 
@@ -149,8 +193,15 @@ function IconPerson({ size = 24 }: { size?: number }) {
 
 // ── Booking card ──────────────────────────────────────────────────────────────
 
-function BookingCard({ booking }: { booking: TravelerBooking }) {
+type BookingCardProps = {
+  booking: TravelerBooking;
+  onCancel: (id: string) => Promise<void>;
+  cancellingId: string | null;
+};
+
+function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
   const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelId=${booking.hotelId}&roomId=${booking.roomId}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}`;
+  const isCancelling = cancellingId === booking.id;
 
   return (
     <div
@@ -289,14 +340,17 @@ function BookingCard({ booking }: { booking: TravelerBooking }) {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#dc2626',
+                    color: isCancelling ? 'var(--tp-secondary)' : '#dc2626',
                     padding: '8px 16px',
                     fontSize: '14px',
-                    cursor: 'pointer',
+                    cursor: isCancelling ? 'not-allowed' : 'pointer',
+                    opacity: isCancelling ? 0.6 : 1,
                   }}
                   type="button"
+                  disabled={isCancelling}
+                  onClick={() => { void onCancel(booking.id); }}
                 >
-                  Cancel booking
+                  {isCancelling ? 'Cancelling…' : 'Cancel booking'}
                 </button>
               </>
             )}
@@ -482,8 +536,6 @@ function ReviewedBanner() {
   );
 }
 
-
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const TABS: { status: BookingStatus; label: string }[] = [
@@ -493,23 +545,68 @@ const TABS: { status: BookingStatus; label: string }[] = [
 ];
 
 export default function BookingsPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<BookingStatus>('upcoming');
+  const [bookings, setBookings] = useState<TravelerBooking[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/signin?redirect=/bookings');
+    }
+  }, [authLoading, user, router]);
+
+  // Fetch bookings once user is known
+  useEffect(() => {
+    if (!user) return;
+    setLoadingBookings(true);
+    getMyBookings()
+      .then(raw => setBookings(raw.map(mapApiBooking)))
+      .catch(err => {
+        const msg = err instanceof ApiError ? err.message : 'Failed to load bookings.';
+        setFetchError(msg);
+      })
+      .finally(() => setLoadingBookings(false));
+  }, [user]);
+
+  // Cancel handler
+  const handleCancelBooking = useCallback(async (bookingId: string): Promise<void> => {
+    setCancellingId(bookingId);
+    try {
+      await cancelBooking(bookingId);
+      setBookings(prev =>
+        prev.map(b =>
+          b.id === bookingId ? { ...b, status: 'cancelled' as BookingStatus } : b
+        )
+      );
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Failed to cancel booking.';
+      alert(msg);
+    } finally {
+      setCancellingId(null);
+    }
+  }, []);
 
   const counts = {
-    upcoming:  MOCK_TRAVELER_BOOKINGS.filter(b => b.status === 'upcoming').length,
-    completed: MOCK_TRAVELER_BOOKINGS.filter(b => b.status === 'completed').length,
-    cancelled: MOCK_TRAVELER_BOOKINGS.filter(b => b.status === 'cancelled').length,
+    upcoming:  bookings.filter(b => b.status === 'upcoming').length,
+    completed: bookings.filter(b => b.status === 'completed').length,
+    cancelled: bookings.filter(b => b.status === 'cancelled').length,
   };
 
-  const nightsStayed = MOCK_TRAVELER_BOOKINGS
+  const nightsStayed = bookings
     .filter(b => b.status === 'completed')
     .reduce((sum, b) => sum + b.nights, 0);
 
-  const totalSpent = MOCK_TRAVELER_BOOKINGS
+  const totalSpent = bookings
     .filter(b => b.status === 'completed')
     .reduce((sum, b) => sum + b.totalNgn, 0);
 
-  const filtered = MOCK_TRAVELER_BOOKINGS.filter(b => b.status === activeTab);
+  const filtered = bookings.filter(b => b.status === activeTab);
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--tp-bg)' }}>
@@ -573,7 +670,7 @@ export default function BookingsPage() {
             className="hidden md:flex"
           >
             {[
-              { label: 'Total Bookings', value: String(MOCK_TRAVELER_BOOKINGS.length) },
+              { label: 'Total Bookings', value: String(bookings.length) },
               { label: 'Nights Stayed', value: String(nightsStayed) },
               { label: 'Total Spent', value: fmtNgn(totalSpent) },
             ].map(chip => (
@@ -603,6 +700,22 @@ export default function BookingsPage() {
               </div>
             ))}
           </div>
+
+          {/* Error banner */}
+          {fetchError && !loadingBookings && (
+            <div
+              style={{
+                background: '#fee2e2',
+                color: '#dc2626',
+                borderRadius: '10px',
+                padding: '14px 20px',
+                marginBottom: '16px',
+                fontSize: '14px',
+              }}
+            >
+              {fetchError}
+            </div>
+          )}
 
           {/* Tab bar */}
           <div
@@ -656,11 +769,32 @@ export default function BookingsPage() {
 
           {/* Booking list */}
           <div>
-            {filtered.length === 0 ? (
+            {loadingBookings ? (
+              <div>
+                <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 120,
+                      background: 'var(--tp-muted)',
+                      borderRadius: '14px',
+                      marginBottom: '16px',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
               <EmptyState status={activeTab} />
             ) : (
               filtered.map(booking => (
-                <BookingCard key={booking.id} booking={booking} />
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onCancel={handleCancelBooking}
+                  cancellingId={cancellingId}
+                />
               ))
             )}
           </div>
