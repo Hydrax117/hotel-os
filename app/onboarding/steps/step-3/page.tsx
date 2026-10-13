@@ -34,14 +34,18 @@ export default function Step3Page() {
     >
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {verification.map(doc => (
-          <FileUploadSlot
-            key={doc.id}
-            label={doc.label}
-            required={doc.required}
-            file={doc.file}
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={file => updateVerification(doc.id, file)}
-          />
+          <div key={doc.id}>
+            <FileUploadSlot
+              label={doc.label}
+              required={doc.required}
+              file={doc.file}
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={file => updateVerification(doc.id, file)}
+            />
+            <p className="mt-1 text-xs text-[var(--ob-secondary)]">
+              Stored securely and used only for verification purposes.
+            </p>
+          </div>
         ))}
       </div>
       <p className="mt-4 text-xs text-[var(--ob-secondary)]">

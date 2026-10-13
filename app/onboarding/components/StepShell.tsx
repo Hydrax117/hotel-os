@@ -8,7 +8,7 @@ type StepShellProps = {
   step: number;
   totalSteps: number;
   onBack?: () => void;
-  onNext: () => void;
+  onNext: () => void | Promise<void>;
   nextLabel?: string;
   isNextDisabled?: boolean;
   nextHint?: string;

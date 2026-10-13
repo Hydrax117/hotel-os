@@ -1,6 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useState } from 'react';
+import { register } from '@/app/lib/api/auth';
+import {
+  createHotel,
+  createRoomType,
+  saveDocument,
+  createSubscription,
+} from '@/app/lib/api/onboarding';
+import { saveHotelImage } from '@/app/lib/api/images';
+import { uploadImage, uploadDocument } from '@/app/lib/supabase';
+import { ApiError } from '@/app/lib/api/client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +77,9 @@ export type OnboardingState = {
   rooms: RoomType[];
   subscription: SubscriptionPlan;
   submitted: boolean;
+  submitting: boolean;
+  submitError: string | null;
+  submitStep: string | null;
 };
 
 export type OnboardingContextValue = OnboardingState & {
@@ -80,7 +93,7 @@ export type OnboardingContextValue = OnboardingState & {
   updateRoom: (id: string, data: Partial<RoomType>) => void;
   removeRoom: (id: string) => void;
   setSubscription: (plan: SubscriptionPlan) => void;
-  submit: () => void;
+  submit: () => Promise<void>;
 };
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -120,6 +133,9 @@ const defaultState: OnboardingState = {
   rooms: [],
   subscription: null,
   submitted: false,
+  submitting: false,
+  submitError: null,
+  submitStep: null,
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -191,16 +207,103 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const setSubscription = (plan: SubscriptionPlan) =>
     setState(s => ({ ...s, subscription: plan }));
 
-  const submit = () =>
-    setState(s => ({
-      ...s,
-      submitted: true,
-      // Clear the plaintext password from long-lived state immediately after submission.
-      // The password is no longer needed once submit() is called.
-      // TODO(api): replace this local flag with a real API call (FormData + document files)
-      //            before shipping. Wire up here; keep the submitted flag for optimistic UI.
-      account: { ...s.account, password: '' },
-    }));
+  const submit = async (): Promise<void> => {
+    setState(s => ({ ...s, submitting: true, submitError: null, submitStep: 'Creating account…' }));
+    // Capture a snapshot of state at the moment submit() is called.
+    // All subsequent reads use this snapshot so that intermediate setState calls
+    // (which only update progress fields) don't overwrite the form data we need.
+    const snap = state;
+    try {
+      // 1. Register account — storeTokens/storeUser are called inside register()
+      const nameParts = snap.account.name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? '';
+      const lastName = nameParts.slice(1).join(' ') || firstName;
+      await register({
+        email: snap.account.email,
+        password: snap.account.password,
+        firstName,
+        lastName,
+        phone: snap.account.phone || undefined,
+        role: 'HOTEL_OWNER',
+      });
+
+      // 2. Create hotel
+      setState(s => ({ ...s, submitStep: 'Creating hotel…' }));
+      const hotel = await createHotel({
+        name: snap.property.hotelName,
+        description: snap.property.description,
+        address: snap.property.address,
+        city: snap.property.city,
+        state: snap.property.state,
+        country: snap.property.country,
+        latitude: snap.property.latitude ? parseFloat(snap.property.latitude) : undefined,
+        longitude: snap.property.longitude ? parseFloat(snap.property.longitude) : undefined,
+        amenities: snap.propertyInfo.amenities,
+        checkInTime: snap.propertyInfo.checkInTime,
+        checkOutTime: snap.propertyInfo.checkOutTime,
+        cancellationPolicy: snap.propertyInfo.cancellationPolicy || undefined,
+        houseRules: snap.propertyInfo.houseRules || undefined,
+        languages: snap.propertyInfo.languages,
+      });
+      const hotelId = hotel.id;
+
+      // 3. Upload & save verification documents
+      setState(s => ({ ...s, submitStep: 'Uploading documents…' }));
+      for (const doc of snap.verification) {
+        if (!doc.file) continue;
+        const url = await uploadDocument(doc.file, hotelId, doc.id);
+        await saveDocument(hotelId, { url, documentType: doc.id, label: doc.label });
+      }
+
+      // 4. Upload & save hotel images
+      setState(s => ({ ...s, submitStep: 'Uploading images…' }));
+      for (const slot of snap.images) {
+        if (!slot.file) continue;
+        const url = await uploadImage(slot.file, hotelId, slot.id);
+        await saveHotelImage(hotelId, {
+          url,
+          caption: slot.label,
+          isPrimary: slot.id === 'exterior',
+          sortOrder: 0,
+        });
+      }
+
+      // 5. Create room types
+      setState(s => ({ ...s, submitStep: 'Saving room types…' }));
+      for (const room of snap.rooms) {
+        await createRoomType(hotelId, {
+          name: room.name,
+          capacity: room.capacity,
+          bedType: room.bedType,
+          bathroomType: room.bathroomType,
+          totalRooms: room.totalRooms,
+          pricePerNight: room.pricePerNight,
+        });
+      }
+
+      // 6. Create subscription
+      setState(s => ({ ...s, submitStep: 'Activating subscription…' }));
+      if (snap.subscription) {
+        await createSubscription(hotelId, { plan: snap.subscription });
+      }
+
+      // Done — clear password from state
+      setState(s => ({
+        ...s,
+        submitted: true,
+        submitting: false,
+        submitStep: null,
+        account: { ...s.account, password: '' },
+      }));
+    } catch (err: unknown) {
+      const message = err instanceof ApiError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : 'Submission failed. Please try again.';
+      setState(s => ({ ...s, submitting: false, submitStep: null, submitError: message }));
+    }
+  };
 
   const value: OnboardingContextValue = {
     ...state,

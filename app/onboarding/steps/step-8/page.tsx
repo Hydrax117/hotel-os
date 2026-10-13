@@ -23,6 +23,9 @@ export default function Step8Page() {
     rooms,
     subscription,
     submitted,
+    submitting,
+    submitError,
+    submitStep,
     submit,
     setStep,
   } = useOnboarding();
@@ -41,9 +44,9 @@ export default function Step8Page() {
     router.push('/onboarding/steps/step-7');
   };
 
-  // Block submission if any required verification document is missing.
+  // Block submission if any required verification document is missing or if already submitting.
   const hasMissingRequiredDocs = verification.some(doc => doc.required && doc.file === null);
-  const isSubmitDisabled = hasMissingRequiredDocs;
+  const isSubmitDisabled = hasMissingRequiredDocs || submitting;
 
   // While the guard effect is still running (or redirect is pending), render nothing.
   if (!account.email.trim() || !subscription) {
@@ -84,18 +87,41 @@ export default function Step8Page() {
   }
 
   return (
-    <StepShell
-      title="Review Your Application"
-      description="Check your details before submitting. You can go back to edit any section."
-      step={8}
-      totalSteps={8}
-      onBack={handleBack}
-      onNext={submit}
-      nextLabel="Submit application"
-      isNextDisabled={isSubmitDisabled}
-      nextHint={isSubmitDisabled ? 'Upload all required verification documents to submit.' : undefined}
-    >
-      <div className="flex flex-col gap-5">
+    <>
+      {submitting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-white/80 backdrop-blur-sm">
+          <svg
+            className="h-8 w-8 animate-spin text-[var(--ob-accent)]"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          <p className="text-sm font-medium text-[var(--ob-primary)]">{submitStep ?? 'Submitting…'}</p>
+        </div>
+      )}
+      <StepShell
+        title="Review Your Application"
+        description="Check your details before submitting. You can go back to edit any section."
+        step={8}
+        totalSteps={8}
+        onBack={handleBack}
+        onNext={submit}
+        nextLabel={submitting ? (submitStep ?? 'Submitting…') : 'Submit application'}
+        isNextDisabled={isSubmitDisabled}
+        nextHint={hasMissingRequiredDocs && !submitting ? 'Upload all required verification documents to submit.' : undefined}
+      >
+        <div className="flex flex-col gap-5">
+          {submitError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              <strong>Submission failed:</strong> {submitError}
+            </div>
+          )}
         {/* Account */}
         <SummarySection
           title="Account"
@@ -192,5 +218,6 @@ export default function Step8Page() {
         />
       </div>
     </StepShell>
+    </>
   );
 }

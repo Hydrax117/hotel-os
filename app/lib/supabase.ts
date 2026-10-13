@@ -51,3 +51,26 @@ export async function deleteImage(storagePath: string): Promise<void> {
   const { error } = await getSupabaseClient().storage.from(BUCKET).remove([storagePath]);
   if (error) throw new Error(error.message);
 }
+
+const DOCUMENTS_BUCKET = 'hotel-documents';
+
+/**
+ * Uploads a verification document to Supabase Storage and returns its public URL.
+ * Path pattern: `${hotelId}/${docType}/${uuid}.${ext}`
+ */
+export async function uploadDocument(
+  file: File,
+  hotelId: string,
+  docType: string,
+): Promise<string> {
+  const ext = file.name.split('.').pop();
+  const path = `${hotelId}/${docType}/${crypto.randomUUID()}.${ext}`;
+
+  const client = getSupabaseClient();
+  const { error } = await client.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw new Error(`Document upload failed: ${error.message}`);
+
+  return client.storage.from(DOCUMENTS_BUCKET).getPublicUrl(path).data.publicUrl;
+}
