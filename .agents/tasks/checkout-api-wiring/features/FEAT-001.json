@@ -26,5 +26,15 @@
     "grep -r 'from.*search/mock' app/checkout/page.tsx app/booking/confirmation/page.tsx — should return no matches"
   ],
   "blocked_reason": null,
-  "findings": "Build passes (exit 0, zero TS errors). The confirmation page 'Contact hotel' button now links to /hotels (generic) instead of /hotels/{hotelId} because hotelId is no longer passed as a URL param — only hotelName/roomName/total/ref/checkIn/checkOut/guests are passed. The original page used hotelId from URL to build the link; the new simplified design drops hotelId so a generic link is used instead. All three steps implemented and verified."
+  "findings": "Build passes (exit 0, zero TS errors). The confirmation page 'Contact hotel' button now links to /hotels (generic) instead of /hotels/{hotelId} because hotelId is no longer passed as a URL param — only hotelName/roomName/total/ref/checkIn/checkOut/guests are passed. The original page used hotelId from URL to build the link; the new simplified design drops hotelId so a generic link is used instead. All three steps implemented and verified.",
+  "iteration1_verification": {
+    "build_exit_code": 0,
+    "typescript_errors": 0,
+    "any_types_in_target_files": false,
+    "mock_imports_in_checkout": false,
+    "mock_imports_in_confirmation": false,
+    "app_bookings_mock_exists": true,
+    "app_hotels_mock_exists": true,
+    "verified_at": "iteration-1"
+  }
 }
