@@ -285,11 +285,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         });
       }
 
-      // 6. Create subscription
+      // 6. Create subscription — guard ensures we never silently complete
+      //    without a subscription record; the UI should prevent this path,
+      //    but submit() enforces the invariant as a fail-loud precondition.
       setState(s => ({ ...s, submitStep: 'Activating subscription…' }));
-      if (snap.subscription) {
-        await createSubscription(hotelId, { plan: snap.subscription });
+      if (!snap.subscription) {
+        throw new Error('No subscription plan selected. Please go back and choose a plan before submitting.');
       }
+      await createSubscription(hotelId, { plan: snap.subscription });
 
       // Done — clear password from state
       setState(s => ({

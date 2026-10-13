@@ -67,9 +67,12 @@ export async function uploadDocument(
   const path = `${hotelId}/${docType}/${crypto.randomUUID()}.${ext}`;
 
   const client = getSupabaseClient();
+  // upsert: false matches uploadImage behaviour — fail loudly on path collisions.
+  // UUID-based paths make collisions practically impossible, but we prefer
+  // fail-loud over silent overwrites to make any future path-reuse bugs visible.
   const { error } = await client.storage
     .from(DOCUMENTS_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, file, { upsert: false, contentType: file.type });
   if (error) throw new Error(`Document upload failed: ${error.message}`);
 
   return client.storage.from(DOCUMENTS_BUCKET).getPublicUrl(path).data.publicUrl;
