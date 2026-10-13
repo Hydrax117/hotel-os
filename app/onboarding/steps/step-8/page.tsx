@@ -152,25 +152,51 @@ export default function Step8Page() {
           ]}
         />
 
-        {/* Verification — required-but-missing docs are highlighted in red */}
-        <SummarySection
-          title="Verification Documents"
-          items={verification.map(doc => ({
-            label: doc.label,
-            value: doc.file
-              ? doc.file.name
-              : doc.required
-                ? (
-                  <span className="flex items-center gap-1 text-red-600 font-medium">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                    </svg>
-                    Required — not uploaded
+        {/* Verification Documents — show thumbnail preview for images, file icon for PDFs */}
+        <div className="rounded-xl border border-[var(--ob-border)] bg-[var(--ob-surface)] p-5">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--ob-secondary)]">
+            Verification Documents
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {verification.map(doc => {
+              const isImage = doc.file && doc.file.type.startsWith('image/');
+              const previewUrl = isImage && doc.file ? URL.createObjectURL(doc.file) : null;
+              return (
+                <div key={doc.id} className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--ob-secondary)]">
+                    {doc.label}{doc.required && <span className="text-red-500 ml-0.5">*</span>}
                   </span>
-                )
-                : 'Skipped',
-          }))}
-        />
+                  {doc.file ? (
+                    isImage && previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewUrl}
+                        alt={doc.label}
+                        className="h-20 w-full rounded-lg object-cover border border-[var(--ob-border)]"
+                        onLoad={() => URL.revokeObjectURL(previewUrl)}
+                      />
+                    ) : (
+                      <div className="flex h-20 items-center justify-center gap-2 rounded-lg border border-[var(--ob-border)] bg-[var(--ob-muted)] px-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 text-[var(--ob-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-xs text-[var(--ob-secondary)] truncate">{doc.file.name}</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className={`flex h-20 items-center justify-center rounded-lg border-2 border-dashed ${doc.required ? 'border-red-300 bg-red-50' : 'border-[var(--ob-border)] bg-[var(--ob-muted)]'}`}>
+                      {doc.required ? (
+                        <span className="text-xs font-medium text-red-600">Required — not uploaded</span>
+                      ) : (
+                        <span className="text-xs text-[var(--ob-secondary)]">Skipped</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Property Info */}
         <SummarySection
@@ -185,14 +211,34 @@ export default function Step8Page() {
           ]}
         />
 
-        {/* Images */}
-        <SummarySection
-          title="Images"
-          items={images.map(slot => ({
-            label: slot.label,
-            value: slot.file ? slot.file.name : 'Not uploaded',
-          }))}
-        />
+        {/* Images — show thumbnails */}
+        <div className="rounded-xl border border-[var(--ob-border)] bg-[var(--ob-surface)] p-5">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--ob-secondary)]">
+            Images
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {images.map(slot => {
+              const previewUrl = slot.preview || (slot.file ? URL.createObjectURL(slot.file) : null);
+              return (
+                <div key={slot.id} className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--ob-secondary)]">{slot.label}</span>
+                  {previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={previewUrl}
+                      alt={slot.label}
+                      className="h-20 w-full rounded-lg object-cover border border-[var(--ob-border)]"
+                    />
+                  ) : (
+                    <div className="flex h-20 items-center justify-center rounded-lg border-2 border-dashed border-[var(--ob-border)] bg-[var(--ob-muted)]">
+                      <span className="text-xs text-[var(--ob-secondary)]">Not uploaded</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Rooms */}
         <SummarySection
