@@ -255,18 +255,22 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         await saveDocument(hotelId, { url, documentType: doc.id, label: doc.label });
       }
 
-      // 4. Upload & save hotel images
+      // 4. Upload & save hotel images (parallel for speed)
       setState(s => ({ ...s, submitStep: 'Uploading images…' }));
-      for (const slot of snap.images) {
-        if (!slot.file) continue;
-        const url = await uploadImage(slot.file, hotelId, slot.id);
-        await saveHotelImage(hotelId, {
-          url,
-          caption: slot.label,
-          isPrimary: slot.id === 'exterior',
-          sortOrder: 0,
-        });
-      }
+      await Promise.all(
+        snap.images
+          .filter(slot => slot.file !== null)
+          .map(slot =>
+            uploadImage(slot.file!, hotelId, slot.id).then(url =>
+              saveHotelImage(hotelId, {
+                url,
+                caption: slot.label,
+                isPrimary: slot.id === 'exterior',
+                sortOrder: 0,
+              })
+            )
+          )
+      );
 
       // 5. Create room types
       setState(s => ({ ...s, submitStep: 'Saving room types…' }));
@@ -296,11 +300,16 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         account: { ...s.account, password: '' },
       }));
     } catch (err: unknown) {
-      const message = err instanceof ApiError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : 'Submission failed. Please try again.';
+      let message: string;
+      if (err instanceof ApiError && err.status === 409) {
+        message = 'An account with this email already exists. Please sign in instead.';
+      } else if (err instanceof ApiError) {
+        message = err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      } else {
+        message = 'Submission failed. Please try again.';
+      }
       setState(s => ({ ...s, submitting: false, submitStep: null, submitError: message }));
     }
   };
