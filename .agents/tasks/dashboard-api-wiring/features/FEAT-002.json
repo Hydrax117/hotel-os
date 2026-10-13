@@ -1,0 +1,38 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Wire all four dashboard pages and DashboardTopbar to real API data. Depends on FEAT-001 (app/lib/api/dashboard.ts must exist first). Removes all MOCK_* imports from the four pages and DashboardTopbar. Adds auth gates. Adds loading and error states.",
+  "status": "completed",
+  "steps": [
+    "STEP 1 — app/dashboard/overview/page.tsx: This is currently a server async component using `connection()` from next/server and `export const instant = false`. It CANNOT use useAuth() (client hook). Auth gate for server components works by checking cookies/tokens server-side — but since tokens are stored in localStorage, we cannot read them server-side. Decision: Convert overview/page.tsx to a client component ('use client') and use the same pattern as reservations/page.tsx. Remove `connection()` and `export const instant = false`. Add useAuth() + useRouter() for the auth gate. Add useState for data, loading, error. Fetch: call getMyHotel() on mount; if null/error show error state. With hotelId, call getDashboardStats(hotelId), getDashboardReservations(hotelId), getDashboardRoomTypes(hotelId) in parallel using Promise.all. Replace all MOCK_* references with real API data: hotel name in greeting -> hotel.name, stats from getDashboardStats, upcoming reservations from filtered getDashboardReservations, room availability from getDashboardRoomTypes. Remove import of MOCK_HOTEL, MOCK_RESERVATIONS, MOCK_REVENUE_DAYS, MOCK_ROOM_TYPES from '../mock/data'. The revenue chart: if no revenue endpoint exists, compute from reservations (sum amountNgn grouped by checkOut date for the last 7 days) or hide the chart with a 'Revenue data not yet available' placeholder — choose the placeholder approach since the bar chart relies on MOCK_REVENUE_DAYS which has no API equivalent in scope.",
+
+    "STEP 2 — app/dashboard/reservations/page.tsx: Already 'use client'. Add useAuth() + useRouter() auth gate at top of component. Remove import of MOCK_RESERVATIONS. Add useState: reservations (DashboardReservation[]), isLoading (boolean), error (string|null). Add useEffect: call getMyHotel() then getDashboardReservations(hotelId). Replace MOCK_RESERVATIONS with the reservations state variable throughout (filtered, totalPages, etc). Show a full-page loading state while isLoading. Show an error banner if error is set. The total count badge changes from MOCK_RESERVATIONS.length to reservations.length. All filter/search/pagination logic stays identical — it operates on the in-memory array.",
+
+    "STEP 3 — app/dashboard/rooms/page.tsx: Currently a plain server component (no 'use client'). Convert to a client component. Remove import of MOCK_ROOM_TYPES. Add useAuth(), useRouter(), useState, useEffect. Auth gate. Fetch getMyHotel() then getDashboardRoomTypes(hotelId). Show loading skeleton (simple spinner or skeleton cards). Replace MOCK_ROOM_TYPES.map(...) with roomTypes.map(...) where roomTypes is the state variable. DashboardRoomType matches RoomType structure exactly (same field names), so no mapping needed in the JSX.",
+
+    "STEP 4 — app/dashboard/inventory/page.tsx: Already 'use client'. Add useAuth() + useRouter() auth gate. Remove import of MOCK_INVENTORY. Change the initial useState from MOCK_INVENTORY to []. Add useEffect: call getMyHotel() then getDashboardInventory(hotelId). Replace MOCK_INVENTORY with the loaded data. The existing edit-cell and save logic stays identical — it operates on local state. Add isLoading and error states. Show loading skeleton when isLoading. If the inventory endpoint returns empty (backend 404 graceful fallback), show a 'No inventory data' message.",
+
+    "STEP 5 — app/dashboard/components/DashboardTopbar.tsx: Currently uses MOCK_HOTEL.name for the hotel name chip and avatar initials. Add useAuth() to get the authenticated user. Replace MOCK_HOTEL.name chip with `{user?.firstName} {user?.lastName}` or simply the user's first name. Replace initials from hotel name with initials from user name: `(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')`. Remove import of MOCK_HOTEL from '../mock/data'. Since the topbar only needs the user object (not hotelId), no API call is needed — useAuth() provides it directly.",
+
+    "STEP 6 — Auth gate pattern (same across all four pages): At the top of each client component after the hooks section: `const { user, isLoading: authLoading } = useAuth(); const router = useRouter(); useEffect(() => { if (!authLoading && !user) { router.replace('/auth/signin'); } }, [authLoading, user, router]);` — and early return `if (authLoading) return <LoadingSpinner />` while auth is resolving. This prevents the page from making API calls before auth is confirmed.",
+
+    "STEP 7 — Loading and error UI: Add a simple reusable inline loader. Do not create a new shared component — inline a `<div>` with a centered spinner SVG or text 'Loading…' styled with --db-* tokens. For errors, show: `<div className='rounded-xl border p-6 text-center' style={{...}}><p>Failed to load data. Please try again.</p><button onClick={() => window.location.reload()}>Retry</button></div>`."
+  ],
+  "acceptance_criteria": [
+    "No page imports from '../mock/data' anymore (MOCK_HOTEL, MOCK_RESERVATIONS, MOCK_ROOM_TYPES, MOCK_INVENTORY, MOCK_REVENUE_DAYS are not used in any of the 4 pages or DashboardTopbar)",
+    "All 4 pages redirect to /auth/signin when user is not authenticated",
+    "Overview page renders hotel name from API user or hotel object, not from MOCK_HOTEL",
+    "Reservations page renders real bookings from getDashboardReservations; search and filter work on live data",
+    "Rooms page renders real room types from getDashboardRoomTypes",
+    "Inventory page renders real inventory from getDashboardInventory (or empty state if backend returns none)",
+    "DashboardTopbar shows authenticated user's name/initials, not MOCK_HOTEL.name",
+    "StatusBadge still works — normalized BookingStatus values (lowercase) are passed to it",
+    "npx next build exits 0 with no TypeScript errors across all changed files"
+  ],
+  "verification": [
+    "Run `npx next build` from c:\\Users\\Pkaka\\music\\hotel-os and confirm exit code 0",
+    "Confirm grep finds no remaining MOCK_ imports in the 5 changed files: `Select-String -Path 'app/dashboard/overview/page.tsx','app/dashboard/reservations/page.tsx','app/dashboard/rooms/page.tsx','app/dashboard/inventory/page.tsx','app/dashboard/components/DashboardTopbar.tsx' -Pattern 'MOCK_'` — expect no output"
+  ],
+  "blocked_reason": null,
+  "findings": "Build passed (exit 0). All 5 files converted to client components with auth gates, real API wiring, and loading/error states. MOCK_* imports removed from all 5 files. Revenue bar chart replaced with static placeholder. DashboardTopbar now uses useAuth() for user name and initials."
+}

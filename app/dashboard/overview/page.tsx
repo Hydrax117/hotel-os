@@ -1,18 +1,20 @@
-// Force dynamic rendering so new Date() resolves at request time, not build time
-import { connection } from 'next/server';
+'use client';
 
-// Allow blocking prerender (required for connection() with cacheComponents: true)
-export const instant = false;
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import {
-  MOCK_HOTEL,
-  MOCK_RESERVATIONS,
-  MOCK_REVENUE_DAYS,
-  MOCK_ROOM_TYPES,
-} from '../mock/data';
+  getMyHotel,
+  getDashboardStats,
+  getDashboardReservations,
+  getDashboardRoomTypes,
+  type DashboardHotel,
+  type DashboardStats,
+  type DashboardReservation,
+  type DashboardRoomType,
+} from '../../lib/api/dashboard';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -20,18 +22,105 @@ function formatNgn(amount: number): string {
   return '₦' + amount.toLocaleString('en-NG');
 }
 
-function formatBarDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function OverviewPage() {
-  // Opt into dynamic rendering so new Date() resolves at request time
-  await connection();
+export default function OverviewPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
 
-  // a) Greeting data
+  const [hotel, setHotel]               = useState<DashboardHotel | null>(null);
+  const [stats, setStats]               = useState<DashboardStats | null>(null);
+  const [reservations, setReservations] = useState<DashboardReservation[]>([]);
+  const [roomTypes, setRoomTypes]       = useState<DashboardRoomType[]>([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/signin');
+    }
+  }, [authLoading, user, router]);
+
+  // Data fetch — only after auth confirmed
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    async function fetchData() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const hotelData = await getMyHotel();
+        if (cancelled) return;
+        if (!hotelData) {
+          setError('Could not load hotel data. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+        setHotel(hotelData);
+
+        const [statsData, reservationsData, roomTypesData] = await Promise.all([
+          getDashboardStats(hotelData.id),
+          getDashboardReservations(hotelData.id),
+          getDashboardRoomTypes(hotelData.id),
+        ]);
+        if (cancelled) return;
+        setStats(statsData);
+        setReservations(reservationsData);
+        setRoomTypes(roomTypesData);
+      } catch {
+        if (!cancelled) setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  // Redirect in progress
+  if (!user) return null;
+
+  // Data loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading dashboard…
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div
+        className="rounded-xl border p-6 text-center"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
+      >
+        <p className="mb-4" style={{ color: 'var(--db-secondary)' }}>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   const today = new Date();
   const dateLabel = today.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -40,27 +129,11 @@ export default async function OverviewPage() {
     year: 'numeric',
   });
 
-  // b) Stats
-  const lastDay = MOCK_REVENUE_DAYS[MOCK_REVENUE_DAYS.length - 1];
-  const upcomingCheckIns = MOCK_RESERVATIONS.filter(r => r.status === 'confirmed').length;
-  const upcomingCheckOuts = MOCK_RESERVATIONS.filter(r => r.status === 'checked_in').length;
-
-  // c) Revenue chart — last 7 days
-  const chartDays = MOCK_REVENUE_DAYS.slice(-7);
-  const maxRevenue = Math.max(...chartDays.map(d => d.revenueNgn));
-  const BAR_MAX_H = 100;
-  const BAR_W = 56;
-  const CHART_H = 140;
-  const LABEL_Y = CHART_H - 10; // date label y
-  const AMOUNT_Y_OFFSET = 12;   // above bar top
-
-  // d) Upcoming reservations table
-  const upcomingReservations = MOCK_RESERVATIONS
+  const upcomingReservations = reservations
     .filter(r => r.status === 'confirmed' || r.status === 'pending')
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn))
     .slice(0, 5);
 
-  // e) Room availability
   function availabilityColor(rt: { availableRooms: number; totalRooms: number }): string {
     const ratio = rt.availableRooms / rt.totalRooms;
     if (ratio > 0.5) return 'var(--db-success)';
@@ -81,7 +154,7 @@ export default async function OverviewPage() {
       {/* ── a) Greeting ── */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">
-          Good morning, {MOCK_HOTEL.name} 👋
+          Good morning, {hotel?.name ?? 'Your Hotel'} 👋
         </h1>
         <p className="text-sm" style={{ color: 'var(--db-secondary)' }}>{dateLabel}</p>
       </div>
@@ -90,7 +163,7 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard
           label="Today's Occupancy"
-          value={`${MOCK_HOTEL.occupancyPercent}%`}
+          value={`${stats?.occupancyPercent ?? 0}%`}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M3 12L12 3L21 12V20H15V14H9V20H3V12Z" />
@@ -99,7 +172,7 @@ export default async function OverviewPage() {
         />
         <StatCard
           label="Today's Revenue"
-          value={formatNgn(lastDay.revenueNgn)}
+          value={formatNgn(stats?.todayRevenueNgn ?? 0)}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="9" />
@@ -109,7 +182,7 @@ export default async function OverviewPage() {
         />
         <StatCard
           label="Bookings Today"
-          value={String(lastDay.bookings)}
+          value={String(stats?.bookingsToday ?? 0)}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -121,7 +194,7 @@ export default async function OverviewPage() {
         />
         <StatCard
           label="Upcoming Check-ins"
-          value={String(upcomingCheckIns)}
+          value={String(stats?.upcomingCheckIns ?? 0)}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -132,7 +205,7 @@ export default async function OverviewPage() {
         />
         <StatCard
           label="Upcoming Check-outs"
-          value={String(upcomingCheckOuts)}
+          value={String(stats?.upcomingCheckOuts ?? 0)}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -143,59 +216,13 @@ export default async function OverviewPage() {
         />
       </div>
 
-      {/* ── c) Revenue bar chart ── */}
+      {/* ── c) Revenue chart placeholder ── */}
       <div
         className="rounded-xl border p-5"
         style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
       >
-        <h2 className="mb-4 text-sm font-semibold" style={{ color: 'var(--db-primary)' }}>
-          Revenue — Last 7 Days
-        </h2>
-        <svg
-          viewBox={`0 0 560 ${CHART_H}`}
-          width="100%"
-          aria-label="Revenue bar chart for the last 7 days"
-          role="img"
-        >
-          {chartDays.map((day, i) => {
-            const barH = maxRevenue > 0 ? Math.round((day.revenueNgn / maxRevenue) * BAR_MAX_H) : 0;
-            const x = i * BAR_W;
-            const barY = CHART_H - 30 - barH; // 30px bottom padding for label
-            return (
-              <g key={day.date}>
-                {/* Amount label above bar */}
-                <text
-                  x={x + BAR_W / 2}
-                  y={barY - AMOUNT_Y_OFFSET}
-                  textAnchor="middle"
-                  fontSize="8"
-                  fill="var(--db-secondary)"
-                >
-                  {formatNgn(day.revenueNgn)}
-                </text>
-                {/* Bar */}
-                <rect
-                  x={x + 6}
-                  y={barY}
-                  width={BAR_W - 12}
-                  height={barH}
-                  rx="4"
-                  fill="var(--db-accent)"
-                />
-                {/* Date label */}
-                <text
-                  x={x + BAR_W / 2}
-                  y={LABEL_Y}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fill="var(--db-secondary)"
-                >
-                  {formatBarDate(day.date)}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+        <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--db-primary)' }}>Revenue — Last 7 Days</h2>
+        <p className="text-sm" style={{ color: 'var(--db-secondary)' }}>Revenue analytics coming soon.</p>
       </div>
 
       {/* ── d) Upcoming reservations mini-table ── */}
@@ -252,7 +279,7 @@ export default async function OverviewPage() {
           Room Availability
         </h2>
         <div className="grid grid-cols-2 gap-4">
-          {MOCK_ROOM_TYPES.map(rt => {
+          {roomTypes.map(rt => {
             const pillColor = availabilityColor(rt);
             const pillLabel = availabilityLabel(rt);
             return (
@@ -281,6 +308,11 @@ export default async function OverviewPage() {
               </div>
             );
           })}
+          {roomTypes.length === 0 && (
+            <p className="col-span-2 text-sm" style={{ color: 'var(--db-secondary)' }}>
+              No room types found.
+            </p>
+          )}
         </div>
       </div>
 

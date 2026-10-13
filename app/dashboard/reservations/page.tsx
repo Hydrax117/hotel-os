@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_RESERVATIONS } from '../mock/data';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
 import { StatusBadge } from '../components/StatusBadge';
+import {
+  getMyHotel,
+  getDashboardReservations,
+  type DashboardReservation,
+} from '../../lib/api/dashboard';
 import type { BookingStatus } from '../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -30,14 +36,58 @@ const PAGE_SIZE = 10;
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ReservationsPage() {
-  const [search, setSearch]         = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [page, setPage]             = useState(0);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [reservations, setReservations] = useState<DashboardReservation[]>([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+
+  const [search, setSearch]               = useState('');
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>('all');
+  const [page, setPage]                   = useState(0);
+  const [hoveredRow, setHoveredRow]       = useState<string | null>(null);
+
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/signin');
+    }
+  }, [authLoading, user, router]);
+
+  // Data fetch — only after auth confirmed
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    async function fetchData() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const hotelData = await getMyHotel();
+        if (cancelled) return;
+        if (!hotelData) {
+          setError('Could not load hotel data. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+        const data = await getDashboardReservations(hotelData.id);
+        if (!cancelled) setReservations(data);
+      } catch {
+        if (!cancelled) setError('Failed to load reservations. Please try again.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, [user]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return MOCK_RESERVATIONS.filter(r => {
+    return reservations.filter(r => {
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
       const matchesSearch =
         !q ||
@@ -45,7 +95,7 @@ export default function ReservationsPage() {
         r.id.toLowerCase().includes(q);
       return matchesStatus && matchesSearch;
     });
-  }, [search, statusFilter]);
+  }, [reservations, search, statusFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const startIdx   = page * PAGE_SIZE;
@@ -62,6 +112,45 @@ export default function ReservationsPage() {
     setPage(0);
   }
 
+  // Auth loading
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  // Data loading
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading reservations…
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div
+        className="rounded-xl border p-6 text-center"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
+      >
+        <p className="mb-4" style={{ color: 'var(--db-secondary)' }}>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6" style={{ color: 'var(--db-primary)' }}>
 
@@ -72,7 +161,7 @@ export default function ReservationsPage() {
           className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
           style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)' }}
         >
-          {MOCK_RESERVATIONS.length}
+          {reservations.length}
         </span>
       </div>
 

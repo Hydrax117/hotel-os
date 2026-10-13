@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { MOCK_HOTEL } from '../mock/data';
+import { useAuth } from '../../lib/auth-context';
 
 type DashboardTopbarProps = {
   onMenuToggle: () => void;
@@ -30,13 +30,13 @@ function getPageTitle(pathname: string): string {
 export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { user } = useAuth();
 
-  // Derive initials from the hotel name for the user avatar
-  const initials = MOCK_HOTEL.name
-    .split(' ')
-    .slice(0, 2)
-    .map(w => w[0])
-    .join('');
+  const initials = user
+    ? (user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')
+    : 'HO';
+
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Hotel OS';
 
   return (
     <header
@@ -69,7 +69,7 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
         {pageTitle}
       </h1>
 
-      {/* Hotel name chip */}
+      {/* User name chip */}
       <span
         className="hidden items-center rounded-full border px-3 py-1 text-xs font-medium sm:flex"
         style={{
@@ -78,7 +78,7 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
           background: 'var(--db-muted)',
         }}
       >
-        {MOCK_HOTEL.name}
+        {displayName}
       </span>
 
       {/* Notification bell */}
@@ -98,7 +98,7 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
       <div
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
         style={{ background: 'var(--db-accent)' }}
-        title={MOCK_HOTEL.name}
+        title={user?.firstName ?? 'User'}
         aria-label={`User avatar: ${initials}`}
       >
         {initials}
