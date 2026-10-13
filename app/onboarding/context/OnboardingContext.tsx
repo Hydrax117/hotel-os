@@ -208,11 +208,67 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setState(s => ({ ...s, subscription: plan }));
 
   const submit = async (): Promise<void> => {
-    setState(s => ({ ...s, submitting: true, submitError: null, submitStep: 'Creating account…' }));
-    // Capture a snapshot of state at the moment submit() is called.
-    // All subsequent reads use this snapshot so that intermediate setState calls
-    // (which only update progress fields) don't overwrite the form data we need.
+    // ── Pre-flight validation ─────────────────────────────────────────────────
+    // Validate ALL fields before making any network request.
+    // Collect every error so the user sees them all at once.
     const snap = state;
+    const errors: string[] = [];
+
+    // Step 1 — Account
+    if (!snap.account.name.trim())
+      errors.push('Full name is required (Step 1).');
+    if (!snap.account.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(snap.account.email))
+      errors.push('A valid email address is required (Step 1).');
+    if (!snap.account.phone.trim())
+      errors.push('Phone number is required (Step 1).');
+    if (!snap.account.password || snap.account.password.length < 8)
+      errors.push('Password must be at least 8 characters (Step 1).');
+
+    // Step 2 — Property
+    if (!snap.property.hotelName.trim())
+      errors.push('Hotel name is required (Step 2).');
+    if (!snap.property.description.trim())
+      errors.push('Hotel description is required (Step 2).');
+    if (!snap.property.address.trim())
+      errors.push('Address is required (Step 2).');
+    if (!snap.property.city.trim())
+      errors.push('City is required (Step 2).');
+    if (!snap.property.state.trim())
+      errors.push('State is required (Step 2).');
+
+    // Step 3 — Required verification documents
+    const missingDocs = snap.verification.filter(d => d.required && !d.file);
+    if (missingDocs.length > 0)
+      errors.push(`Missing required documents: ${missingDocs.map(d => d.label).join(', ')} (Step 3).`);
+
+    // Step 6 — Room types (at least one required)
+    if (snap.rooms.length === 0)
+      errors.push('Add at least one room type (Step 6).');
+    snap.rooms.forEach((room, i) => {
+      if (!room.name.trim())
+        errors.push(`Room ${i + 1}: name is required (Step 6).`);
+      if (!room.bedType.trim())
+        errors.push(`Room ${i + 1}: bed type is required (Step 6).`);
+      if (room.pricePerNight <= 0)
+        errors.push(`Room ${i + 1}: price per night must be greater than 0 (Step 6).`);
+      if (room.totalRooms <= 0)
+        errors.push(`Room ${i + 1}: total rooms must be greater than 0 (Step 6).`);
+    });
+
+    // Step 7 — Subscription
+    if (!snap.subscription)
+      errors.push('Please select a subscription plan (Step 7).');
+
+    if (errors.length > 0) {
+      setState(s => ({
+        ...s,
+        submitError: errors.join('\n'),
+      }));
+      return;
+    }
+    // ── End validation ────────────────────────────────────────────────────────
+
+    setState(s => ({ ...s, submitting: true, submitError: null, submitStep: 'Creating account…' }));
     try {
       // 1. Register account — storeTokens/storeUser are called inside register()
       const nameParts = snap.account.name.trim().split(/\s+/);

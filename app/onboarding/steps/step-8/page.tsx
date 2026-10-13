@@ -119,7 +119,12 @@ export default function Step8Page() {
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
             >
-              <strong>Submission failed:</strong> {submitError}
+              <strong className="block mb-1">Please fix the following before submitting:</strong>
+              <ul className="list-disc list-inside flex flex-col gap-1">
+                {submitError.split('\n').map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
             </div>
           )}
         {/* Account */}
