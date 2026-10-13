@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Create app/lib/api/dashboard.ts — the single API module for all hotel dashboard data. Exports 5 functions and their types, all using apiClient from client.ts. This is independent of page changes; pages import from it in FEAT-002.",
+  "status": "completed",
+  "steps": [
+    "Create app/lib/api/dashboard.ts with the following exported types and functions:",
+
+    "1. Type `DashboardHotel`: { id, name, city, state, subscriptionPlan, occupancyRate } — maps to GET /api/v1/hotels/:id (the auth user's hotel). Assumption: the hotel owner's hotelId is stored on the authenticated user or returned by a dedicated endpoint. Since the backend user object does not carry hotelId in AuthUser (which only has id, email, firstName, lastName, role), use a 'my-hotel' pattern: GET /api/v1/hotels/my — fetch the hotel owned by the authenticated user. Fallback: if GET /api/v1/hotels/my returns 404/error, return null (dashboard will show an error state). IMPORTANT: Use apiClient.get() — not a raw serverFetch — because this endpoint is protected and needs the Bearer token.",
+
+    "2. Type `DashboardReservation`: { id, guestName, guestEmail, roomTypeName, roomNumber, checkIn, checkOut, nights, amountNgn, status: BookingStatus, createdAt }. Function `getDashboardReservations(hotelId: string): Promise<DashboardReservation[]>` — GET /api/v1/hotels/:hotelId/bookings. Map API booking status (UPPERCASE) to dashboard BookingStatus (lowercase) using this mapping: HELD->'pending', CONFIRMED->'confirmed', CHECKED_IN->'checked_in', CHECKED_OUT->'checked_out', CANCELLED->'cancelled', PAYMENT_PENDING->'pending', NO_SHOW->'no_show', PENDING->'pending'. Map API fields: booking.id->id, booking.user?.firstName+lastName->guestName, booking.user?.email->guestEmail, booking.room?.name->roomTypeName, booking.roomNumber||'–'->roomNumber, booking.checkIn->checkIn, booking.checkOut->checkOut, computed nights from checkIn/checkOut dates->nights, booking.totalAmount->amountNgn. If the API returns a paginated wrapper { data: [...], total, page }, unwrap .data. If it returns a plain array, use it directly.",
+
+    "3. Type `DashboardRoomType`: { id, name, totalRooms, availableRooms, pricePerNight, bedType, capacity, imageUrl? }. Function `getDashboardRoomTypes(hotelId: string): Promise<DashboardRoomType[]>` — GET /api/v1/hotels/:hotelId/rooms. Map: room.id, room.name, room.totalRooms (or room.quantity), room.availableRooms (or room.available), room.pricePerNight, room.bedType, room.capacity (or room.maxGuests), room.imageUrl. If the API returns { rooms: [...] }, unwrap .rooms.",
+
+    "4. Type `DashboardInventoryDay`: { date, available, held, booked }. Type `DashboardRoomInventory`: { roomTypeId, roomTypeName, days: DashboardInventoryDay[] }. Function `getDashboardInventory(hotelId: string): Promise<DashboardRoomInventory[]>` — GET /api/v1/hotels/:hotelId/inventory. Expected response: array of { roomTypeId, roomTypeName, days: [{ date, available, held, booked }] }. If the backend does not have this endpoint (404/500), catch the error and return an empty array so the inventory page degrades gracefully.",
+
+    "5. Type `DashboardStats`: { occupancyPercent, todayRevenueNgn, bookingsToday, upcomingCheckIns, upcomingCheckOuts }. Function `getDashboardStats(hotelId: string): Promise<DashboardStats>` — GET /api/v1/hotels/:hotelId/stats or GET /api/v1/hotels/:hotelId/analytics/overview. If the endpoint does not exist, derive stats from reservations: compute occupancyPercent from confirmed+checked_in / total rooms, todayRevenueNgn by summing today's checked_out reservations, etc. Return a DashboardStats object in all cases.",
+
+    "6. Function `getMyHotel(): Promise<DashboardHotel | null>` — GET /api/v1/hotels/my using apiClient.get<DashboardHotel>('/api/v1/hotels/my'). Catch errors and return null. This is the entry point for all dashboard pages to get their hotelId.",
+
+    "All functions use apiClient (imported from ./client), NOT a raw fetch, so the auth token is automatically included. All functions are async and return typed Promises. Export all types and all functions."
+  ],
+  "acceptance_criteria": [
+    "app/lib/api/dashboard.ts compiles with zero TypeScript errors",
+    "All 5 functions are exported: getMyHotel, getDashboardReservations, getDashboardRoomTypes, getDashboardInventory, getDashboardStats",
+    "DashboardReservation.status is typed as BookingStatus (imported from ../dashboard/types), not as string",
+    "Status mapping covers all 8 ApiBookingStatus variants with no unhandled cases",
+    "npx next build exits 0 with no errors related to dashboard.ts"
+  ],
+  "verification": [
+    "Run `npx next build` from c:\\Users\\Pkaka\\music\\hotel-os and confirm exit code 0",
+    "Run `npx tsc --noEmit` (or check build output) and confirm no TypeScript errors in app/lib/api/dashboard.ts"
+  ],
+  "blocked_reason": null,
+  "findings": "API shape assumptions: (1) GET /api/v1/hotels/my returns a DashboardHotel-shaped object; 404/error returns null. (2) GET /api/v1/hotels/:id/bookings may return a plain array or { data: [...] } paginated wrapper — both handled. (3) GET /api/v1/hotels/:id/rooms may return a plain array or { rooms: [...] } — both handled. Room fields may use 'quantity'/'available'/'maxGuests' as alternates to 'totalRooms'/'availableRooms'/'capacity' — fallback applied. (4) GET /api/v1/hotels/:id/inventory returns [] on any error (endpoint may not exist). (5) getDashboardStats tries /stats, then /analytics/overview, then derives from reservations — always returns a DashboardStats object with no throws."
+}
