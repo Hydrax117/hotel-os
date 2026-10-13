@@ -1,14 +1,25 @@
-import React from 'react';
-import { connection } from 'next/server';
-import { PLATFORM_STATS } from '../mock';
+'use client';
 
-export const instant = false;
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth-context';
+import { getAdminStats, type AdminStats } from '../../lib/api/admin';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtNgn(n: number): string {
   if (n >= 1_000_000) return '₦' + (n / 1_000_000).toFixed(1) + 'm';
   return '₦' + n.toLocaleString('en-NG');
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '32px 24px' }}>
+      <div style={{ height: 28, width: 200, background: 'var(--ad-muted)', borderRadius: 6, marginBottom: 24 }} />
+      <div style={{ height: 100, background: 'var(--ad-muted)', borderRadius: 8 }} />
+    </div>
+  );
 }
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
@@ -115,8 +126,65 @@ const RECENT_REPORTS: RecentReport[] = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function AdminReportsPage() {
-  await connection();
+export default function AdminReportsPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setIsLoading(true);
+    setError(null);
+    getAdminStats()
+      .then(setStats)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load stats');
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (!authLoading && user?.role === 'SUPER_ADMIN') {
+      load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
+
+  if (authLoading) return <LoadingSkeleton />;
+
+  if (!user || user.role !== 'SUPER_ADMIN') {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-secondary)' }}>Access denied. Super admin role required.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-danger)', marginBottom: 12 }}>{error}</p>
+        <button
+          type="button"
+          onClick={load}
+          style={{
+            background: 'var(--ad-accent)',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '32px 24px', maxWidth: '1200px' }}>
@@ -130,13 +198,13 @@ export default async function AdminReportsPage() {
         </p>
       </div>
 
-      {/* Platform stats cards */}
+      {/* Platform stats cards — sourced from GET /api/v1/admin/stats */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '32px' }}>
         {[
-          { label: 'Total GMV', value: fmtNgn(PLATFORM_STATS.gmvNgn) },
-          { label: 'Platform Revenue', value: fmtNgn(PLATFORM_STATS.platformRevenueNgn) },
-          { label: 'Active Hotels', value: String(PLATFORM_STATS.activeHotels) },
-          { label: 'Total Travelers', value: String(PLATFORM_STATS.totalTravelers) },
+          { label: 'Total GMV', value: fmtNgn(stats?.gmvNgn ?? 0) },
+          { label: 'Platform Revenue', value: fmtNgn(stats?.platformRevenueNgn ?? 0) },
+          { label: 'Active Hotels', value: String(stats?.activeHotels ?? 0) },
+          { label: 'Total Travelers', value: String(stats?.totalTravelers ?? 0) },
         ].map(s => (
           <div
             key={s.label}
