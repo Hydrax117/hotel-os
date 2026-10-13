@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import {
   getMyHotel,
-  getHotelProfile,
   type DashboardHotel,
 } from '../../lib/api/dashboard';
 
@@ -89,8 +88,7 @@ export default function ProfilePage() {
           setIsLoading(false);
           return;
         }
-        const profile = await getHotelProfile();
-        if (!cancelled) setHotel(profile ?? myHotel);
+        if (!cancelled) setHotel(myHotel);
       } catch {
         if (!cancelled) setError('Failed to load profile. Please try again.');
       } finally {

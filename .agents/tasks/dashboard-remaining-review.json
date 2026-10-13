@@ -1,0 +1,10 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    "Staff mutations are local-state-only — handleInvite, toggleStatus, and removeMember mutate staffList in memory only. No API call is made to POST/PATCH/DELETE /api/v1/hotels/:id/staff. A page refresh resets all changes. Wire mutations to the API or mark buttons as coming soon.",
+    "Revenue trend bucketed by checkIn, not checkOut — analytics/page.tsx groups revenue by b.checkIn.slice(0, 10). Revenue is earned at checkout; using check-in date skews the chart for multi-night stays. Change to b.checkOut.slice(0, 10).",
+    "No build log covers HEAD commit — checkout-build.log predates b64cf71 by over an hour. No npx next build output exists to confirm the current codebase compiles without TypeScript errors. A passing build log must be committed alongside the feature commit.",
+    "getHotelProfile is a redundant alias — dashboard.ts defines getHotelProfile as return getMyHotel(). The profile page calls both sequentially, doubling the network round-trip with no additional data. Remove one call or change getHotelProfile to hit an extended endpoint."
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\dashboard-remaining-review.md"
+}

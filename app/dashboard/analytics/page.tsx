@@ -260,7 +260,8 @@ export default function AnalyticsPage() {
           const cutoffMs = Date.now() - 14 * 24 * 60 * 60 * 1000;
           const dayMap = new Map<string, number>();
           for (const b of confirmedRes) {
-            const d = b.checkIn.slice(0, 10);
+            // Use checkOut date so revenue is attributed to when the stay ended
+            const d = b.checkOut.slice(0, 10);
             if (new Date(d).getTime() >= cutoffMs) {
               dayMap.set(d, (dayMap.get(d) ?? 0) + b.amountNgn);
             }

@@ -6,6 +6,9 @@ import { useAuth } from '../../lib/auth-context';
 import {
   getMyHotel,
   getHotelStaff,
+  inviteStaffMember,
+  updateStaffStatus,
+  removeStaffMember,
   type DashboardStaffMember,
 } from '../../lib/api/dashboard';
 import type { StaffRole } from '../types';
@@ -60,23 +63,32 @@ function getInitials(name: string): string {
 
 type InviteModalProps = {
   onClose:  () => void;
-  onInvite: (name: string, email: string, role: StaffRole) => void;
+  onInvite: (name: string, email: string, role: StaffRole) => Promise<void>;
+  apiError: string;
 };
 
-function InviteModal({ onClose, onInvite }: InviteModalProps) {
-  const [name,  setName]  = useState('');
-  const [email, setEmail] = useState('');
-  const [role,  setRole]  = useState<StaffRole>('staff');
-  const [error, setError] = useState('');
+function InviteModal({ onClose, onInvite, apiError }: InviteModalProps) {
+  const [name,        setName]        = useState('');
+  const [email,       setEmail]       = useState('');
+  const [role,        setRole]        = useState<StaffRole>('staff');
+  const [error,       setError]       = useState('');
+  const [submitting,  setSubmitting]  = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       setError('All fields are required.');
       return;
     }
     setError('');
-    onInvite(name.trim(), email.trim(), role);
+    setSubmitting(true);
+    try {
+      await onInvite(name.trim(), email.trim(), role);
+    } catch {
+      // error surfaced via apiError prop
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -139,8 +151,8 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
             </select>
           </div>
 
-          {error && (
-            <p className="text-xs" style={{ color: 'var(--db-danger)' }}>{error}</p>
+          {(error || apiError) && (
+            <p className="text-xs" style={{ color: 'var(--db-danger)' }}>{error || apiError}</p>
           )}
 
           <div className="mt-2 flex justify-end gap-3">
@@ -154,10 +166,11 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
             </button>
             <button
               type="submit"
+              disabled={submitting}
               className="rounded-lg px-4 py-2 text-sm font-medium text-white"
-              style={{ background: 'var(--db-accent)' }}
+              style={{ background: 'var(--db-accent)', opacity: submitting ? 0.6 : 1 }}
             >
-              Send Invite
+              {submitting ? 'Sending…' : 'Send Invite'}
             </button>
           </div>
         </form>
@@ -194,6 +207,7 @@ export default function StaffPage() {
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState<string | null>(null);
   const [inviteOpen,       setInviteOpen]       = useState(false);
+  const [inviteApiError,   setInviteApiError]   = useState('');
   const [confirmRemoveId,  setConfirmRemoveId]  = useState<string | null>(null);
 
   // Auth gate
@@ -233,34 +247,53 @@ export default function StaffPage() {
     return () => { cancelled = true; };
   }, [user]);
 
-  function handleInvite(name: string, email: string, role: StaffRole) {
-    const apiRole = role.toUpperCase() as DashboardStaffMember['role'];
-    const newMember: DashboardStaffMember = {
-      id:             'staff-new-' + Date.now(),
-      name,
-      email,
-      role:           apiRole,
-      status:         'active',
-      lastActive:     new Date().toISOString(),
-      avatarInitials: getInitials(name),
-    };
-    setStaffList(prev => [...prev, newMember]);
-    setInviteOpen(false);
+  async function handleInvite(name: string, email: string, role: StaffRole) {
+    if (!hotelId) return;
+    setInviteApiError('');
+    const apiRole = role.toUpperCase();
+    try {
+      const newMember = await inviteStaffMember(hotelId, { name, email, role: apiRole });
+      // Ensure avatarInitials is populated (API may omit it)
+      const member: DashboardStaffMember = {
+        ...newMember,
+        avatarInitials: newMember.avatarInitials || getInitials(newMember.name || name),
+      };
+      setStaffList(prev => [...prev, member]);
+      setInviteOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to invite staff member.';
+      setInviteApiError(msg);
+      throw err; // re-throw so modal can track submitting state
+    }
   }
 
-  function toggleStatus(id: string) {
-    setStaffList(prev =>
-      prev.map(s =>
-        s.id === id
-          ? { ...s, status: s.status === 'active' ? ('inactive' as const) : ('active' as const) }
-          : s,
-      ),
-    );
+  async function toggleStatus(id: string) {
+    if (!hotelId) return;
+    const member = staffList.find(s => s.id === id);
+    if (!member) return;
+    const newStatus = member.status === 'active' ? ('inactive' as const) : ('active' as const);
+    // Optimistic update
+    setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
+    try {
+      await updateStaffStatus(hotelId, id, newStatus);
+    } catch {
+      // Revert on error
+      setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: member.status } : s));
+    }
   }
 
-  function removeMember(id: string) {
-    setStaffList(prev => prev.filter(s => s.id !== id));
+  async function removeMember(id: string) {
+    if (!hotelId) return;
+    const prev = staffList;
+    // Optimistic remove
+    setStaffList(p => p.filter(s => s.id !== id));
     setConfirmRemoveId(null);
+    try {
+      await removeStaffMember(hotelId, id);
+    } catch {
+      // Revert on error
+      setStaffList(prev);
+    }
   }
 
   // Loading states
@@ -306,7 +339,7 @@ export default function StaffPage() {
       style={{ background: 'var(--db-bg)', color: 'var(--db-primary)' }}
     >
       {inviteOpen && (
-        <InviteModal onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
+        <InviteModal onClose={() => setInviteOpen(false)} onInvite={handleInvite} apiError={inviteApiError} />
       )}
 
       {/* Header */}
