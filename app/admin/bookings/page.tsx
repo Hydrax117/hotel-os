@@ -1,15 +1,31 @@
-import React from 'react';
-import { ADMIN_BOOKINGS } from '../mock';
-import type { AdminBooking } from '../mock';
+'use client';
 
-function statusBadge(status: AdminBooking['status']) {
-  const map: Record<AdminBooking['status'], { bg: string; color: string; label: string }> = {
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth-context';
+import { getAdminBookings, type AdminBooking } from '../../lib/api/admin';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtNgn(amount: number): string {
+  return '\u20a6' + amount.toLocaleString('en-NG');
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function statusBadge(status: string) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    CONFIRMED:   { bg: '#dbeafe', color: '#1d4ed8', label: 'Confirmed' },
     confirmed:   { bg: '#dbeafe', color: '#1d4ed8', label: 'Confirmed' },
+    CHECKED_IN:  { bg: '#dcfce7', color: '#15803d', label: 'Checked In' },
     checked_in:  { bg: '#dcfce7', color: '#15803d', label: 'Checked In' },
+    CHECKED_OUT: { bg: '#f3f4f6', color: '#374151', label: 'Checked Out' },
     checked_out: { bg: '#f3f4f6', color: '#374151', label: 'Checked Out' },
+    CANCELLED:   { bg: '#fee2e2', color: '#b91c1c', label: 'Cancelled' },
     cancelled:   { bg: '#fee2e2', color: '#b91c1c', label: 'Cancelled' },
   };
-  const s = map[status];
+  const s = map[status] ?? { bg: '#f3f4f6', color: '#374151', label: status };
   return (
     <span
       className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
@@ -20,20 +36,89 @@ function statusBadge(status: AdminBooking['status']) {
   );
 }
 
-export default function AdminBookingsPage() {
-  const nonCancelledStatuses: AdminBooking['status'][] = ['confirmed', 'checked_in', 'checked_out'];
+// ── Loading skeleton ──────────────────────────────────────────────────────────
 
-  const totalGmv = ADMIN_BOOKINGS.reduce((sum, b) => sum + b.totalNgn, 0);
-  const commissionEarned = ADMIN_BOOKINGS
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '32px 24px' }}>
+      <div style={{ height: 28, width: 200, background: 'var(--ad-muted)', borderRadius: 6, marginBottom: 24 }} />
+      <div style={{ height: 100, background: 'var(--ad-muted)', borderRadius: 8 }} />
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function AdminBookingsPage() {
+  const { user, isLoading: authLoading } = useAuth();
+
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setIsLoading(true);
+    setError(null);
+    getAdminBookings({ limit: 20 })
+      .then(res => {
+        setBookings(res.bookings);
+        setTotal(res.total);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load bookings');
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (!authLoading && user?.role === 'SUPER_ADMIN') {
+      load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
+
+  if (authLoading) return <LoadingSkeleton />;
+
+  if (!user || user.role !== 'SUPER_ADMIN') {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-secondary)' }}>Access denied. Super admin role required.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-danger)', marginBottom: 12 }}>{error}</p>
+        <button
+          type="button"
+          onClick={load}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--ad-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const nonCancelledStatuses = ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'confirmed', 'checked_in', 'checked_out'];
+
+  const totalGmv = bookings.reduce((sum, b) => sum + Number(b.totalNgn), 0);
+  const commissionEarned = bookings
     .filter(b => nonCancelledStatuses.includes(b.status))
-    .reduce((sum, b) => sum + b.commissionNgn, 0);
-  const cancelledCount = ADMIN_BOOKINGS.filter(b => b.status === 'cancelled').length;
-  const cancellationRate = ADMIN_BOOKINGS.length > 0
-    ? ((cancelledCount / ADMIN_BOOKINGS.length) * 100).toFixed(1)
+    .reduce((sum, b) => sum + Number(b.totalNgn) * 0.1, 0);
+  const cancelledCount = bookings.filter(b => ['CANCELLED', 'cancelled'].includes(b.status)).length;
+  const cancellationRate = bookings.length > 0
+    ? ((cancelledCount / bookings.length) * 100).toFixed(1)
     : '0.0';
 
-  const totalAmount = ADMIN_BOOKINGS.reduce((sum, b) => sum + b.totalNgn, 0);
-  const totalCommission = ADMIN_BOOKINGS.reduce((sum, b) => sum + b.commissionNgn, 0);
+  const totalAmount = bookings.reduce((sum, b) => sum + Number(b.totalNgn), 0);
+  const totalCommission = bookings.reduce((sum, b) => sum + Number(b.totalNgn) * 0.1, 0);
 
   return (
     <div className="space-y-5">
@@ -44,7 +129,7 @@ export default function AdminBookingsPage() {
           className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
           style={{ background: 'var(--ad-muted)', color: 'var(--ad-secondary)' }}
         >
-          {ADMIN_BOOKINGS.length}
+          {total}
         </span>
       </div>
 
@@ -58,7 +143,7 @@ export default function AdminBookingsPage() {
             Total GMV
           </p>
           <p className="mt-0.5 text-lg font-bold" style={{ color: 'var(--ad-primary)' }}>
-            ₦{totalGmv.toLocaleString()}
+            {fmtNgn(totalGmv)}
           </p>
         </div>
         <div
@@ -69,7 +154,7 @@ export default function AdminBookingsPage() {
             Commission Earned
           </p>
           <p className="mt-0.5 text-lg font-bold" style={{ color: 'var(--ad-accent)' }}>
-            ₦{commissionEarned.toLocaleString()}
+            {fmtNgn(Math.round(commissionEarned))}
           </p>
         </div>
         <div
@@ -94,7 +179,7 @@ export default function AdminBookingsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--ad-muted)' }}>
-                {['Booking ID', 'Hotel', 'Guest', 'Dates', 'Room', 'Amount', 'Commission', 'Status', 'View'].map(h => (
+                {['Booking Ref', 'Hotel', 'Guest', 'Dates', 'Room', 'Amount', 'Commission', 'Status', 'View'].map(h => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
@@ -106,45 +191,55 @@ export default function AdminBookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {ADMIN_BOOKINGS.map((b, idx) => (
-                <tr
-                  key={b.id}
-                  style={{ borderTop: idx === 0 ? undefined : `1px solid var(--ad-border)` }}
-                >
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--ad-secondary)' }}>
-                    {b.id}
-                  </td>
-                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
-                    {b.hotelName}
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--ad-primary)' }}>
-                    <div>{b.guestName}</div>
-                    <div className="text-xs" style={{ color: 'var(--ad-secondary)' }}>{b.guestEmail}</div>
-                  </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
-                    {b.checkIn} → {b.checkOut}
-                  </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
-                    {b.roomName}
-                  </td>
-                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
-                    ₦{b.totalNgn.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--ad-secondary)' }}>
-                    ₦{b.commissionNgn.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">{statusBadge(b.status)}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      className="rounded border px-2 py-1 text-xs font-medium transition-colors"
-                      style={{ borderColor: 'var(--ad-border)', color: 'var(--ad-secondary)' }}
-                    >
-                      View
-                    </button>
+              {bookings.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-6 text-center text-sm" style={{ color: 'var(--ad-secondary)' }}>
+                    No bookings found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                bookings.map((b, idx) => (
+                  <tr
+                    key={b.id}
+                    style={{ borderTop: idx === 0 ? undefined : `1px solid var(--ad-border)` }}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--ad-secondary)' }}>
+                      {b.reference}
+                    </td>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
+                      {b.hotel?.name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3" style={{ color: 'var(--ad-primary)' }}>
+                      <div>{b.user ? `${b.user.firstName} ${b.user.lastName}`.trim() : '—'}</div>
+                      {b.user && (
+                        <div className="text-xs" style={{ color: 'var(--ad-secondary)' }}>{b.user.email}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
+                      {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
+                      {b.roomType?.name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
+                      {fmtNgn(Number(b.totalNgn))}
+                    </td>
+                    <td className="px-4 py-3" style={{ color: 'var(--ad-secondary)' }}>
+                      {fmtNgn(Math.round(Number(b.totalNgn) * 0.1))}
+                    </td>
+                    <td className="px-4 py-3">{statusBadge(b.status)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs font-medium transition-colors"
+                        style={{ borderColor: 'var(--ad-border)', color: 'var(--ad-secondary)' }}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
             <tfoot>
               <tr style={{ borderTop: `2px solid var(--ad-border)`, background: 'var(--ad-muted)' }}>
@@ -152,10 +247,10 @@ export default function AdminBookingsPage() {
                   Totals
                 </td>
                 <td className="px-4 py-3 font-bold" style={{ color: 'var(--ad-primary)' }}>
-                  ₦{totalAmount.toLocaleString()}
+                  {fmtNgn(totalAmount)}
                 </td>
                 <td className="px-4 py-3 font-bold" style={{ color: 'var(--ad-primary)' }}>
-                  ₦{totalCommission.toLocaleString()}
+                  {fmtNgn(Math.round(totalCommission))}
                 </td>
                 <td className="px-4 py-3" colSpan={2} />
               </tr>

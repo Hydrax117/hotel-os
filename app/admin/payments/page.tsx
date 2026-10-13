@@ -1,21 +1,20 @@
-import React from 'react';
-import { connection } from 'next/server';
-import { ADMIN_BOOKINGS } from '../mock';
-import type { AdminBooking } from '../mock';
+'use client';
 
-export const instant = false;
+// TODO: Wire to dedicated payments API when GET /admin/payments is implemented
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth-context';
+import { getAdminBookings, type AdminBooking } from '../../lib/api/admin';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtNgn(n: number): string {
-  if (n >= 1_000_000) return '₦' + (n / 1_000_000).toFixed(1) + 'm';
-  return '₦' + n.toLocaleString('en-NG');
+  if (n >= 1_000_000) return '\u20a6' + (n / 1_000_000).toFixed(1) + 'm';
+  return '\u20a6' + n.toLocaleString('en-NG');
 }
 
 function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
+  return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 type PaymentStatus = 'settled' | 'pending' | 'failed';
@@ -71,18 +70,80 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '32px 24px' }}>
+      <div style={{ height: 28, width: 200, background: 'var(--ad-muted)', borderRadius: 6, marginBottom: 24 }} />
+      <div style={{ height: 100, background: 'var(--ad-muted)', borderRadius: 8 }} />
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function AdminPaymentsPage() {
-  await connection();
+export default function AdminPaymentsPage() {
+  const { user, isLoading: authLoading } = useAuth();
 
-  const activeBks = ADMIN_BOOKINGS.filter(b => b.status !== 'cancelled');
-  const totalProcessed = activeBks.reduce((sum, b) => sum + b.totalNgn, 0);
-  const totalCommission = activeBks.reduce((sum, b) => sum + b.commissionNgn, 0);
-  const pendingSettlement = 4_200_000;
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Generate 15 rows from ADMIN_BOOKINGS (pad/truncate to 15)
-  const rows: AdminBooking[] = ADMIN_BOOKINGS.slice(0, 15);
+  const load = () => {
+    setIsLoading(true);
+    setError(null);
+    getAdminBookings({ limit: 100 })
+      .then(res => setBookings(res.bookings))
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load payments');
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (!authLoading && user?.role === 'SUPER_ADMIN') {
+      load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
+
+  if (authLoading) return <LoadingSkeleton />;
+
+  if (!user || user.role !== 'SUPER_ADMIN') {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-secondary)' }}>Access denied. Super admin role required.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-danger)', marginBottom: 12 }}>{error}</p>
+        <button
+          type="button"
+          onClick={load}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--ad-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const activeBks = bookings.filter(b => !['CANCELLED', 'cancelled'].includes(b.status));
+  const totalProcessed = activeBks.reduce((sum, b) => sum + Number(b.totalNgn), 0);
+  const totalCommission = activeBks.reduce((sum, b) => sum + Number(b.totalNgn) * 0.1, 0);
+  const pendingSettlement = bookings
+    .filter(b => ['CONFIRMED', 'confirmed', 'CHECKED_IN', 'checked_in'].includes(b.status))
+    .reduce((sum, b) => sum + Number(b.totalNgn), 0);
+
+  const rows = bookings.slice(0, 15);
 
   return (
     <div style={{ padding: '32px 24px', maxWidth: '1200px' }}>
@@ -99,7 +160,7 @@ export default async function AdminPaymentsPage() {
       {/* Stat cards */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '28px' }}>
         <StatCard label="Total Processed" value={fmtNgn(totalProcessed)} sub="All non-cancelled bookings" />
-        <StatCard label="Platform Commission" value={fmtNgn(totalCommission)} sub="10% of gross" />
+        <StatCard label="Platform Commission" value={fmtNgn(Math.round(totalCommission))} sub="10% of gross" />
         <StatCard label="Pending Settlement" value={fmtNgn(pendingSettlement)} sub="Awaiting payout" />
       </div>
 
@@ -178,7 +239,7 @@ export default async function AdminPaymentsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: 'var(--ad-muted)' }}>
-                {['Transaction ID', 'Booking ID', 'Hotel', 'Guest', 'Date', 'Amount', 'Commission', 'Net to Hotel', 'Status', 'Method'].map(col => (
+                {['Transaction ID', 'Booking Ref', 'Hotel', 'Guest', 'Date', 'Amount', 'Commission', 'Net to Hotel', 'Status', 'Method'].map(col => (
                   <th
                     key={col}
                     style={{
@@ -199,32 +260,41 @@ export default async function AdminPaymentsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((bk, i) => {
-                const txId = `${bk.id}-PAY`;
-                const payStatus = getPaymentStatus(i);
-                const method = i % 2 === 0 ? 'Card' : 'Bank Transfer';
-                const netToHotel = bk.totalNgn - bk.commissionNgn;
-                return (
-                  <tr
-                    key={bk.id}
-                    style={{
-                      borderBottom: '1px solid var(--ad-border)',
-                      background: 'white',
-                    }}
-                  >
-                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{txId}</td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{bk.id}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', fontWeight: 500, minWidth: '160px' }}>{bk.hotelName}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{bk.guestName}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(bk.createdAt)}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{fmtNgn(bk.totalNgn)}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{fmtNgn(bk.commissionNgn)}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{fmtNgn(netToHotel)}</td>
-                    <td style={{ padding: '12px 16px' }}>{statusBadge(payStatus)}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{method}</td>
-                  </tr>
-                );
-              })}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ padding: '24px', textAlign: 'center', color: 'var(--ad-secondary)', fontSize: '14px' }}>
+                    No payments found.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((bk, i) => {
+                  const txId = `${bk.reference}-PAY`;
+                  const payStatus = getPaymentStatus(i);
+                  const method = i % 2 === 0 ? 'Card' : 'Bank Transfer';
+                  const amount = Number(bk.totalNgn);
+                  const commission = Math.round(amount * 0.1);
+                  const netToHotel = amount - commission;
+                  return (
+                    <tr
+                      key={bk.id}
+                      style={{ borderBottom: '1px solid var(--ad-border)', background: 'white' }}
+                    >
+                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{txId}</td>
+                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{bk.reference}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', fontWeight: 500, minWidth: '160px' }}>{bk.hotel?.name ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>
+                        {bk.user ? `${bk.user.firstName} ${bk.user.lastName}`.trim() : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(bk.createdAt)}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{fmtNgn(amount)}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{fmtNgn(commission)}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-primary)', whiteSpace: 'nowrap' }}>{fmtNgn(netToHotel)}</td>
+                      <td style={{ padding: '12px 16px' }}>{statusBadge(payStatus)}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ad-secondary)', whiteSpace: 'nowrap' }}>{method}</td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

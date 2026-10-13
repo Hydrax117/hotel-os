@@ -1,9 +1,14 @@
-import React from 'react';
-import { connection } from 'next/server';
-import { ADMIN_HOTELS } from '../mock';
-import type { SubscriptionPlan } from '../mock';
+'use client';
 
-export const instant = false;
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth-context';
+import { getAdminHotels, type AdminHotel } from '../../lib/api/admin';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type PlanKey = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function addDays(days: number): string {
   const d = new Date();
@@ -11,44 +16,116 @@ function addDays(days: number): string {
   return d.toISOString().split('T')[0];
 }
 
-const PLAN_FEES: Record<SubscriptionPlan, number> = {
+const PLAN_FEES: Record<string, number> = {
+  STARTER:      15000,
   starter:      15000,
+  PROFESSIONAL: 35000,
   professional: 35000,
+  ENTERPRISE:   75000,
   enterprise:   75000,
 };
 
-const PLAN_STYLES: Record<SubscriptionPlan, { bg: string; color: string }> = {
+const PLAN_STYLES: Record<string, { bg: string; color: string }> = {
+  STARTER:      { bg: '#f3f4f6', color: '#374151' },
   starter:      { bg: '#f3f4f6', color: '#374151' },
+  PROFESSIONAL: { bg: '#dbeafe', color: '#1d4ed8' },
   professional: { bg: '#dbeafe', color: '#1d4ed8' },
+  ENTERPRISE:   { bg: '#ede9fe', color: '#6d28d9' },
   enterprise:   { bg: '#ede9fe', color: '#6d28d9' },
 };
 
-function planBadge(plan: SubscriptionPlan) {
-  const s = PLAN_STYLES[plan];
+function planBadge(plan: string) {
+  const s = PLAN_STYLES[plan] ?? { bg: '#f3f4f6', color: '#374151' };
   return (
     <span
       className="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize"
       style={{ background: s.bg, color: s.color }}
     >
-      {plan}
+      {plan.toLowerCase()}
     </span>
   );
 }
 
-export default async function AdminSubscriptionsPage() {
-  await connection();
-  const approvedHotels = ADMIN_HOTELS.filter(
-    h => h.verificationStatus === 'approved' && h.isActive,
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '32px 24px' }}>
+      <div style={{ height: 28, width: 200, background: 'var(--ad-muted)', borderRadius: 6, marginBottom: 24 }} />
+      <div style={{ height: 100, background: 'var(--ad-muted)', borderRadius: 8 }} />
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function AdminSubscriptionsPage() {
+  const { user, isLoading: authLoading } = useAuth();
+
+  const [hotels, setHotels] = useState<AdminHotel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setIsLoading(true);
+    setError(null);
+    getAdminHotels({ limit: 100 })
+      .then(res => setHotels(res.hotels))
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load subscriptions');
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (!authLoading && user?.role === 'SUPER_ADMIN') {
+      load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user]);
+
+  if (authLoading) return <LoadingSkeleton />;
+
+  if (!user || user.role !== 'SUPER_ADMIN') {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-secondary)' }}>Access denied. Super admin role required.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--ad-danger)', marginBottom: 12 }}>{error}</p>
+        <button
+          type="button"
+          onClick={load}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--ad-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const approvedHotels = hotels.filter(
+    h => h.verificationStatus.toUpperCase() === 'APPROVED' && h.isActive,
   );
 
-  const plans: SubscriptionPlan[] = ['starter', 'professional', 'enterprise'];
+  const plans: PlanKey[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
 
-  const planCounts = plans.reduce<Record<SubscriptionPlan, number>>(
+  const planCounts = plans.reduce<Record<PlanKey, number>>(
     (acc, p) => {
-      acc[p] = approvedHotels.filter(h => h.subscription === p).length;
+      acc[p] = approvedHotels.filter(
+        h => h.subscriptionPlan?.toUpperCase() === p,
+      ).length;
       return acc;
     },
-    { starter: 0, professional: 0, enterprise: 0 },
+    { STARTER: 0, PROFESSIONAL: 0, ENTERPRISE: 0 },
   );
 
   const nextBilling = addDays(30);
@@ -64,7 +141,7 @@ export default async function AdminSubscriptionsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {plans.map(plan => {
           const count = planCounts[plan];
-          const monthlyRevenue = count * PLAN_FEES[plan];
+          const monthlyRevenue = count * (PLAN_FEES[plan] ?? 0);
           const s = PLAN_STYLES[plan];
           return (
             <div
@@ -77,7 +154,7 @@ export default async function AdminSubscriptionsPage() {
                   className="rounded-full px-3 py-1 text-xs font-semibold capitalize"
                   style={{ background: s.bg, color: s.color }}
                 >
-                  {plan}
+                  {plan.toLowerCase()}
                 </span>
               </div>
               <p className="text-2xl font-bold" style={{ color: 'var(--ad-primary)' }}>
@@ -126,49 +203,51 @@ export default async function AdminSubscriptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {ADMIN_HOTELS.filter(h => h.verificationStatus === 'approved').map((hotel, idx) => (
-                <tr
-                  key={hotel.id}
-                  style={{ borderTop: idx === 0 ? undefined : `1px solid var(--ad-border)` }}
-                >
-                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
-                    {hotel.name}
-                  </td>
-                  <td className="px-4 py-3">{planBadge(hotel.subscription)}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--ad-primary)' }}>
-                    ₦{PLAN_FEES[hotel.subscription].toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-                      style={{ background: '#dcfce7', color: '#15803d' }}
-                    >
-                      Active
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
-                    {nextBilling}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        className="rounded border px-2 py-1 text-xs font-medium"
-                        style={{ borderColor: 'var(--ad-border)', color: 'var(--ad-secondary)' }}
+              {hotels
+                .filter(h => h.verificationStatus.toUpperCase() === 'APPROVED')
+                .map((hotel, idx) => (
+                  <tr
+                    key={hotel.id}
+                    style={{ borderTop: idx === 0 ? undefined : `1px solid var(--ad-border)` }}
+                  >
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
+                      {hotel.name}
+                    </td>
+                    <td className="px-4 py-3">{planBadge(hotel.subscriptionPlan)}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--ad-primary)' }}>
+                      ₦{(PLAN_FEES[hotel.subscriptionPlan] ?? 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ background: '#dcfce7', color: '#15803d' }}
                       >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded border px-2 py-1 text-xs font-medium"
-                        style={{ borderColor: 'var(--ad-danger)', color: 'var(--ad-danger)' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        Active
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
+                      {nextBilling}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs font-medium"
+                          style={{ borderColor: 'var(--ad-border)', color: 'var(--ad-secondary)' }}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs font-medium"
+                          style={{ borderColor: 'var(--ad-danger)', color: 'var(--ad-danger)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
