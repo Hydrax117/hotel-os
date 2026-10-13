@@ -70,11 +70,15 @@ export default function AdminReviewsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [reviews] = useState<AdminReview[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Intentionally always empty — wired once GET /api/v1/admin/reviews is available
   useEffect(() => {
-    // TODO: fetch reviews from API when endpoint is implemented
-  }, []);
+    if (!authLoading && user?.role === 'SUPER_ADMIN') {
+      // TODO: Wire to GET /api/v1/admin/reviews when admin reviews endpoint is implemented
+      // load() will go here; for now the list stays empty.
+      setIsLoading(false);
+    }
+  }, [authLoading, user]);
 
   if (authLoading) return <LoadingSkeleton />;
 
@@ -85,6 +89,8 @@ export default function AdminReviewsPage() {
       </div>
     );
   }
+
+  if (isLoading) return <LoadingSkeleton />;
 
   const avgRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)

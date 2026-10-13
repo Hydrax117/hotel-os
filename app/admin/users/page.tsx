@@ -70,6 +70,7 @@ function AdminUsersInner() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setIsLoading(true);
@@ -95,11 +96,12 @@ function AdminUsersInner() {
 
   const handleSuspend = async (id: string) => {
     setActionLoading(id + '-suspend');
+    setActionError(null);
     try {
       await suspendUser(id);
       setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: false } : u));
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to suspend user');
     } finally {
       setActionLoading(null);
     }
@@ -107,11 +109,12 @@ function AdminUsersInner() {
 
   const handleReactivate = async (id: string) => {
     setActionLoading(id + '-reactivate');
+    setActionError(null);
     try {
       await reactivateUser(id);
       setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: true } : u));
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reactivate user');
     } finally {
       setActionLoading(null);
     }
@@ -155,6 +158,16 @@ function AdminUsersInner() {
           {total}
         </span>
       </div>
+
+      {/* Action error banner */}
+      {actionError && (
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div

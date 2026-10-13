@@ -69,6 +69,7 @@ export default function HotelVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = () => {
     setIsLoading(true);
@@ -96,11 +97,12 @@ export default function HotelVerificationPage() {
 
   const handleApprove = async (id: string) => {
     setActionLoading(id + '-approve');
+    setActionError(null);
     try {
       await approveHotel(id, { status: 'APPROVED' });
       setPending(prev => prev.filter(h => h.id !== id));
-    } catch {
-      // silently fail, UI will show stale data
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to approve hotel');
     } finally {
       setActionLoading(null);
     }
@@ -108,11 +110,12 @@ export default function HotelVerificationPage() {
 
   const handleReject = async (id: string) => {
     setActionLoading(id + '-reject');
+    setActionError(null);
     try {
       await approveHotel(id, { status: 'REJECTED' });
       setPending(prev => prev.filter(h => h.id !== id));
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reject hotel');
     } finally {
       setActionLoading(null);
     }
@@ -162,6 +165,16 @@ export default function HotelVerificationPage() {
           {pending.length} pending reviews
         </span>
       </div>
+
+      {/* Action error banner */}
+      {actionError && (
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Pending verification cards */}
       {pending.length === 0 ? (

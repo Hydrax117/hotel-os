@@ -77,6 +77,7 @@ function AdminHotelsInner() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const tabs: { label: string; value: string; apiValue: string | undefined }[] = [
     { label: 'All',       value: '',          apiValue: undefined },
@@ -114,12 +115,12 @@ function AdminHotelsInner() {
 
   const handleApprove = async (id: string) => {
     setActionLoading(id + '-approve');
+    setActionError(null);
     try {
       await approveHotel(id, { status: 'APPROVED' });
       load();
-    } catch {
-      // ignore — refresh anyway
-      load();
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to approve hotel');
     } finally {
       setActionLoading(null);
     }
@@ -127,11 +128,38 @@ function AdminHotelsInner() {
 
   const handleSuspend = async (id: string) => {
     setActionLoading(id + '-suspend');
+    setActionError(null);
     try {
       await suspendHotel(id, 'Suspended by admin');
       load();
-    } catch {
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to suspend hotel');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setActionLoading(id + '-reject');
+    setActionError(null);
+    try {
+      await approveHotel(id, { status: 'REJECTED' });
       load();
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reject hotel');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    setActionLoading(id + '-reactivate');
+    setActionError(null);
+    try {
+      await approveHotel(id, { status: 'APPROVED' });
+      load();
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reactivate hotel');
     } finally {
       setActionLoading(null);
     }
@@ -184,6 +212,16 @@ function AdminHotelsInner() {
           Add Hotel
         </button>
       </div>
+
+      {/* Action error banner */}
+      {actionError && (
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div
@@ -341,7 +379,7 @@ function AdminHotelsInner() {
                             <button
                               type="button"
                               disabled={!!actionLoading}
-                              onClick={() => approveHotel(hotel.id, { status: 'REJECTED' }).then(load)}
+                              onClick={() => handleReject(hotel.id)}
                               className="rounded border px-2 py-1 text-xs font-medium disabled:opacity-50"
                               style={{ borderColor: 'var(--ad-danger)', color: 'var(--ad-danger)' }}
                             >
@@ -353,7 +391,7 @@ function AdminHotelsInner() {
                           <button
                             type="button"
                             disabled={!!actionLoading}
-                            onClick={() => approveHotel(hotel.id, { status: 'APPROVED' }).then(load)}
+                            onClick={() => handleReactivate(hotel.id)}
                             className="rounded border px-2 py-1 text-xs font-medium disabled:opacity-50"
                             style={{ borderColor: 'var(--ad-success)', color: 'var(--ad-success)' }}
                           >

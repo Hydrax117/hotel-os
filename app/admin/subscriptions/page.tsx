@@ -218,6 +218,9 @@ export default function AdminSubscriptionsPage() {
                       ₦{(PLAN_FEES[hotel.subscriptionPlan] ?? 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
+                      {/* NOTE: isActive reflects the hotel account state, not subscription payment currency.
+                          A subscriptionActiveUntil/lapsed field is not yet returned by the API.
+                          All approved hotels are shown as Active until the endpoint provides that data. */}
                       <span
                         className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
                         style={{ background: '#dcfce7', color: '#15803d' }}
