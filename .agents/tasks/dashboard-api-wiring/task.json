@@ -1,0 +1,7 @@
+{
+  "task_id": "task-dashboard-api-wiring",
+  "task_description": "Wire the hotel dashboard pages (overview, reservations, rooms, inventory) to the real NestJS backend at https://hotel-os-api-52qe.onrender.com. Replace all MOCK_* imports with real API calls via a new app/lib/api/dashboard.ts module. Add an auth gate to each page. Fix DashboardTopbar to use authenticated user data instead of MOCK_HOTEL.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

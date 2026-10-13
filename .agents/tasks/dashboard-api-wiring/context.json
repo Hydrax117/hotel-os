@@ -1,0 +1,31 @@
+{
+  "project_type": "Next.js 16.4 App Router + React 19 + Tailwind CSS 4 — hotel management SaaS",
+  "language": "TypeScript 5 / TSX",
+  "build_system": "Next.js 16.4 via `next build`. Turbopack used in dev. `cacheComponents: true` and `partialPrefetching: true` enabled in next.config.ts.",
+  "test_framework": "None. Build success + zero TypeScript errors is the only verification gate.",
+  "build_command": "npx next build",
+  "test_command": "npx next build (zero errors = pass)",
+  "verification_instructions": "Run `npx next build` from `c:\\Users\\Pkaka\\music\\hotel-os`. Expect exit code 0 with all dashboard routes listed. If TypeScript errors appear, fix them before considering the feature done.",
+  "snapshot_or_generated_files": "`.next/` is build output — never commit it. `next-env.d.ts` is auto-generated; do not edit.",
+  "environment_constraints": "Windows PowerShell. Do NOT run `next dev` or restart any dev server. Always use `npx next build` for verification. NEXT_PUBLIC_API_URL defaults to https://hotel-os-api-52qe.onrender.com when not set.",
+  "contribution_requirements": "Next.js 16.4 breaking changes: `params` and `searchParams` are Promises (await in server components, React.use() in client components). No `<head>` tags in layouts — use Metadata API. Read node_modules/next/dist/docs/ before writing any code.",
+  "key_patterns": "1) 'use client' at top for client components (useState, useEffect, useRouter). 2) Server components are plain async functions — no directive. 3) CSS: Tailwind 4 utility classes + inline style={{ ... }} with --db-* CSS vars. 4) All --db-* tokens defined in app/globals.css. 5) apiClient from app/lib/api/client.ts handles auth token injection + 401 refresh automatically. 6) Auth context: useAuth() from app/lib/auth-context.tsx — provides { user, isLoading, setUser, signOut }. 7) Auth gate pattern for client components: check user + isLoading then redirect via useRouter if unauthenticated. 8) BookingStatus in dashboard/types/index.ts uses lowercase: 'pending'|'confirmed'|'checked_in'|'checked_out'|'cancelled'|'no_show'. 9) ApiBookingStatus in app/lib/api/bookings.ts uses UPPERCASE: 'HELD'|'CONFIRMED'|'CHECKED_IN'|'CHECKED_OUT'|'CANCELLED'|'PAYMENT_PENDING'|'NO_SHOW'|'PENDING'. 10) Normalization mapping is needed: API uppercase -> dashboard lowercase. 11) overview/page.tsx is a server async component using connection() from next/server. 12) reservations/page.tsx and inventory/page.tsx are 'use client' components with useState. 13) rooms/page.tsx is a plain server component.",
+  "relevant_files": [
+    "app/lib/api/client.ts",
+    "app/lib/api/bookings.ts",
+    "app/lib/api/auth.ts",
+    "app/lib/auth-context.tsx",
+    "app/dashboard/types/index.ts",
+    "app/dashboard/mock/data.ts",
+    "app/dashboard/overview/page.tsx",
+    "app/dashboard/reservations/page.tsx",
+    "app/dashboard/rooms/page.tsx",
+    "app/dashboard/inventory/page.tsx",
+    "app/dashboard/components/DashboardTopbar.tsx",
+    "app/dashboard/components/StatusBadge.tsx",
+    "app/dashboard/components/StatCard.tsx",
+    "app/dashboard/layout.tsx",
+    "app/dashboard/components/DashboardSidebarWrapper.tsx"
+  ],
+  "directory_structure": "app/lib/api/ — API client modules (client.ts, auth.ts, bookings.ts, search.ts). New file: app/lib/api/dashboard.ts. app/dashboard/ — dashboard pages (overview, reservations, rooms, inventory). app/dashboard/types/index.ts — shared dashboard types. app/dashboard/mock/data.ts — mock data (shapes reference only; pages will stop importing from here). app/dashboard/components/ — shared UI components (StatCard, StatusBadge, DashboardTopbar). .agents/tasks/ — planner/reviewer artifacts (never committed)."
+}

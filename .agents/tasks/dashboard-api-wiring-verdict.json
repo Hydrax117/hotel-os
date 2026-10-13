@@ -1,0 +1,5 @@
+{
+  "verdict": "APPROVED",
+  "summary": "All 10 acceptance checks pass. MOCK_* imports are gone from all 5 files under review. Auth gates (useAuth + useRouter + redirect to /auth/signin) are present and correctly structured on all 4 pages. normalizeStatus() covers all 8 ApiBookingStatus variants and maps to the correct lowercase BookingStatus values. StatusBadge receives lowercase status values from normalizeStatus(). DashboardTopbar uses useAuth() user data for name and initials — no MOCK_HOTEL reference. Error and loading states are present on all 4 pages with retry buttons. getDashboardStats tries two endpoints then derives stats from reservations and catches all errors, always returning a DashboardStats object. getDashboardInventory catches errors and returns []. No 'any' casts found in any of the 5 files. The revenue chart is replaced with a 'Revenue analytics coming soon' placeholder panel.",
+  "findings": []
+}
