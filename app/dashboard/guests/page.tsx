@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MOCK_RESERVATIONS } from '../mock/data';
-import type { Reservation } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
+import {
+  getMyHotel,
+  getDashboardReservations,
+  type DashboardReservation,
+} from '../../lib/api/dashboard';
 import { StatusBadge } from '../components/StatusBadge';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -14,31 +19,31 @@ function formatNgn(n: number): string {
 // ── Derived guest type ────────────────────────────────────────────────────────
 
 type GuestSummary = {
-  guestName: string;
-  guestEmail: string;
+  guestName:     string;
+  guestEmail:    string;
   totalBookings: number;
-  lastStayDate: string;
-  totalSpent: number;
-  bookings: Reservation[];
+  lastStayDate:  string;
+  totalSpent:    number;
+  bookings:      DashboardReservation[];
 };
 
-function buildGuestList(reservations: Reservation[]): GuestSummary[] {
+function buildGuestList(reservations: DashboardReservation[]): GuestSummary[] {
   const map = new Map<string, GuestSummary>();
 
   for (const r of reservations) {
     const existing = map.get(r.guestEmail);
     if (!existing) {
       map.set(r.guestEmail, {
-        guestName: r.guestName,
-        guestEmail: r.guestEmail,
+        guestName:     r.guestName,
+        guestEmail:    r.guestEmail,
         totalBookings: 1,
-        lastStayDate: r.checkOut,
-        totalSpent: r.amountNgn,
-        bookings: [r],
+        lastStayDate:  r.checkOut,
+        totalSpent:    r.amountNgn,
+        bookings:      [r],
       });
     } else {
       existing.totalBookings += 1;
-      existing.totalSpent += r.amountNgn;
+      existing.totalSpent    += r.amountNgn;
       if (r.checkOut > existing.lastStayDate) {
         existing.lastStayDate = r.checkOut;
       }
@@ -52,10 +57,52 @@ function buildGuestList(reservations: Reservation[]): GuestSummary[] {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GuestsPage() {
-  const [search, setSearch] = useState('');
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [reservations, setReservations] = useState<DashboardReservation[]>([]);
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [search,       setSearch]       = useState('');
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
 
-  const allGuests = useMemo(() => buildGuestList(MOCK_RESERVATIONS), []);
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/signin');
+    }
+  }, [authLoading, user, router]);
+
+  // Data fetch
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    async function fetchData() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const hotel = await getMyHotel();
+        if (cancelled) return;
+        if (!hotel) {
+          setError('Could not load hotel data. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+        const data = await getDashboardReservations(hotel.id);
+        if (!cancelled) setReservations(data);
+      } catch {
+        if (!cancelled) setError('Failed to load guests. Please try again.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const allGuests = useMemo(() => buildGuestList(reservations), [reservations]);
 
   const filteredGuests = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -71,9 +118,47 @@ export default function GuestsPage() {
     setExpandedEmail(prev => (prev === email ? null : email));
   }
 
+  // Auth loading
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  // Data loading
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading guests…
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div
+        className="rounded-xl border p-6 text-center"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
+      >
+        <p className="mb-4" style={{ color: 'var(--db-secondary)' }}>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '24px 28px' }}>
-      {/* Page title */}
       <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--db-primary)' }}>
         Guests
       </h1>
@@ -88,9 +173,9 @@ export default function GuestsPage() {
           className="rounded-lg border px-4 py-2 text-sm w-full max-w-sm"
           style={{
             borderColor: 'var(--db-border)',
-            background: 'var(--db-surface)',
-            color: 'var(--db-primary)',
-            outline: 'none',
+            background:  'var(--db-surface)',
+            color:       'var(--db-primary)',
+            outline:     'none',
           }}
         />
       </div>
@@ -122,7 +207,9 @@ export default function GuestsPage() {
                   className="px-4 py-10 text-center text-sm"
                   style={{ color: 'var(--db-secondary)' }}
                 >
-                  No guests found matching &ldquo;{search}&rdquo;
+                  {search
+                    ? `No guests found matching "${search}"`
+                    : 'No guests yet.'}
                 </td>
               </tr>
             )}
@@ -135,7 +222,7 @@ export default function GuestsPage() {
                     className="cursor-pointer transition-colors hover:bg-black/[0.02]"
                     style={{
                       background: i % 2 === 0 ? 'var(--db-surface)' : 'var(--db-bg)',
-                      borderTop: '1px solid var(--db-border)',
+                      borderTop:  '1px solid var(--db-border)',
                     }}
                   >
                     <td className="px-4 py-3 font-medium" style={{ color: 'var(--db-primary)' }}>
@@ -173,11 +260,14 @@ export default function GuestsPage() {
                     <tr
                       style={{
                         background: 'var(--db-muted)',
-                        borderTop: '1px solid var(--db-border)',
+                        borderTop:  '1px solid var(--db-border)',
                       }}
                     >
                       <td colSpan={5} className="px-6 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--db-secondary)' }}>
+                        <p
+                          className="text-xs font-semibold uppercase tracking-wide mb-2"
+                          style={{ color: 'var(--db-secondary)' }}
+                        >
                           Booking History
                         </p>
                         <table className="w-full text-xs">

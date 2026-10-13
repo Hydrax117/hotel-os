@@ -1,3 +1,6 @@
+// TODO: Wire to real payouts API when GET /api/v1/hotels/:hotelId/payouts endpoint is implemented
+// Currently using mock data as the hotel-facing payout list endpoint is not yet built
+
 import React from 'react';
 import { MOCK_PAYOUTS } from '../mock/data';
 import { StatCard } from '../components/StatCard';

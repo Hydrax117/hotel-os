@@ -3,6 +3,16 @@ import type { BookingStatus } from '../../dashboard/types';
 
 // ── Exported Types ─────────────────────────────────────────────────────────────
 
+export type DashboardStaffMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'OWNER' | 'MANAGER' | 'RECEPTIONIST' | 'STAFF';
+  status: 'active' | 'inactive';
+  lastActive: string;
+  avatarInitials: string;
+};
+
 export type DashboardHotel = {
   id: string;
   name: string;
@@ -10,6 +20,10 @@ export type DashboardHotel = {
   state: string;
   subscriptionPlan?: string;
   occupancyRate?: number;
+  verificationStatus?: string;
+  isPublished?: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
 };
 
 export type DashboardReservation = {
@@ -262,5 +276,29 @@ export async function getDashboardStats(hotelId: string): Promise<DashboardStats
       upcomingCheckIns: 0,
       upcomingCheckOuts: 0,
     };
+  }
+}
+
+/**
+ * Returns the hotel profile for the authenticated user (alias for getMyHotel).
+ */
+export async function getHotelProfile(): Promise<DashboardHotel | null> {
+  return getMyHotel();
+}
+
+/**
+ * Returns staff members for a given hotel.
+ * GET /api/v1/hotels/:hotelId/staff
+ * Handles both plain array and { data: [...] } shapes.
+ * Returns [] on any error so pages degrade gracefully.
+ */
+export async function getHotelStaff(hotelId: string): Promise<DashboardStaffMember[]> {
+  try {
+    const raw = await apiClient.get<DashboardStaffMember[] | { data: DashboardStaffMember[] }>(
+      `/api/v1/hotels/${hotelId}/staff`,
+    );
+    return Array.isArray(raw) ? raw : raw.data;
+  } catch {
+    return [];
   }
 }

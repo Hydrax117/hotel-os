@@ -1,10 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MOCK_STAFF } from '../mock/data';
-import type { StaffMember, StaffRole } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
+import {
+  getMyHotel,
+  getHotelStaff,
+  type DashboardStaffMember,
+} from '../../lib/api/dashboard';
+import type { StaffRole } from '../types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+/** Maps API role strings to the dashboard StaffRole type for display. */
+function toStaffRole(apiRole: string): StaffRole {
+  const map: Record<string, StaffRole> = {
+    OWNER:        'owner',
+    MANAGER:      'manager',
+    RECEPTIONIST: 'receptionist',
+    STAFF:        'staff',
+  };
+  return map[apiRole] ?? 'staff';
+}
 
 const ROLE_COLORS: Record<StaffRole, string> = {
   owner:        '#292524',
@@ -23,15 +40,11 @@ const ROLE_LABELS: Record<StaffRole, string> = {
 function formatDateTime(iso: string): string {
   if (!iso || iso === 'Never') return 'Never';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day:   'numeric',
-    year:  'numeric',
-  }) + ' ' + d.toLocaleTimeString('en-US', {
-    hour:   '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  return (
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  );
 }
 
 function getInitials(name: string): string {
@@ -46,7 +59,7 @@ function getInitials(name: string): string {
 // ── Invite Modal ───────────────────────────────────────────────────────────────
 
 type InviteModalProps = {
-  onClose: () => void;
+  onClose:  () => void;
   onInvite: (name: string, email: string, role: StaffRole) => void;
 };
 
@@ -67,32 +80,23 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
   }
 
   return (
-    /* backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.50)' }}
       onClick={onClose}
     >
-      {/* card */}
       <div
         className="relative w-full max-w-md rounded-xl p-6 shadow-xl"
         style={{ background: 'var(--db-surface)', border: '1px solid var(--db-border)' }}
         onClick={e => e.stopPropagation()}
       >
-        <h2
-          className="mb-4 text-lg font-semibold"
-          style={{ color: 'var(--db-primary)' }}
-        >
+        <h2 className="mb-4 text-lg font-semibold" style={{ color: 'var(--db-primary)' }}>
           Invite Staff Member
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Full Name */}
           <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium"
-              style={{ color: 'var(--db-secondary)' }}
-            >
+            <label className="text-sm font-medium" style={{ color: 'var(--db-secondary)' }}>
               Full Name
             </label>
             <input
@@ -101,20 +105,12 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Amara Obi"
               className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
-              style={{
-                borderColor: 'var(--db-border)',
-                color:       'var(--db-primary)',
-                background:  'var(--db-bg)',
-              }}
+              style={{ borderColor: 'var(--db-border)', color: 'var(--db-primary)', background: 'var(--db-bg)' }}
             />
           </div>
 
-          {/* Email */}
           <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium"
-              style={{ color: 'var(--db-secondary)' }}
-            >
+            <label className="text-sm font-medium" style={{ color: 'var(--db-secondary)' }}>
               Email
             </label>
             <input
@@ -123,31 +119,19 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
               onChange={e => setEmail(e.target.value)}
               placeholder="e.g. amara@ekosignature.ng"
               className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
-              style={{
-                borderColor: 'var(--db-border)',
-                color:       'var(--db-primary)',
-                background:  'var(--db-bg)',
-              }}
+              style={{ borderColor: 'var(--db-border)', color: 'var(--db-primary)', background: 'var(--db-bg)' }}
             />
           </div>
 
-          {/* Role */}
           <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium"
-              style={{ color: 'var(--db-secondary)' }}
-            >
+            <label className="text-sm font-medium" style={{ color: 'var(--db-secondary)' }}>
               Role
             </label>
             <select
               value={role}
               onChange={e => setRole(e.target.value as StaffRole)}
               className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
-              style={{
-                borderColor: 'var(--db-border)',
-                color:       'var(--db-primary)',
-                background:  'var(--db-bg)',
-              }}
+              style={{ borderColor: 'var(--db-border)', color: 'var(--db-primary)', background: 'var(--db-bg)' }}
             >
               <option value="manager">Manager</option>
               <option value="receptionist">Receptionist</option>
@@ -164,11 +148,7 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
               type="button"
               onClick={onClose}
               className="rounded-lg border px-4 py-2 text-sm font-medium"
-              style={{
-                borderColor: 'var(--db-border)',
-                color:       'var(--db-secondary)',
-                background:  'transparent',
-              }}
+              style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)', background: 'transparent' }}
             >
               Cancel
             </button>
@@ -188,28 +168,78 @@ function InviteModal({ onClose, onInvite }: InviteModalProps) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-const PERMISSIONS: { label: string; owner: boolean; manager: boolean; receptionist: boolean; staff: boolean }[] = [
-  { label: 'View Dashboard',       owner: true,  manager: true,  receptionist: true,  staff: true  },
-  { label: 'Manage Reservations',  owner: true,  manager: true,  receptionist: true,  staff: false },
-  { label: 'Check In/Out Guests',  owner: true,  manager: true,  receptionist: true,  staff: false },
-  { label: 'Manage Staff',         owner: true,  manager: true,  receptionist: false, staff: false },
-  { label: 'View Analytics',       owner: true,  manager: true,  receptionist: false, staff: false },
-  { label: 'Manage Rooms',         owner: true,  manager: true,  receptionist: false, staff: false },
-  { label: 'Manage Billing',       owner: true,  manager: false, receptionist: false, staff: false },
-  { label: 'Hotel Settings',       owner: true,  manager: false, receptionist: false, staff: false },
+const PERMISSIONS: {
+  label:        string;
+  owner:        boolean;
+  manager:      boolean;
+  receptionist: boolean;
+  staff:        boolean;
+}[] = [
+  { label: 'View Dashboard',      owner: true,  manager: true,  receptionist: true,  staff: true  },
+  { label: 'Manage Reservations', owner: true,  manager: true,  receptionist: true,  staff: false },
+  { label: 'Check In/Out Guests', owner: true,  manager: true,  receptionist: true,  staff: false },
+  { label: 'Manage Staff',        owner: true,  manager: true,  receptionist: false, staff: false },
+  { label: 'View Analytics',      owner: true,  manager: true,  receptionist: false, staff: false },
+  { label: 'Manage Rooms',        owner: true,  manager: true,  receptionist: false, staff: false },
+  { label: 'Manage Billing',      owner: true,  manager: false, receptionist: false, staff: false },
+  { label: 'Hotel Settings',      owner: true,  manager: false, receptionist: false, staff: false },
 ];
 
 export default function StaffPage() {
-  const [staffList,      setStaffList]      = useState<StaffMember[]>(MOCK_STAFF);
-  const [inviteOpen,     setInviteOpen]     = useState(false);
-  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [staffList,        setStaffList]        = useState<DashboardStaffMember[]>([]);
+  const [hotelId,          setHotelId]          = useState<string | null>(null);
+  const [isLoading,        setIsLoading]        = useState(true);
+  const [error,            setError]            = useState<string | null>(null);
+  const [inviteOpen,       setInviteOpen]       = useState(false);
+  const [confirmRemoveId,  setConfirmRemoveId]  = useState<string | null>(null);
+
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/signin');
+    }
+  }, [authLoading, user, router]);
+
+  // Data fetch
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    async function fetchData() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const hotel = await getMyHotel();
+        if (cancelled) return;
+        if (!hotel) {
+          setError('Could not load hotel data. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+        setHotelId(hotel.id);
+        const members = await getHotelStaff(hotel.id);
+        if (!cancelled) setStaffList(members);
+      } catch {
+        if (!cancelled) setError('Failed to load staff. Please try again.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, [user]);
 
   function handleInvite(name: string, email: string, role: StaffRole) {
-    const newMember: StaffMember = {
+    const apiRole = role.toUpperCase() as DashboardStaffMember['role'];
+    const newMember: DashboardStaffMember = {
       id:             'staff-new-' + Date.now(),
       name,
       email,
-      role,
+      role:           apiRole,
       status:         'active',
       lastActive:     new Date().toISOString(),
       avatarInitials: getInitials(name),
@@ -222,7 +252,7 @@ export default function StaffPage() {
     setStaffList(prev =>
       prev.map(s =>
         s.id === id
-          ? { ...s, status: s.status === 'active' ? 'inactive' : 'active' }
+          ? { ...s, status: s.status === 'active' ? ('inactive' as const) : ('active' as const) }
           : s,
       ),
     );
@@ -233,12 +263,48 @@ export default function StaffPage() {
     setConfirmRemoveId(null);
   }
 
+  // Loading states
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20" style={{ color: 'var(--db-secondary)' }}>
+        Loading staff…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="rounded-xl border p-6 text-center"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
+      >
+        <p className="mb-4" style={{ color: 'var(--db-secondary)' }}>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen p-6"
       style={{ background: 'var(--db-bg)', color: 'var(--db-primary)' }}
     >
-      {/* Modal */}
       {inviteOpen && (
         <InviteModal onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
       )}
@@ -268,16 +334,20 @@ export default function StaffPage() {
       {/* Table */}
       <div
         className="mb-8 overflow-hidden rounded-xl border"
-        style={{
-          background:   'var(--db-surface)',
-          borderColor:  'var(--db-border)',
-        }}
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
       >
         {staffList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
             <p className="text-sm" style={{ color: 'var(--db-secondary)' }}>
-              No staff members yet. Invite someone to get started.
+              No staff members yet. Invite your first team member.
             </p>
+            <button
+              onClick={() => setInviteOpen(true)}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+              style={{ background: 'var(--db-accent)' }}
+            >
+              Invite Staff
+            </button>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -296,9 +366,11 @@ export default function StaffPage() {
             </thead>
             <tbody>
               {staffList.map((member, idx) => {
-                const isOwner = member.role === 'owner';
-                const isEven  = idx % 2 === 0;
+                const displayRole     = toStaffRole(member.role);
+                const isOwner         = displayRole === 'owner';
+                const isEven          = idx % 2 === 0;
                 const isConfirmRemove = confirmRemoveId === member.id;
+                const initials        = member.avatarInitials || getInitials(member.name);
 
                 return (
                   <tr
@@ -322,9 +394,9 @@ export default function StaffPage() {
                       <div className="flex items-center gap-3">
                         <div
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                          style={{ background: ROLE_COLORS[member.role] }}
+                          style={{ background: ROLE_COLORS[displayRole] }}
                         >
-                          {member.avatarInitials}
+                          {initials}
                         </div>
                         <span className="font-medium" style={{ color: 'var(--db-primary)' }}>
                           {member.name}
@@ -336,9 +408,9 @@ export default function StaffPage() {
                     <td className="px-5 py-3">
                       <span
                         className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-                        style={{ background: ROLE_COLORS[member.role] }}
+                        style={{ background: ROLE_COLORS[displayRole] }}
                       >
-                        {ROLE_LABELS[member.role]}
+                        {ROLE_LABELS[displayRole]}
                       </span>
                     </td>
 
@@ -390,7 +462,6 @@ export default function StaffPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          {/* Deactivate / Reactivate */}
                           <button
                             onClick={() => !isOwner && toggleStatus(member.id)}
                             disabled={isOwner}
@@ -405,7 +476,6 @@ export default function StaffPage() {
                             {member.status === 'active' ? 'Deactivate' : 'Reactivate'}
                           </button>
 
-                          {/* Remove */}
                           <button
                             onClick={() => !isOwner && setConfirmRemoveId(member.id)}
                             disabled={isOwner}
@@ -433,10 +503,7 @@ export default function StaffPage() {
       {/* Role Permissions Panel */}
       <div
         className="overflow-hidden rounded-xl border"
-        style={{
-          background:  'var(--db-surface)',
-          borderColor: 'var(--db-border)',
-        }}
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
       >
         <div className="border-b px-5 py-4" style={{ borderColor: 'var(--db-border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--db-primary)' }}>
@@ -466,9 +533,7 @@ export default function StaffPage() {
                   background:  idx % 2 === 0 ? 'var(--db-surface)' : 'var(--db-bg)',
                 }}
               >
-                <td className="px-5 py-3" style={{ color: 'var(--db-primary)' }}>
-                  {row.label}
-                </td>
+                <td className="px-5 py-3" style={{ color: 'var(--db-primary)' }}>{row.label}</td>
                 {(['owner', 'manager', 'receptionist', 'staff'] as const).map(role => (
                   <td key={role} className="px-5 py-3 text-center text-base font-bold">
                     {row[role] ? (
@@ -483,6 +548,9 @@ export default function StaffPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Suppress unused variable warning for hotelId (used in future API mutations) */}
+      <span style={{ display: 'none' }}>{hotelId}</span>
     </div>
   );
 }
