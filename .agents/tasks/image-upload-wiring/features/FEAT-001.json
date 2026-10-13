@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Backend image endpoints for Hotel OS. Create AddImageDto, ImagesService (Supabase admin + Prisma), extend HotelsController with 4 image routes, update HotelsModule providers. Supabase vars already in .env.example. ConfigModule is already global — no re-import needed.",
+  "status": "completed",
+  "steps": [
+    "Create c:/Users/Pkaka/music/hotel-os-api/src/hotels/dto/add-image.dto.ts. Class AddImageDto with: @IsString() @IsUrl() url: string; @IsString() @IsOptional() caption?: string; @IsBoolean() @IsOptional() isPrimary?: boolean; @IsInt() @IsOptional() sortOrder?: number. Import IsString, IsUrl, IsOptional, IsBoolean, IsInt from 'class-validator'. Add @ApiProperty / @ApiPropertyOptional from '@nestjs/swagger' matching the approve-hotel.dto.ts style. No local imports so no .js extension needed.",
+    "Create c:/Users/Pkaka/music/hotel-os-api/src/hotels/images.service.ts. @Injectable() ImagesService. Constructor injects PrismaService (from '../prisma/prisma.service.js') and ConfigService (from '@nestjs/config'). In constructor, build Supabase admin client: import { createClient, SupabaseClient } from '@supabase/supabase-js'; private supabase: SupabaseClient = createClient(config.get<string>('SUPABASE_URL')!, config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!); store bucket = config.get<string>('SUPABASE_STORAGE_BUCKET', 'hotel-images')!. Methods: async getImages(hotelId: string, ownerId: string) — verify ownership via prisma.hotel.findUnique, throw ForbiddenException if ownerId mismatches, return prisma.hotelImage.findMany({ where: { hotelId } }); async addImage(hotelId: string, ownerId: string, dto: AddImageDto) — ownership check, if dto.isPrimary unset all others via prisma.hotelImage.updateMany({ where: { hotelId }, data: { isPrimary: false } }), then prisma.hotelImage.create({ data: { hotelId, url: dto.url, caption: dto.caption, isPrimary: dto.isPrimary ?? false, sortOrder: dto.sortOrder ?? 0 } }); async deleteImage(hotelId: string, imageId: string, ownerId: string) — ownership check, fetch image, extract storage path from URL (split on '/object/public/bucketname/' and take [1]), call this.supabase.storage.from(this.bucket).remove([storagePath]), then prisma.hotelImage.delete({ where: { id: imageId } }); async setPrimary(hotelId: string, imageId: string, ownerId: string) — ownership check, updateMany to false, then update single record to true, return updated image. No 'any' types.",
+    "Update c:/Users/Pkaka/music/hotel-os-api/src/hotels/hotels.controller.ts. Add 'Delete' to @nestjs/common imports. Add ImagesService to constructor. Import AddImageDto from './dto/add-image.dto.js'. Add 4 methods after the existing updateVerificationStatus handler: GET :id/images (@UseGuards(JwtAuthGuard, RolesGuard) @Roles(HOTEL_OWNER) @Get(':id/images')), POST :id/images (@Body() dto: AddImageDto), DELETE :id/images/:imageId (@Delete(':id/images/:imageId') @Param('imageId') imageId), PATCH :id/images/:imageId/primary (@Patch(':id/images/:imageId/primary')). All four use @UseGuards(JwtAuthGuard, RolesGuard) @Roles(UserRole.HOTEL_OWNER) @ApiBearerAuth().",
+    "Update c:/Users/Pkaka/music/hotel-os-api/src/hotels/hotels.module.ts. Add ImagesService import (from './images.service.js') to providers array. ConfigModule is already global — do not add it here."
+  ],
+  "acceptance_criteria": [
+    "npm run build in hotel-os-api completes with zero TypeScript errors",
+    "AddImageDto file exists with all four decorated fields",
+    "ImagesService has getImages, addImage, deleteImage, setPrimary — no 'any' types",
+    "HotelsController has GET/POST/DELETE/PATCH image routes all guarded by JwtAuthGuard + RolesGuard(HOTEL_OWNER)",
+    "HotelsModule providers includes ImagesService"
+  ],
+  "verification": [
+    "cd c:/Users/Pkaka/music/hotel-os-api && npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": "Build passed with zero errors. All four acceptance criteria met. deleteImage uses indexOf to locate the Supabase public URL marker to avoid any reliance on split index arithmetic."
+}
