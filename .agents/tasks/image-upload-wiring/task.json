@@ -1,0 +1,7 @@
+{
+  "task_id": "task-image-upload-wiring",
+  "task_description": "Build the Supabase Storage image upload system for Hotel OS: backend NestJS image endpoints + service, frontend Supabase client helpers, API module, reusable ImageUploadSlot component, dashboard profile page integration, and onboarding step-5 wiring.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

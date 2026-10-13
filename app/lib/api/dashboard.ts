@@ -280,13 +280,6 @@ export async function getDashboardStats(hotelId: string): Promise<DashboardStats
 }
 
 /**
- * Returns the hotel profile for the authenticated user (alias for getMyHotel).
- */
-export async function getHotelProfile(): Promise<DashboardHotel | null> {
-  return getMyHotel();
-}
-
-/**
  * Returns staff members for a given hotel.
  * GET /api/v1/hotels/:hotelId/staff
  * Handles both plain array and { data: [...] } shapes.
@@ -301,4 +294,38 @@ export async function getHotelStaff(hotelId: string): Promise<DashboardStaffMemb
   } catch {
     return [];
   }
+}
+
+/**
+ * Invites a new staff member to the hotel.
+ * POST /api/v1/hotels/:hotelId/staff
+ * Throws on error so the UI can display the message.
+ */
+export async function inviteStaffMember(
+  hotelId: string,
+  payload: { name: string; email: string; role: string },
+): Promise<DashboardStaffMember> {
+  return apiClient.post<DashboardStaffMember>(`/api/v1/hotels/${hotelId}/staff`, payload);
+}
+
+/**
+ * Updates the status of a staff member.
+ * PATCH /api/v1/hotels/:hotelId/staff/:staffId
+ * Throws on error so the UI can revert optimistic state.
+ */
+export async function updateStaffStatus(
+  hotelId: string,
+  staffId: string,
+  status: 'active' | 'inactive',
+): Promise<void> {
+  await apiClient.patch<unknown>(`/api/v1/hotels/${hotelId}/staff/${staffId}`, { status });
+}
+
+/**
+ * Removes a staff member from the hotel.
+ * DELETE /api/v1/hotels/:hotelId/staff/:staffId
+ * Throws on error so the UI can revert optimistic state.
+ */
+export async function removeStaffMember(hotelId: string, staffId: string): Promise<void> {
+  await apiClient.delete<unknown>(`/api/v1/hotels/${hotelId}/staff/${staffId}`);
 }

@@ -1,0 +1,32 @@
+{
+  "project_type": "Next.js 16 (App Router) frontend + NestJS 12 ESM backend, shared Supabase postgres + storage",
+  "language": "TypeScript",
+  "build_system": "Frontend: npm + Next.js 16 Turbopack. Backend: npm + NestJS CLI (tsc). Both use strict TypeScript 6.",
+  "test_framework": "None found in either repo — no test command exists; verification is build-only.",
+  "build_command": "npm run build (run from each repo root separately)",
+  "test_command": "N/A — no test suite; use 'npm run build' as the verification step",
+  "verification_instructions": "1. In hotel-os-api: run 'npm run build' and confirm zero errors. 2. In hotel-os: run 'npm run build' and confirm zero errors.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "Do NOT read .env or .env.local — they contain secrets. Reference only variable names. Backend ESM: all local imports must use .js extension. ConfigModule is already global in app.module.ts — do not re-import in hotels.module.ts.",
+  "contribution_requirements": "Backend: ESM .js import extensions on all local imports. No 'any' types. Use class-validator decorators for DTOs. NestJS 12 / TypeScript 6 patterns only. Frontend: 'use client' on all interactive components. Use existing apiClient from app/lib/api/client.ts for all backend calls.",
+  "key_patterns": "Backend DTOs follow create-hotel.dto.ts (class-validator + @nestjs/swagger decorators). Guards: @UseGuards(JwtAuthGuard, RolesGuard) + @Roles(UserRole.HOTEL_OWNER). Controller methods call service methods with (hotelId, userId, dto) args. Frontend API modules follow dashboard.ts pattern (typed functions wrapping apiClient). CSS vars: --db-surface, --db-border, --db-muted, --db-primary, --db-secondary, --db-accent for dashboard; --ob-* for onboarding.",
+  "relevant_files": [
+    "c:/Users/Pkaka/music/hotel-os-api/src/hotels/hotels.controller.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/hotels/hotels.service.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/hotels/hotels.module.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/hotels/dto/create-hotel.dto.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/hotels/dto/approve-hotel.dto.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/auth/guards/jwt-auth.guard.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/auth/guards/roles.guard.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/src/auth/decorators/current-user.decorator.ts",
+    "c:/Users/Pkaka/music/hotel-os-api/.env.example",
+    "c:/Users/Pkaka/music/hotel-os/app/lib/api/client.ts",
+    "c:/Users/Pkaka/music/hotel-os/app/lib/api/dashboard.ts",
+    "c:/Users/Pkaka/music/hotel-os/app/dashboard/profile/page.tsx",
+    "c:/Users/Pkaka/music/hotel-os/app/onboarding/steps/step-5/page.tsx",
+    "c:/Users/Pkaka/music/hotel-os/app/onboarding/context/OnboardingContext.tsx",
+    "c:/Users/Pkaka/music/hotel-os/app/onboarding/components/FileUploadSlot.tsx",
+    "c:/Users/Pkaka/music/hotel-os/app/components/HotelCard.tsx"
+  ],
+  "directory_structure": "hotel-os-api/src/hotels/ — hotels controller, service, module, dto/. hotel-os/app/lib/ — api/ (client.ts, dashboard.ts, etc), auth-context.tsx. hotel-os/app/components/ — shared dashboard components. hotel-os/app/dashboard/profile/ — profile page. hotel-os/app/onboarding/ — context/, components/, steps/step-5/."
+}
