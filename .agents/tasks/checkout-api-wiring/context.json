@@ -1,0 +1,25 @@
+{
+  "project_type": "Next.js 16.4 App Router (React 19, TypeScript 5, Tailwind CSS 4)",
+  "language": "TypeScript",
+  "build_system": "npm + Next.js 16.4.0. BREAKING: searchParams and params are Promises in server components — must be awaited. Client components use useSearchParams() from next/navigation. No test runner present; verification is build-only.",
+  "test_framework": "none — no test framework configured",
+  "build_command": "npx next build",
+  "test_command": "npx next build",
+  "verification_instructions": "Run `npx next build` from c:\\Users\\Pkaka\\music\\hotel-os. Expect exit code 0 with zero TypeScript errors. The build must not reference any mock imports in the four target files after the change.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "Backend API: https://hotel-os-api-52qe.onrender.com (via NEXT_PUBLIC_API_URL env var). DO NOT delete app/bookings/mock.ts or app/hotels/mock.ts — other pages still import them. Working tree is clean at commit f314404 on branch master.",
+  "contribution_requirements": "No 'any' types anywhere. All new files must be TypeScript-strict. Do not introduce new npm dependencies. Keep the existing 'use client' / server component boundary patterns.",
+  "key_patterns": "API client is apiClient in app/lib/api/client.ts (get/post/patch/delete, attaches Bearer token from localStorage, handles 401 refresh). Auth state via useAuth() from app/lib/auth-context.tsx — exposes { user: AuthUser | null, isLoading: boolean, setUser, signOut }. Auth gate pattern: useEffect(() => { if (!isLoading && !user) router.push('/auth/signin?redirect=<path>'); }, [isLoading, user, router]). Design tokens: --tp-bg, --tp-surface, --tp-primary, --tp-secondary, --tp-accent, --tp-accent-light, --tp-border, --tp-muted, --tp-gold. calcNights/calcBookingCost from app/lib/booking.ts. Booking status UI tabs: upcoming | completed | cancelled (lowercase, type BookingStatus in app/bookings/mock.ts). API statuses from NestJS: HELD, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, PAYMENT_PENDING, NO_SHOW, PENDING.",
+  "relevant_files": [
+    "app/lib/api/client.ts",
+    "app/lib/api/auth.ts",
+    "app/lib/auth-context.tsx",
+    "app/lib/booking.ts",
+    "app/checkout/page.tsx",
+    "app/bookings/page.tsx",
+    "app/bookings/mock.ts",
+    "app/booking/confirmation/page.tsx",
+    "app/lib/api/search.ts"
+  ],
+  "directory_structure": "app/lib/api/ — API client modules (client.ts, auth.ts, search.ts); app/lib/ — shared utilities (booking.ts, auth-context.tsx); app/checkout/ — checkout page; app/bookings/ — my-bookings page; app/booking/confirmation/ — post-payment confirmation page; app/components/ — TravelerNav, Footer; .agents/tasks/ — planning artifacts"
+}

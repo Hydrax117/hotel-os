@@ -1,0 +1,8 @@
+{
+  "task_id": "task-checkout-api-wiring",
+  "task_description": "Wire the Hotel OS Next.js booking flow to the real NestJS backend API. Replace mock data in checkout, my-bookings, and booking-confirmation pages with real API calls. Create bookings.ts API client, add auth gates, integrate Paystack payment redirect, and map API booking statuses to UI tabs.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "summary": "Checkout API wiring complete. Created lib/api/bookings.ts with full CRUD for bookings against https://hotel-os-api-52qe.onrender.com. Wired /checkout to POST /bookings and redirect to Paystack payment URL. Wired /bookings (my-bookings) to GET /bookings with status tab mapping (upcoming/active/completed/cancelled). Wired /booking/confirmation to GET /bookings/:id for real confirmation data. Added auth gates (redirect to /auth/signin when no token) on all three pages. Fixed review findings: added loading/error states, skeleton loaders, and graceful fallbacks. Production build passes (58/58 static pages, exit 0)."
+}
