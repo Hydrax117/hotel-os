@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
-import { SEARCH_MOCK_HOTELS } from '../../search/mock';
 import { apiClient, ApiError } from '../../lib/api/client';
 import { useAuth } from '../../lib/auth-context';
 
@@ -118,8 +117,7 @@ function ReviewFormInner() {
   const hotelId = searchParams.get('hotelId') ?? '';
   const bookingId = searchParams.get('bookingId') ?? '';
 
-  const hotel = SEARCH_MOCK_HOTELS.find(h => h.id === hotelId);
-  const hotelName = hotel?.name ?? hotelId ?? 'Your Recent Stay';
+  const hotelName = hotelId ?? 'Your Recent Stay';
 
   // Guard — bookingId is required to submit a verified review
   const missingBooking = !bookingId;
