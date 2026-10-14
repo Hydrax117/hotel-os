@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { TravelerNav } from '../components/TravelerNav';
 import { Footer } from '../components/Footer';
+import { useAuth } from '../lib/auth-context';
+import { getUserProfile, updateUserProfile, type UserProfile } from '../lib/api/users';
+import { ApiError } from '../lib/api/client';
 import { SEARCH_MOCK_HOTELS, MockHotel } from '../search/mock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -100,19 +104,53 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (val: boolean) => voi
 
 // ── Section: Personal Info ────────────────────────────────────────────────────
 
-function PersonalInfoSection() {
-  const [firstName, setFirstName] = useState('Adaeze');
-  const [lastName, setLastName] = useState('Okonkwo');
-  const [phone, setPhone] = useState('+234 812 345 6789');
-  const [dob, setDob] = useState('1992-05-12');
-  const [nationality, setNationality] = useState('Nigerian');
+function PersonalInfoSection({ profile }: { profile: UserProfile | null }) {
+  const { setUser } = useAuth();
+  const [firstName, setFirstName] = useState(profile?.firstName ?? '');
+  const [lastName, setLastName] = useState(profile?.lastName ?? '');
+  const [phone, setPhone] = useState(profile?.phone ?? '');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  function handleSave(e: React.FormEvent) {
+  // Sync fields when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.firstName);
+      setLastName(profile.lastName);
+      setPhone(profile.phone ?? '');
+    }
+  }, [profile]);
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await updateUserProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim() || undefined,
+      });
+      // Update the auth context with new name
+      setUser({
+        id: updated.id,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        role: updated.role as 'SUPER_ADMIN' | 'HOTEL_OWNER' | 'HOTEL_MANAGER' | 'HOTEL_STAFF' | 'TRAVELER',
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save changes.');
+    } finally {
+      setSaving(false);
+    }
   }
+
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
+  const email = profile?.email ?? '';
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -156,9 +194,9 @@ function PersonalInfoSection() {
             color: 'white',
             flexShrink: 0,
           }}
-          aria-label="Profile avatar with initials AO"
+          aria-label={`Profile avatar with initials ${initials}`}
         >
-          AO
+          {initials}
         </div>
         <button
           type="button"
@@ -205,7 +243,7 @@ function PersonalInfoSection() {
               <input
                 id="email"
                 type="email"
-                value="adaeze@example.com"
+                value={email}
                 readOnly
                 style={{ ...inputStyle, background: 'var(--tp-muted)', color: 'var(--tp-secondary)', paddingRight: '40px' }}
               />
@@ -232,9 +270,9 @@ function PersonalInfoSection() {
             <input
               id="dob"
               type="date"
-              value={dob}
-              onChange={e => setDob(e.target.value)}
+              defaultValue=""
               style={inputStyle}
+              disabled
             />
           </div>
           <div>
@@ -242,34 +280,44 @@ function PersonalInfoSection() {
             <input
               id="nationality"
               type="text"
-              value={nationality}
-              onChange={e => setNationality(e.target.value)}
+              defaultValue=""
+              placeholder="—"
               style={inputStyle}
+              disabled
             />
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            type="submit"
-            style={{
-              background: 'var(--tp-primary)',
-              color: 'white',
-              border: 'none',
-              padding: '10px 24px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Save changes
-          </button>
-          {saved && (
-            <span style={{ color: 'var(--tp-accent)', fontSize: '14px', fontWeight: 500 }}>
-              ✓ Changes saved
-            </span>
+        <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {saveError && (
+            <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+              {saveError}
+            </div>
           )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                background: 'var(--tp-primary)',
+                color: 'white',
+                border: 'none',
+                padding: '10px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              {saving ? 'Saving...' : 'Save changes'}
+            </button>
+            {saved && (
+              <span style={{ color: 'var(--tp-accent)', fontSize: '14px', fontWeight: 500 }}>
+                ✓ Changes saved
+              </span>
+            )}
+          </div>
         </div>
       </form>
     </div>
@@ -906,18 +954,59 @@ function PreferencesSection() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<ProfileSection>('personal');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  function renderSection() {
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/signin?redirect=/profile');
+    }
+  }, [authLoading, user, router]);
+
+  // Load full profile from API
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile()
+      .then(setProfile)
+      .catch(() => {
+        // Fall back to auth context data if profile fetch fails
+        setProfile({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: null,
+          role: user.role,
+          emailVerified: false,
+          isActive: true,
+          createdAt: '',
+        });
+      });
+  }, [user]);
+
+  const renderSection = useCallback(() => {
     switch (activeSection) {
-      case 'personal': return <PersonalInfoSection />;
+      case 'personal': return <PersonalInfoSection profile={profile} />;
       case 'security': return <SecuritySection />;
       case 'saved': return <SavedHotelsSection />;
       case 'payment': return <PaymentMethodsSection />;
       case 'notifications': return <NotificationsSection />;
       case 'preferences': return <PreferencesSection />;
     }
+  }, [activeSection, profile]);
+
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tp-bg)' }}>
+        <TravelerNav />
+      </div>
+    );
   }
+
+  if (!user) return null;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--tp-bg)' }}>
