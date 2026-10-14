@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
 import { SEARCH_MOCK_HOTELS } from '../../search/mock';
+import { apiClient, ApiError } from '../../lib/api/client';
+import { useAuth } from '../../lib/auth-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,9 @@ function ReviewFormInner() {
   const hotel = SEARCH_MOCK_HOTELS.find(h => h.id === hotelId);
   const hotelName = hotel?.name ?? hotelId ?? 'Your Recent Stay';
 
+  // Guard — bookingId is required to submit a verified review
+  const missingBooking = !bookingId;
+
   // Overall rating state
   const [overallRating, setOverallRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -142,18 +147,43 @@ function ReviewFormInner() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Validation
   const bodyValid = body.trim().length >= 50;
-  const canSubmit = overallRating > 0 && title.trim().length > 0 && bodyValid;
+  const canSubmit = overallRating > 0 && title.trim().length > 0 && bodyValid && !missingBooking;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !bookingId) return;
     setIsSubmitting(true);
-    setTimeout(() => {
+    setSubmitError(null);
+    try {
+      await apiClient.post('/api/v1/reviews', {
+        bookingId,
+        overallRating,
+        cleanlinessRating: categoryRatings.cleanliness || overallRating,
+        locationRating: categoryRatings.location || overallRating,
+        serviceRating: categoryRatings.service || overallRating,
+        valueRating: categoryRatings.value || overallRating,
+        facilitiesRating: categoryRatings.facilities || overallRating,
+        title: title.trim(),
+        body: body.trim(),
+      });
       router.push('/bookings?reviewed=true');
-    }, 1000);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setSubmitError('You have already submitted a review for this stay.');
+      } else if (err instanceof ApiError && err.status === 400) {
+        setSubmitError(err.message);
+      } else if (err instanceof ApiError && err.status === 401) {
+        router.push('/auth/signin?redirect=/reviews/new');
+      } else {
+        setSubmitError('Failed to submit your review. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const effectiveRating = hoverRating || overallRating;
@@ -371,6 +401,24 @@ function ReviewFormInner() {
                   ))}
                 </div>
               </div>
+
+              {/* Error banner */}
+              {submitError && (
+                <div
+                  role="alert"
+                  style={{
+                    background: '#fee2e2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    fontSize: '14px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {submitError}
+                </div>
+              )}
 
               {/* Submit */}
               <button
