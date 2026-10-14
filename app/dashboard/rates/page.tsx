@@ -1,7 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MOCK_ROOM_TYPES } from '../mock/data';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
+import {
+  getMyHotel,
+  getDashboardRoomTypes,
+  updateRoomTypePricing,
+  type DashboardHotel,
+  type DashboardRoomType,
+} from '../../lib/api/dashboard';
+import { ApiError } from '../../lib/api/client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -19,6 +28,7 @@ type RateRowState = {
   minStay: number;
   weekendRate?: number;
   weekendEnabled: boolean;
+  saving: boolean;
 };
 
 type EditDraft = {
@@ -34,42 +44,100 @@ const SEASONS: { value: Season; label: string }[] = [
   { value: 'low',      label: 'Low Season' },
 ];
 
-// Price multipliers per season
+// Price multipliers per season (applied to base price for display only)
 const SEASON_MULTIPLIER: Record<Season, number> = {
   standard: 1,
   peak: 1.3,
   low: 0.75,
 };
 
-function buildInitialRates(season: Season): RateRowState[] {
+function buildRatesFromRoomTypes(roomTypes: DashboardRoomType[], season: Season): RateRowState[] {
   const mult = SEASON_MULTIPLIER[season];
-  return MOCK_ROOM_TYPES.map(rt => ({
+  return roomTypes.map(rt => ({
     roomTypeId: rt.id,
     price: Math.round(rt.pricePerNight * mult),
     minStay: 1,
     weekendEnabled: false,
     weekendRate: undefined,
+    saving: false,
   }));
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {[1, 2, 3].map(i => (
+        <div
+          key={i}
+          style={{ height: 56, background: 'var(--db-muted)', borderRadius: 8, marginBottom: 8 }}
+        />
+      ))}
+    </div>
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function RatesPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [hotel, setHotel] = useState<DashboardHotel | null>(null);
+  const [roomTypes, setRoomTypes] = useState<DashboardRoomType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [activeSeason, setActiveSeason] = useState<Season>('standard');
   const [ratesBySeason, setRatesBySeason] = useState<Record<Season, RateRowState[]>>({
-    standard: buildInitialRates('standard'),
-    peak:     buildInitialRates('peak'),
-    low:      buildInitialRates('low'),
+    standard: [],
+    peak: [],
+    low: [],
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [bulkPercent, setBulkPercent] = useState('');
   const [toast, setToast] = useState<string | null>(null);
+  const [toastIsError, setToastIsError] = useState(false);
+
+  // Auth gate
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/signin');
+    }
+  }, [authLoading, user, router]);
+
+  // Load hotel + room types
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const myHotel = await getMyHotel();
+      if (!myHotel) throw new Error('Hotel not found.');
+      setHotel(myHotel);
+      const rts = await getDashboardRoomTypes(myHotel.id);
+      setRoomTypes(rts);
+      setRatesBySeason({
+        standard: buildRatesFromRoomTypes(rts, 'standard'),
+        peak:     buildRatesFromRoomTypes(rts, 'peak'),
+        low:      buildRatesFromRoomTypes(rts, 'low'),
+      });
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Failed to load room types.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const rows = ratesBySeason[activeSeason];
 
-  function showToast(msg: string) {
+  function showToast(msg: string, isError = false) {
     setToast(msg);
+    setToastIsError(isError);
     setTimeout(() => setToast(null), 3000);
   }
 
@@ -88,42 +156,150 @@ export default function RatesPage() {
     setDraft(null);
   }
 
-  function saveEdit(roomTypeId: string) {
-    if (!draft) return;
+  async function saveEdit(roomTypeId: string) {
+    if (!draft || !hotel) return;
     const newPrice = parseInt(draft.price, 10);
+    if (isNaN(newPrice) || newPrice <= 0) {
+      showToast('Price must be a positive number.', true);
+      return;
+    }
     const newWeekend = draft.weekendEnabled && draft.weekendRate !== ''
       ? parseInt(draft.weekendRate, 10)
       : undefined;
+
+    // Mark row as saving
     setRatesBySeason(prev => ({
       ...prev,
       [activeSeason]: prev[activeSeason].map(r =>
-        r.roomTypeId === roomTypeId
-          ? { ...r, price: isNaN(newPrice) ? r.price : newPrice, minStay: draft.minStay, weekendEnabled: draft.weekendEnabled, weekendRate: newWeekend }
-          : r
+        r.roomTypeId === roomTypeId ? { ...r, saving: true } : r
       ),
     }));
-    setEditingId(null);
-    setDraft(null);
-    showToast('Rate saved successfully');
+
+    try {
+      // Only update the base price when on standard season — peak/low are display multipliers
+      if (activeSeason === 'standard') {
+        await updateRoomTypePricing(hotel.id, roomTypeId, { pricePerNight: newPrice });
+      }
+      // Update local state for all seasons
+      setRatesBySeason(prev => {
+        const updated: Record<Season, RateRowState[]> = { ...prev };
+        (['standard', 'peak', 'low'] as Season[]).forEach(season => {
+          const mult = SEASON_MULTIPLIER[season];
+          updated[season] = prev[season].map(r =>
+            r.roomTypeId === roomTypeId
+              ? {
+                  ...r,
+                  price: activeSeason === season
+                    ? (isNaN(newPrice) ? r.price : newPrice)
+                    : Math.round((isNaN(newPrice) ? r.price : newPrice) /
+                        SEASON_MULTIPLIER[activeSeason] * mult),
+                  minStay: draft.minStay,
+                  weekendEnabled: draft.weekendEnabled,
+                  weekendRate: newWeekend,
+                  saving: false,
+                }
+              : r
+          );
+        });
+        return updated;
+      });
+      setEditingId(null);
+      setDraft(null);
+      showToast('Rate saved successfully');
+    } catch (err) {
+      // Clear saving state on error
+      setRatesBySeason(prev => ({
+        ...prev,
+        [activeSeason]: prev[activeSeason].map(r =>
+          r.roomTypeId === roomTypeId ? { ...r, saving: false } : r
+        ),
+      }));
+      showToast(err instanceof ApiError ? err.message : 'Failed to save rate.', true);
+    }
   }
 
-  function applyBulkUplift() {
+  async function applyBulkUplift() {
     const pct = parseFloat(bulkPercent);
-    if (isNaN(pct)) return;
+    if (isNaN(pct) || !hotel) return;
     const multiplier = 1 + pct / 100;
-    setRatesBySeason(prev => ({
-      ...prev,
-      [activeSeason]: prev[activeSeason].map(r => ({
-        ...r,
-        price: Math.round(r.price * multiplier),
-        weekendRate: r.weekendRate != null ? Math.round(r.weekendRate * multiplier) : undefined,
-      })),
-    }));
-    setBulkPercent('');
-    showToast(`Bulk update applied: ${pct >= 0 ? '+' : ''}${pct}%`);
+
+    // For standard season: update all room types via API in parallel
+    const updates = rows.map(async r => {
+      const newPrice = Math.round(r.price * multiplier);
+      if (activeSeason === 'standard') {
+        await updateRoomTypePricing(hotel.id, r.roomTypeId, { pricePerNight: newPrice });
+      }
+      return { roomTypeId: r.roomTypeId, newPrice };
+    });
+
+    try {
+      const results = await Promise.all(updates);
+      const priceMap = Object.fromEntries(results.map(r => [r.roomTypeId, r.newPrice]));
+
+      setRatesBySeason(prev => ({
+        ...prev,
+        [activeSeason]: prev[activeSeason].map(r => ({
+          ...r,
+          price: priceMap[r.roomTypeId] ?? Math.round(r.price * multiplier),
+          weekendRate: r.weekendRate != null ? Math.round(r.weekendRate * multiplier) : undefined,
+        })),
+      }));
+      setBulkPercent('');
+      showToast(`Bulk update applied: ${pct >= 0 ? '+' : ''}${pct}%`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Bulk update failed.', true);
+    }
   }
 
-  const roomTypeMap = Object.fromEntries(MOCK_ROOM_TYPES.map(rt => [rt.id, rt]));
+  const roomTypeMap = Object.fromEntries(roomTypes.map(rt => [rt.id, rt]));
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex flex-col gap-8" style={{ color: 'var(--db-primary)' }}>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">Rates</h1>
+        </div>
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col gap-4" style={{ color: 'var(--db-primary)' }}>
+        <h1 className="text-2xl font-bold tracking-tight">Rates</h1>
+        <div
+          className="rounded-xl border p-6 text-center"
+          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+        >
+          <p className="mb-4 text-sm" style={{ color: 'var(--db-secondary)' }}>{loadError}</p>
+          <button
+            onClick={() => void loadData()}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+            style={{ background: 'var(--db-accent)', border: 'none', cursor: 'pointer' }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-col gap-4" style={{ color: 'var(--db-primary)' }}>
+        <h1 className="text-2xl font-bold tracking-tight">Rates</h1>
+        <div
+          className="rounded-xl border p-10 text-center"
+          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--db-secondary)' }}>
+            No room types found. Add room types from the Rooms page first.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8" style={{ color: 'var(--db-primary)' }}>
@@ -132,7 +308,7 @@ export default function RatesPage() {
       {toast && (
         <div
           className="fixed top-4 right-4 z-50 rounded-xl px-4 py-3 text-sm font-medium shadow-lg"
-          style={{ background: 'var(--db-success)', color: '#fff' }}
+          style={{ background: toastIsError ? 'var(--db-danger)' : 'var(--db-success)', color: '#fff' }}
           role="status"
           aria-live="polite"
         >
@@ -286,11 +462,17 @@ export default function RatesPage() {
                         {isEditing ? (
                           <>
                             <button
-                              onClick={() => saveEdit(row.roomTypeId)}
+                              onClick={() => void saveEdit(row.roomTypeId)}
+                              disabled={row.saving}
                               className="rounded-lg px-3 py-1 text-xs font-medium"
-                              style={{ background: 'var(--db-accent)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                              style={{
+                                background: row.saving ? 'var(--db-muted)' : 'var(--db-accent)',
+                                color: row.saving ? 'var(--db-secondary)' : '#fff',
+                                border: 'none',
+                                cursor: row.saving ? 'not-allowed' : 'pointer',
+                              }}
                             >
-                              Save
+                              {row.saving ? 'Saving...' : 'Save'}
                             </button>
                             <button
                               onClick={cancelEdit}
@@ -351,7 +533,7 @@ export default function RatesPage() {
             <span className="text-sm" style={{ color: 'var(--db-secondary)' }}>%</span>
           </div>
           <button
-            onClick={applyBulkUplift}
+            onClick={() => void applyBulkUplift()}
             disabled={bulkPercent === ''}
             className="rounded-lg px-4 py-2 text-sm font-medium"
             style={{

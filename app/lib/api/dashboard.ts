@@ -329,3 +329,35 @@ export async function updateStaffStatus(
 export async function removeStaffMember(hotelId: string, staffId: string): Promise<void> {
   await apiClient.delete<unknown>(`/api/v1/hotels/${hotelId}/staff/${staffId}`);
 }
+
+/**
+ * Updates a room type's price (and optionally other fields).
+ * PATCH /api/v1/hotels/:hotelId/room-types/:roomTypeId
+ */
+export async function updateRoomTypePricing(
+  hotelId: string,
+  roomTypeId: string,
+  payload: { pricePerNight?: number; name?: string; totalRooms?: number },
+): Promise<DashboardRoomType> {
+  type ApiRoomTypeRaw = {
+    id: string; name: string; totalRooms?: number; quantity?: number;
+    availableRooms?: number; available?: number; pricePerNight: number;
+    bedType: string; capacity?: number; maxGuests?: number; imageUrl?: string;
+  };
+  const raw = await apiClient.patch<ApiRoomTypeRaw>(
+    `/api/v1/hotels/${hotelId}/room-types/${roomTypeId}`,
+    payload,
+  );
+  return {
+    id: raw.id,
+    name: raw.name,
+    totalRooms: raw.totalRooms ?? raw.quantity ?? 0,
+    availableRooms: raw.availableRooms ?? raw.available ?? 0,
+    pricePerNight: typeof raw.pricePerNight === 'number'
+      ? raw.pricePerNight
+      : Number(raw.pricePerNight),
+    bedType: raw.bedType,
+    capacity: raw.capacity ?? raw.maxGuests ?? 0,
+    imageUrl: raw.imageUrl,
+  };
+}
