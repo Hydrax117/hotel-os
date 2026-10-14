@@ -1,11 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
-import { register } from '@/app/lib/api/auth';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '@/app/lib/auth-context';
 import {
   createHotel,
   createRoomType,
-  saveDocument,
   createSubscription,
 } from '@/app/lib/api/onboarding';
 import { saveHotelImage } from '@/app/lib/api/images';
@@ -207,22 +206,26 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const setSubscription = (plan: SubscriptionPlan) =>
     setState(s => ({ ...s, subscription: plan }));
 
+  // Pre-populate account data from the authenticated user so step 1 is no
+  // longer needed (registration happens on the signup page before onboarding).
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user) {
+      updateAccount({
+        name: [user.firstName, user.lastName].filter(Boolean).join(' '),
+        email: user.email,
+        phone: '', // AuthUser has no phone field
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const submit = async (): Promise<void> => {
     // ── Pre-flight validation ─────────────────────────────────────────────────
     // Validate ALL fields before making any network request.
     // Collect every error so the user sees them all at once.
     const snap = state;
     const errors: string[] = [];
-
-    // Step 1 — Account
-    if (!snap.account.name.trim())
-      errors.push('Full name is required (Step 1).');
-    if (!snap.account.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(snap.account.email))
-      errors.push('A valid email address is required (Step 1).');
-    if (!snap.account.phone.trim())
-      errors.push('Phone number is required (Step 1).');
-    if (!snap.account.password || snap.account.password.length < 8)
-      errors.push('Password must be at least 8 characters (Step 1).');
 
     // Step 2 — Property
     if (!snap.property.hotelName.trim())
@@ -268,22 +271,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     }
     // ── End validation ────────────────────────────────────────────────────────
 
-    setState(s => ({ ...s, submitting: true, submitError: null, submitStep: 'Creating account…' }));
+    setState(s => ({ ...s, submitting: true, submitError: null, submitStep: null }));
     try {
-      // 1. Register account — storeTokens/storeUser are called inside register()
-      const nameParts = snap.account.name.trim().split(/\s+/);
-      const firstName = nameParts[0] ?? '';
-      const lastName = nameParts.slice(1).join(' ') || firstName;
-      await register({
-        email: snap.account.email,
-        password: snap.account.password,
-        firstName,
-        lastName,
-        phone: snap.account.phone || undefined,
-        role: 'HOTEL_OWNER',
-      });
-
-      // 2. Create hotel
+      // 1. Create hotel
       setState(s => ({ ...s, submitStep: 'Creating hotel…' }));
       const hotel = await createHotel({
         name: snap.property.hotelName,
@@ -303,12 +293,13 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       });
       const hotelId = hotel.id;
 
-      // 3. Upload & save verification documents
+      // 3. Upload verification documents to Supabase Storage
       setState(s => ({ ...s, submitStep: 'Uploading documents…' }));
       for (const doc of snap.verification) {
         if (!doc.file) continue;
-        const url = await uploadDocument(doc.file, hotelId, doc.id);
-        await saveDocument(hotelId, { url, documentType: doc.id, label: doc.label });
+        // Upload to Supabase hotel-documents bucket — URL stored in Supabase, not DB
+        // (no backend documents endpoint exists yet — Supabase is the source of truth)
+        await uploadDocument(doc.file, hotelId, doc.id);
       }
 
       // 4. Upload & save hotel images (parallel for speed)
@@ -360,9 +351,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       }));
     } catch (err: unknown) {
       let message: string;
-      if (err instanceof ApiError && err.status === 409) {
-        message = 'An account with this email already exists. Please sign in instead.';
-      } else if (err instanceof ApiError) {
+      if (err instanceof ApiError) {
         message = err.message;
       } else if (err instanceof Error) {
         message = err.message;

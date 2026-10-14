@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { register } from '../../lib/api/auth';
 import { ApiError } from '../../lib/api/client';
 import { useAuth } from '../../lib/auth-context';
@@ -97,8 +98,6 @@ function AuthLeftPanel() {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Role = 'traveler' | 'owner';
-
 interface FormErrors {
   firstName?: string;
   lastName?: string;
@@ -107,17 +106,20 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
   terms?: string;
-  hotelName?: string;
   general?: string;
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Sign-up form (inner component — needs Suspense for useSearchParams) ────────
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const searchParams = useSearchParams();
+  const isOwnerContext = searchParams.get('context') === 'owner';
 
-  const [role, setRole] = useState<Role>('traveler');
+  // Effective role is determined entirely by the subdomain context
+  const effectiveRole = isOwnerContext ? 'HOTEL_OWNER' : 'TRAVELER';
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -127,7 +129,6 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
-  const [hotelName, setHotelName] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
@@ -147,7 +148,6 @@ export default function SignUpPage() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     if (!termsChecked) newErrors.terms = 'Please accept the terms to continue';
-    if (role === 'owner' && !hotelName.trim()) newErrors.hotelName = 'Please enter your hotel name';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -164,11 +164,11 @@ export default function SignUpPage() {
         firstName,
         lastName,
         phone: phone || undefined,
-        role: role === 'owner' ? 'HOTEL_OWNER' : 'TRAVELER',
+        role: effectiveRole,
       });
       setUser(res.user);
-      if (role === 'owner') {
-        router.push('/onboarding');
+      if (isOwnerContext) {
+        router.push('/onboarding/steps/step-2');
       } else {
         router.push('/');
       }
@@ -195,6 +195,307 @@ export default function SignUpPage() {
   };
 
   return (
+    <div className="w-full max-w-sm">
+      {/* Heading */}
+      <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--tp-primary)' }}>
+        {isOwnerContext ? 'Create your Hotel OS account' : 'Create your account'}
+      </h1>
+      <p className="text-sm mb-8" style={{ color: 'var(--tp-secondary)' }}>
+        {isOwnerContext
+          ? 'Start listing your hotel in minutes.'
+          : 'Join thousands of travelers booking verified hotels across Nigeria.'}
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        {/* Name row */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* First name */}
+          <div>
+            <label htmlFor="firstName" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+              First name
+            </label>
+            <input
+              id="firstName"
+              type="text"
+              autoComplete="given-name"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              placeholder="Emeka"
+              className={inputBase}
+              style={inputStyle}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+              aria-invalid={!!errors.firstName}
+              aria-describedby={errors.firstName ? 'firstName-error' : undefined}
+            />
+            {errors.firstName && (
+              <p id="firstName-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+                {errors.firstName}
+              </p>
+            )}
+          </div>
+
+          {/* Last name */}
+          <div>
+            <label htmlFor="lastName" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+              Last name
+            </label>
+            <input
+              id="lastName"
+              type="text"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              placeholder="Obi"
+              className={inputBase}
+              style={inputStyle}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+              aria-invalid={!!errors.lastName}
+              aria-describedby={errors.lastName ? 'lastName-error' : undefined}
+            />
+            {errors.lastName && (
+              <p id="lastName-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+                {errors.lastName}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Email */}
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+            Email address
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className={inputBase}
+            style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-error' : undefined}
+          />
+          {errors.email && (
+            <p id="email-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+              {errors.email}
+            </p>
+          )}
+        </div>
+
+        {/* Phone */}
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+            Phone number
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="+234 800 000 0000"
+            className={inputBase}
+            style={inputStyle}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+            aria-invalid={!!errors.phone}
+            aria-describedby={errors.phone ? 'phone-error' : undefined}
+          />
+          {errors.phone && (
+            <p id="phone-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+              {errors.phone}
+            </p>
+          )}
+        </div>
+
+        {/* Password */}
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className={`${inputBase} pr-11`}
+              style={inputStyle}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'password-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center"
+              style={{ color: 'var(--tp-secondary)' }}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+            </button>
+          </div>
+          {errors.password && (
+            <p id="password-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+              {errors.password}
+            </p>
+          )}
+        </div>
+
+        {/* Confirm password */}
+        <div>
+          <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
+            Confirm password
+          </label>
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              className={`${inputBase} pr-11`}
+              style={inputStyle}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
+              aria-invalid={!!errors.confirmPassword}
+              aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center"
+              style={{ color: 'var(--tp-secondary)' }}
+              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+            >
+              {showConfirmPassword ? <EyeSlashIcon /> : <EyeIcon />}
+            </button>
+          </div>
+          {errors.confirmPassword && (
+            <p id="confirmPassword-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+              {errors.confirmPassword}
+            </p>
+          )}
+        </div>
+
+        {/* Terms checkbox */}
+        <div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <div className="relative flex-shrink-0 mt-0.5">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={termsChecked}
+                onChange={e => setTermsChecked(e.target.checked)}
+                className="sr-only"
+                aria-describedby={errors.terms ? 'terms-error' : undefined}
+              />
+              <div
+                className="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                style={{
+                  border: `2px solid ${termsChecked ? 'var(--tp-accent)' : 'var(--tp-border)'}`,
+                  background: termsChecked ? 'var(--tp-accent-light)' : 'var(--tp-surface)',
+                }}
+                onClick={() => setTermsChecked(v => !v)}
+                role="checkbox"
+                aria-checked={termsChecked}
+                aria-label="I agree to the Terms of Service and Privacy Policy"
+              >
+                {termsChecked && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3d6b4f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
+              I agree to the{' '}
+              <Link href="/terms" className="font-medium" style={{ color: 'var(--tp-accent)' }}>
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="font-medium" style={{ color: 'var(--tp-accent)' }}>
+                Privacy Policy
+              </Link>
+            </span>
+          </label>
+          {errors.terms && (
+            <p id="terms-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
+              {errors.terms}
+            </p>
+          )}
+        </div>
+
+        {errors.general && (
+          <div style={{background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px'}}>
+            {errors.general}
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+          style={{ background: 'var(--tp-primary)' }}
+        >
+          {loading ? (
+            <>
+              <SpinnerIcon />
+              Creating account...
+            </>
+          ) : (
+            'Create account'
+          )}
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4">
+          <hr className="flex-1" style={{ borderColor: 'var(--tp-border)' }} />
+          <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>or continue with</span>
+          <hr className="flex-1" style={{ borderColor: 'var(--tp-border)' }} />
+        </div>
+
+        {/* Google button */}
+        <a
+          href="#"
+          className="flex w-full items-center justify-center gap-3 rounded-xl py-3 text-sm font-medium transition-opacity hover:opacity-80"
+          style={{
+            border: '1px solid var(--tp-border)',
+            background: 'var(--tp-surface)',
+            color: 'var(--tp-primary)',
+          }}
+        >
+          <GoogleG />
+          Continue with Google
+        </a>
+      </form>
+
+      {/* Sign in link */}
+      <p className="mt-6 text-center text-sm" style={{ color: 'var(--tp-secondary)' }}>
+        Already have an account?{' '}
+        <Link href="/auth/signin" className="font-medium" style={{ color: 'var(--tp-primary)' }}>
+          Sign in
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function SignUpPage() {
+  return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div className="flex min-h-screen" style={{ background: 'var(--tp-bg)' }}>
@@ -212,353 +513,9 @@ export default function SignUpPage() {
             </Link>
           </div>
 
-          <div className="w-full max-w-sm">
-            {/* Role toggle */}
-            <div className="flex gap-2 mb-6 p-1 rounded-full" style={{ background: 'var(--tp-muted)' }}>
-              <button
-                type="button"
-                onClick={() => setRole('traveler')}
-                className="flex-1 rounded-full py-2 text-sm font-medium transition-colors"
-                style={{
-                  background: role === 'traveler' ? 'var(--tp-primary)' : 'transparent',
-                  color: role === 'traveler' ? '#ffffff' : 'var(--tp-secondary)',
-                }}
-              >
-                I&apos;m a traveler
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('owner')}
-                className="flex-1 rounded-full py-2 text-sm font-medium transition-colors"
-                style={{
-                  background: role === 'owner' ? 'var(--tp-primary)' : 'transparent',
-                  color: role === 'owner' ? '#ffffff' : 'var(--tp-secondary)',
-                }}
-              >
-                I&apos;m a hotel owner
-              </button>
-            </div>
-
-            {/* Heading */}
-            <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--tp-primary)' }}>
-              Create your account
-            </h1>
-            <p className="text-sm mb-8" style={{ color: 'var(--tp-secondary)' }}>
-              {role === 'traveler'
-                ? 'Join thousands of travelers booking verified hotels across Nigeria.'
-                : 'List and manage your hotel on Hotel OS.'}
-            </p>
-
-            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-              {/* Name row */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* First name */}
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                    First name
-                  </label>
-                  <input
-                    id="firstName"
-                    type="text"
-                    autoComplete="given-name"
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    placeholder="Emeka"
-                    className={inputBase}
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                    aria-invalid={!!errors.firstName}
-                    aria-describedby={errors.firstName ? 'firstName-error' : undefined}
-                  />
-                  {errors.firstName && (
-                    <p id="firstName-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                      {errors.firstName}
-                    </p>
-                  )}
-                </div>
-
-                {/* Last name */}
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                    Last name
-                  </label>
-                  <input
-                    id="lastName"
-                    type="text"
-                    autoComplete="family-name"
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    placeholder="Obi"
-                    className={inputBase}
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                    aria-invalid={!!errors.lastName}
-                    aria-describedby={errors.lastName ? 'lastName-error' : undefined}
-                  />
-                  {errors.lastName && (
-                    <p id="lastName-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                      {errors.lastName}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className={inputBase}
-                  style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-                {errors.email && (
-                  <p id="email-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                  Phone number
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="+234 800 000 0000"
-                  className={inputBase}
-                  style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                  aria-invalid={!!errors.phone}
-                  aria-describedby={errors.phone ? 'phone-error' : undefined}
-                />
-                {errors.phone && (
-                  <p id="phone-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                    {errors.phone}
-                  </p>
-                )}
-              </div>
-
-              {/* Hotel name (owner only) */}
-              {role === 'owner' && (
-                <div>
-                  <label htmlFor="hotelName" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                    Hotel name
-                  </label>
-                  <input
-                    id="hotelName"
-                    type="text"
-                    value={hotelName}
-                    onChange={e => setHotelName(e.target.value)}
-                    placeholder="Sunrise Grand Hotel"
-                    className={inputBase}
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                    aria-invalid={!!errors.hotelName}
-                    aria-describedby={errors.hotelName ? 'hotelName-error' : undefined}
-                  />
-                  {errors.hotelName && (
-                    <p id="hotelName-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                      {errors.hotelName}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Password */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`${inputBase} pr-11`}
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                    aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? 'password-error' : undefined}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center"
-                    style={{ color: 'var(--tp-secondary)' }}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p id="password-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* Confirm password */}
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--tp-primary)' }}>
-                  Confirm password
-                </label>
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`${inputBase} pr-11`}
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--tp-accent)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--tp-border)'; }}
-                    aria-invalid={!!errors.confirmPassword}
-                    aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center"
-                    style={{ color: 'var(--tp-secondary)' }}
-                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                  >
-                    {showConfirmPassword ? <EyeSlashIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                {errors.confirmPassword && (
-                  <p id="confirmPassword-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              {/* Terms checkbox */}
-              <div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <div className="relative flex-shrink-0 mt-0.5">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      checked={termsChecked}
-                      onChange={e => setTermsChecked(e.target.checked)}
-                      className="sr-only"
-                      aria-describedby={errors.terms ? 'terms-error' : undefined}
-                    />
-                    <div
-                      className="w-5 h-5 rounded flex items-center justify-center transition-colors"
-                      style={{
-                        border: `2px solid ${termsChecked ? 'var(--tp-accent)' : 'var(--tp-border)'}`,
-                        background: termsChecked ? 'var(--tp-accent-light)' : 'var(--tp-surface)',
-                      }}
-                      onClick={() => setTermsChecked(v => !v)}
-                      role="checkbox"
-                      aria-checked={termsChecked}
-                      aria-label="I agree to the Terms of Service and Privacy Policy"
-                    >
-                      {termsChecked && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3d6b4f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                    I agree to the{' '}
-                    <Link href="/terms" className="font-medium" style={{ color: 'var(--tp-accent)' }}>
-                      Terms of Service
-                    </Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" className="font-medium" style={{ color: 'var(--tp-accent)' }}>
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
-                {errors.terms && (
-                  <p id="terms-error" className="text-xs mt-1" style={{ color: '#dc2626' }} role="alert">
-                    {errors.terms}
-                  </p>
-                )}
-              </div>
-
-              {errors.general && (
-                <div style={{background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px'}}>
-                  {errors.general}
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
-                style={{ background: 'var(--tp-primary)' }}
-              >
-                {loading ? (
-                  <>
-                    <SpinnerIcon />
-                    Creating account...
-                  </>
-                ) : (
-                  'Create account'
-                )}
-              </button>
-
-              {/* Divider */}
-              <div className="flex items-center gap-4">
-                <hr className="flex-1" style={{ borderColor: 'var(--tp-border)' }} />
-                <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>or continue with</span>
-                <hr className="flex-1" style={{ borderColor: 'var(--tp-border)' }} />
-              </div>
-
-              {/* Google button */}
-              <a
-                href="#"
-                className="flex w-full items-center justify-center gap-3 rounded-xl py-3 text-sm font-medium transition-opacity hover:opacity-80"
-                style={{
-                  border: '1px solid var(--tp-border)',
-                  background: 'var(--tp-surface)',
-                  color: 'var(--tp-primary)',
-                }}
-              >
-                <GoogleG />
-                Continue with Google
-              </a>
-            </form>
-
-            {/* Sign in link */}
-            <p className="mt-6 text-center text-sm" style={{ color: 'var(--tp-secondary)' }}>
-              Already have an account?{' '}
-              <Link href="/auth/signin" className="font-medium" style={{ color: 'var(--tp-primary)' }}>
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <Suspense fallback={<div style={{ color: 'var(--tp-secondary)', fontSize: '14px' }}>Loading…</div>}>
+            <SignUpForm />
+          </Suspense>
         </div>
       </div>
     </>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOnboarding } from '@/app/onboarding/context/OnboardingContext';
 import { StepShell } from '@/app/onboarding/components/StepShell';
 import { SummarySection } from '@/app/onboarding/components/SummarySection';
+import { useAuth } from '@/app/lib/auth-context';
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter — ₦25,000/month',
@@ -14,6 +15,7 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function Step8Page() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
   const {
     account,
     property,
@@ -35,7 +37,7 @@ export default function Step8Page() {
   // to step 1 to avoid submitting a blank application.
   useEffect(() => {
     if (!account.email.trim() || !subscription) {
-      router.replace('/onboarding/steps/step-1');
+      router.replace('/onboarding/steps/step-2');
     }
   }, [account.email, subscription, router]);
 
@@ -78,7 +80,7 @@ export default function Step8Page() {
         </div>
         <div className="rounded-xl border border-[var(--ob-border)] bg-[var(--ob-muted)] px-6 py-4 text-sm text-[var(--ob-secondary)]">
           <p>
-            We&apos;ll notify you at <strong className="text-[var(--ob-primary)]">{account.email}</strong> once
+            We&apos;ll notify you at <strong className="text-[var(--ob-primary)]">{authUser?.email ?? account.email}</strong> once
             verification is complete.
           </p>
         </div>

@@ -3,7 +3,6 @@
 import { useOnboarding } from '../context/OnboardingContext';
 
 const STEPS = [
-  { number: 1, label: 'Account' },
   { number: 2, label: 'Property' },
   { number: 3, label: 'Verification' },
   { number: 4, label: 'Property Info' },
