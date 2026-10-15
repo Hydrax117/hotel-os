@@ -8,8 +8,7 @@ const STEPS = [
   { number: 4, label: 'Property Info' },
   { number: 5, label: 'Images' },
   { number: 6, label: 'Rooms' },
-  { number: 7, label: 'Subscription' },
-  { number: 8, label: 'Review' },
+  { number: 7, label: 'Review' },
 ];
 
 export function StepIndicator() {

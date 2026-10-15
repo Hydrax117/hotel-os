@@ -36,7 +36,7 @@ export default function Step6Page() {
       title="Room Types"
       description="Define the types of rooms available at your property."
       step={6}
-      totalSteps={8}
+      totalSteps={7}
       onBack={handleBack}
       onNext={handleNext}
       isNextDisabled={!allRoomsValid}

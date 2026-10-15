@@ -5,7 +5,6 @@ import { useAuth } from '@/app/lib/auth-context';
 import {
   createHotel,
   createRoomType,
-  createSubscription,
 } from '@/app/lib/api/onboarding';
 import { saveHotelImage } from '@/app/lib/api/images';
 import { uploadImage, uploadDocument } from '@/app/lib/supabase';
@@ -258,10 +257,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         errors.push(`Room ${i + 1}: total rooms must be greater than 0 (Step 6).`);
     });
 
-    // Step 7 — Subscription
-    if (!snap.subscription)
-      errors.push('Please select a subscription plan (Step 7).');
-
     if (errors.length > 0) {
       setState(s => ({
         ...s,
@@ -331,15 +326,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           pricePerNight: room.pricePerNight,
         });
       }
-
-      // 6. Create subscription — guard ensures we never silently complete
-      //    without a subscription record; the UI should prevent this path,
-      //    but submit() enforces the invariant as a fail-loud precondition.
-      setState(s => ({ ...s, submitStep: 'Activating subscription…' }));
-      if (!snap.subscription) {
-        throw new Error('No subscription plan selected. Please go back and choose a plan before submitting.');
-      }
-      await createSubscription(hotelId, { plan: snap.subscription });
 
       // Done — clear password from state
       setState(s => ({
