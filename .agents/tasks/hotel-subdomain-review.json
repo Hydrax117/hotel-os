@@ -1,0 +1,12 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": "proxy-export-name",
+      "severity": "warning",
+      "confidence": "confirmed",
+      "summary": "`proxy.ts` exports a named function `proxy`, not `middleware`. Next.js middleware requires a `middleware` export (or default export) in `middleware.ts`. If no `middleware.ts` re-exports this function, subdomain routing is silently disabled in production. Confirm that `middleware.ts` exists and correctly imports and re-exports `proxy`."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\hotel-subdomain-review.md"
+}
