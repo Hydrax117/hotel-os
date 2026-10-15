@@ -1,5 +1,8 @@
-import React from 'react';
-import { MOCK_HOTEL } from '../mock/data';
+'use client';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getMyHotel, type DashboardHotel } from '@/app/lib/api/dashboard';
+import { createSubscription } from '@/app/lib/api/onboarding';
 
 // ── Plan catalogue ─────────────────────────────────────────────────────────────
 
@@ -9,82 +12,82 @@ type PlanDef = {
   label: string;
   price: string;
   priceNum: string;
-  nextBilling: string;
+  monthlyAmount: number | null; // null = custom / contact sales
   features: string[];
+  recommended?: boolean;
 };
 
 const PLANS: Record<PlanKey, PlanDef> = {
   starter: {
-    label:       'Starter',
-    price:       '₦20,000 / month',
-    priceNum:    '₦20,000',
-    nextBilling: 'November 15, 2024',
-    features:    ['3 staff accounts', 'Basic booking', 'Email support'],
+    label:         'Starter',
+    price:         '₦25,000/month',
+    priceNum:      '₦25,000',
+    monthlyAmount: 25000,
+    features: [
+      'Up to 20 rooms',
+      'Basic booking management',
+      'Guest messaging',
+      'Standard support',
+    ],
   },
   professional: {
-    label:       'Professional Plan',
-    price:       '₦50,000 / month',
-    priceNum:    '₦50,000',
-    nextBilling: 'November 15, 2024',
+    label:         'Professional',
+    price:         '₦50,000/month',
+    priceNum:      '₦50,000',
+    monthlyAmount: 50000,
+    recommended:   true,
     features: [
-      'Up to 10 staff accounts',
-      'Booking management',
-      'Analytics & reporting',
+      'Up to 100 rooms',
+      'Advanced analytics',
+      'Channel manager integration',
       'Priority support',
-      'Guest communications',
+      'Custom promotions',
     ],
   },
   enterprise: {
-    label:       'Enterprise',
-    price:       '₦150,000 / month',
-    priceNum:    '₦150,000',
-    nextBilling: 'November 15, 2024',
+    label:         'Enterprise',
+    price:         'Custom pricing',
+    priceNum:      'Custom',
+    monthlyAmount: null,
     features: [
-      'Unlimited staff',
-      'Advanced analytics',
-      'Dedicated support',
+      'Unlimited rooms',
+      'Full feature suite',
+      'Dedicated account manager',
+      'SLA guarantee',
+      'White-label option',
       'API access',
-      'White-label',
     ],
   },
 };
 
-const currentPlanKey: PlanKey = MOCK_HOTEL.subscription;
-const currentPlan = PLANS[currentPlanKey];
+const PLAN_KEYS: PlanKey[] = ['starter', 'professional', 'enterprise'];
 
-// ── Billing history ────────────────────────────────────────────────────────────
+// ── Small helpers ─────────────────────────────────────────────────────────────
 
-type BillingRow = {
-  date: string;
-  description: string;
-  amount: string;
-  status: 'Paid' | 'Upcoming';
-};
-
-const BILLING_HISTORY: BillingRow[] = [
-  { date: 'Oct 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Paid' },
-  { date: 'Sep 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Paid' },
-  { date: 'Nov 15, 2024', description: `${currentPlan.label} — Monthly`, amount: currentPlan.priceNum, status: 'Upcoming' },
-];
-
-// ── StatusPill ────────────────────────────────────────────────────────────────
-
-function StatusPill({ status }: { status: 'Paid' | 'Upcoming' }) {
-  const style =
-    status === 'Paid'
-      ? { background: '#dcfce7', color: '#166534' }
-      : { background: '#fef3c7', color: '#92400e' };
-  return (
-    <span
-      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-      style={style}
-    >
-      {status}
-    </span>
-  );
+function capitalize(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-// ── Feature list helper ───────────────────────────────────────────────────────
+function getPlanDef(key: string): PlanDef | undefined {
+  return PLANS[key.toLowerCase() as PlanKey];
+}
+
+function Spinner() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+      <svg
+        className="animate-spin h-8 w-8"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-label="Loading"
+      >
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+    </div>
+  );
+}
 
 function FeatureList({ items }: { items: string[] }) {
   return (
@@ -102,14 +105,212 @@ function FeatureList({ items }: { items: string[] }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── State A — Plan selection ──────────────────────────────────────────────────
 
-export default function SubscriptionPage() {
+type SelectionStep = 'select' | 'confirm' | 'success';
+
+function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
+  const router = useRouter();
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
+  const [step, setStep] = useState<SelectionStep>('select');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  function handleSelectPlan(key: PlanKey) {
+    setSelectedPlan(key);
+    setErrorMsg(null);
+  }
+
+  function handleProceed() {
+    if (!selectedPlan) return;
+    setStep('confirm');
+    setErrorMsg(null);
+  }
+
+  function handleContactSales() {
+    setSelectedPlan('enterprise');
+    setStep('confirm');
+    setErrorMsg(null);
+  }
+
+  async function handleConfirm() {
+    if (!selectedPlan) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      // TODO: integrate Paystack payment before calling createSubscription
+      await createSubscription(hotel.id, { plan: selectedPlan });
+      setStep('success');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setErrorMsg(message);
+      setStep('select');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (step === 'success') {
+    return (
+      <div
+        className="rounded-xl border p-8 text-center"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+      >
+        <div className="flex justify-center mb-4">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="24" fill="#dcfce7" />
+            <path d="M14 24l8 8 12-12" stroke="#166534" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--db-primary)' }}>
+          Plan activated!
+        </h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--db-secondary)' }}>
+          Your dashboard is now fully unlocked.
+        </p>
+        <button
+          onClick={() => router.push('/dashboard/overview')}
+          className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          Go to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 'confirm' && selectedPlan) {
+    const plan = PLANS[selectedPlan];
+    const isEnterprise = selectedPlan === 'enterprise';
+    return (
+      <div
+        className="rounded-xl border p-8 max-w-md mx-auto"
+        style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+      >
+        <h2 className="text-lg font-bold mb-2" style={{ color: 'var(--db-primary)' }}>
+          Confirm your plan
+        </h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--db-secondary)' }}>
+          {isEnterprise
+            ? 'Our team will contact you to set up your Enterprise plan. Confirm to proceed.'
+            : `You will be billed ${plan.priceNum}/month. Confirm to activate.`}
+        </p>
+        {errorMsg && (
+          <p className="text-sm mb-4 rounded-lg px-4 py-2" style={{ background: '#fee2e2', color: '#991b1b' }}>
+            {errorMsg}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white flex items-center gap-2 disabled:opacity-60"
+            style={{ background: 'var(--db-accent)' }}
+          >
+            {loading && (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            )}
+            Confirm
+          </button>
+          <button
+            onClick={() => { setStep('select'); setErrorMsg(null); }}
+            disabled={loading}
+            className="rounded-lg border px-5 py-2.5 text-sm font-medium disabled:opacity-60"
+            style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)' }}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // step === 'select'
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--db-primary)' }}>
+    <div>
+      <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--db-primary)' }}>
+        Choose your plan
+      </h2>
+      <p className="text-sm mb-6" style={{ color: 'var(--db-secondary)' }}>
+        Select a subscription plan to unlock your full dashboard.
+      </p>
+
+      {errorMsg && (
+        <p className="text-sm mb-4 rounded-lg px-4 py-2" style={{ background: '#fee2e2', color: '#991b1b' }}>
+          {errorMsg}
+        </p>
+      )}
+
+      <div className="grid sm:grid-cols-3 gap-4 mb-6">
+        {PLAN_KEYS.map(key => {
+          const plan = PLANS[key];
+          const isSelected = selectedPlan === key;
+          return (
+            <div
+              key={key}
+              onClick={() => handleSelectPlan(key)}
+              className="rounded-xl border p-5 cursor-pointer transition-all relative"
+              style={{
+                background: 'var(--db-surface)',
+                borderColor: isSelected ? 'var(--db-accent)' : 'var(--db-border)',
+                borderWidth: isSelected ? '2px' : '1px',
+                boxShadow: isSelected ? '0 0 0 2px var(--db-accent)22' : undefined,
+              }}
+              role="button"
+              aria-pressed={isSelected}
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && handleSelectPlan(key)}
+            >
+              {plan.recommended && (
+                <span
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs font-semibold text-white"
+                  style={{ background: 'var(--db-accent)' }}
+                >
+                  Recommended
+                </span>
+              )}
+              <h3 className="text-base font-bold" style={{ color: 'var(--db-primary)' }}>
+                {plan.label}
+              </h3>
+              <p className="text-sm font-semibold mt-1" style={{ color: 'var(--db-accent)' }}>
+                {plan.price}
+              </p>
+              <FeatureList items={plan.features} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-3 flex-wrap">
+        <button
+          onClick={selectedPlan === 'enterprise' ? handleContactSales : handleProceed}
+          disabled={!selectedPlan}
+          className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ background: 'var(--db-accent)' }}
+        >
+          {selectedPlan === 'enterprise' ? 'Contact Sales' : 'Get Started'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── State B — Active subscription ─────────────────────────────────────────────
+
+function ActiveSubscription({ hotel }: { hotel: DashboardHotel }) {
+  const currentKey = (hotel.subscriptionPlan ?? '').toLowerCase() as PlanKey;
+  const currentPlan = getPlanDef(currentKey);
+
+  const otherPlans = PLAN_KEYS.filter(k => k !== currentKey);
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--db-primary)' }}>
         Subscription
-      </h1>
+      </h2>
 
       {/* Current plan card */}
       <section
@@ -118,87 +319,63 @@ export default function SubscriptionPage() {
       >
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                style={{ background: '#dcfce7', color: '#166534' }}
-              >
-                Active
-              </span>
-            </div>
-            <h2 className="text-2xl font-bold" style={{ color: 'var(--db-primary)' }}>
-              {currentPlan.label}
-            </h2>
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold mb-2"
+              style={{ background: '#dcfce7', color: '#166534' }}
+            >
+              Active
+            </span>
+            <h3 className="text-2xl font-bold" style={{ color: 'var(--db-primary)' }}>
+              {currentPlan ? currentPlan.label : capitalize(hotel.subscriptionPlan ?? '')} Plan
+            </h3>
             <p className="text-lg font-semibold mt-1" style={{ color: 'var(--db-accent)' }}>
-              {currentPlan.price}
+              {currentPlan ? currentPlan.price : '—'}
             </p>
             <p className="text-sm mt-1" style={{ color: 'var(--db-secondary)' }}>
-              Next billing date: <strong>{currentPlan.nextBilling}</strong>
+              Next billing date: <em>— billing date not available —</em>
             </p>
-            <FeatureList items={currentPlan.features} />
+            {currentPlan && <FeatureList items={currentPlan.features} />}
           </div>
-          <button
-            className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white shrink-0 self-start"
-            style={{ background: 'var(--db-accent)' }}
-          >
-            Manage Subscription
-          </button>
         </div>
       </section>
 
       {/* Plan comparison */}
-      <section className="grid sm:grid-cols-2 gap-4 mb-6">
-        {/* Starter */}
-        <div
-          className="rounded-xl border p-5"
-          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
-        >
-          <h3 className="text-lg font-bold" style={{ color: 'var(--db-primary)' }}>
-            Starter
+      {otherPlans.length > 0 && (
+        <section className="mb-6">
+          <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--db-primary)' }}>
+            Other plans
           </h3>
-          <p className="text-base font-semibold mt-1" style={{ color: 'var(--db-secondary)' }}>
-            ₦20,000 / month
-          </p>
-          <FeatureList
-            items={['3 staff accounts', 'Basic booking', 'Email support']}
-          />
-          <button
-            disabled
-            className="mt-4 rounded-lg border px-4 py-2 text-sm font-medium cursor-not-allowed opacity-50"
-            style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)' }}
-          >
-            Downgrade
-          </button>
-        </div>
-
-        {/* Enterprise */}
-        <div
-          className="rounded-xl border p-5"
-          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
-        >
-          <h3 className="text-lg font-bold" style={{ color: 'var(--db-primary)' }}>
-            Enterprise
-          </h3>
-          <p className="text-base font-semibold mt-1" style={{ color: 'var(--db-secondary)' }}>
-            ₦150,000 / month
-          </p>
-          <FeatureList
-            items={[
-              'Unlimited staff',
-              'Advanced analytics',
-              'Dedicated support',
-              'API access',
-              'White-label',
-            ]}
-          />
-          <button
-            className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold text-white"
-            style={{ background: 'var(--db-accent)' }}
-          >
-            Upgrade to Enterprise
-          </button>
-        </div>
-      </section>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {otherPlans.map(key => {
+              const plan = PLANS[key];
+              const isUpgrade = PLAN_KEYS.indexOf(key) > PLAN_KEYS.indexOf(currentKey);
+              return (
+                <div
+                  key={key}
+                  className="rounded-xl border p-5"
+                  style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+                >
+                  <h4 className="text-lg font-bold" style={{ color: 'var(--db-primary)' }}>
+                    {plan.label}
+                  </h4>
+                  <p className="text-base font-semibold mt-1" style={{ color: 'var(--db-secondary)' }}>
+                    {plan.price}
+                  </p>
+                  <FeatureList items={plan.features} />
+                  <button
+                    disabled
+                    title="Coming soon"
+                    className="mt-4 rounded-lg border px-4 py-2 text-sm font-medium opacity-50 cursor-not-allowed"
+                    style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)' }}
+                  >
+                    {isUpgrade ? 'Upgrade' : 'Downgrade'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Billing history */}
       <section
@@ -206,59 +383,15 @@ export default function SubscriptionPage() {
         style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--db-border)' }}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--db-primary)' }}>
+          <h3 className="text-base font-semibold" style={{ color: 'var(--db-primary)' }}>
             Billing History
-          </h2>
+          </h3>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: 'var(--db-bg)' }}>
-              {['Date', 'Description', 'Amount', 'Status', 'Download'].map(col => (
-                <th
-                  key={col}
-                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: 'var(--db-secondary)' }}
-                >
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {BILLING_HISTORY.map((row, i) => (
-              <tr
-                key={row.date + i}
-                style={{
-                  background: i % 2 === 0 ? 'var(--db-surface)' : 'var(--db-bg)',
-                  borderTop: '1px solid var(--db-border)',
-                }}
-              >
-                <td className="px-4 py-3" style={{ color: 'var(--db-primary)' }}>
-                  {row.date}
-                </td>
-                <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>
-                  {row.description}
-                </td>
-                <td className="px-4 py-3 font-medium" style={{ color: 'var(--db-primary)' }}>
-                  {row.amount}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusPill status={row.status} />
-                </td>
-                <td className="px-4 py-3">
-                  <a
-                    href="#"
-                    className="text-lg"
-                    style={{ color: 'var(--db-accent)' }}
-                    aria-label={`Download invoice for ${row.date}`}
-                  >
-                    ↓
-                  </a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm" style={{ color: 'var(--db-muted)' }}>
+            Billing history will appear here once your first invoice is generated.
+          </p>
+        </div>
       </section>
 
       {/* Payment method */}
@@ -266,26 +399,55 @@ export default function SubscriptionPage() {
         className="rounded-xl border p-5"
         style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
       >
-        <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--db-primary)' }}>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--db-primary)' }}>
           Payment Method
-        </h2>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="rounded-md px-2.5 py-1 text-xs font-bold"
-              style={{ background: 'var(--db-muted)', color: 'var(--db-primary)' }}
-            >
-              VISA
-            </div>
-            <span className="text-sm" style={{ color: 'var(--db-primary)' }}>
-              Visa ending in <strong>4242</strong>
-            </span>
-          </div>
-          <a href="#" className="text-sm font-medium" style={{ color: 'var(--db-accent)' }}>
-            Update payment method
-          </a>
-        </div>
+        </h3>
+        <p className="text-sm mb-3" style={{ color: 'var(--db-secondary)' }}>
+          No payment method saved yet. Add one to enable auto-renewal.
+        </p>
+        <button
+          disabled
+          className="rounded-lg border px-4 py-2 text-sm font-medium opacity-50 cursor-not-allowed"
+          style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)' }}
+        >
+          Add payment method
+        </button>
       </section>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function SubscriptionPage() {
+  const [hotel, setHotel] = useState<DashboardHotel | null | undefined>(undefined);
+
+  useEffect(() => {
+    getMyHotel().then(result => setHotel(result));
+  }, []);
+
+  return (
+    <div style={{ padding: '24px 28px' }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--db-primary)' }}>
+        Subscription
+      </h1>
+
+      {hotel === undefined && <Spinner />}
+
+      {hotel === null && (
+        <div
+          className="rounded-xl border p-6 text-center"
+          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+        >
+          <p className="text-sm" style={{ color: '#991b1b' }}>
+            Unable to load subscription data. Please refresh.
+          </p>
+        </div>
+      )}
+
+      {hotel && !hotel.subscriptionPlan && <PlanSelection hotel={hotel} />}
+
+      {hotel && hotel.subscriptionPlan && <ActiveSubscription hotel={hotel} />}
     </div>
   );
 }
