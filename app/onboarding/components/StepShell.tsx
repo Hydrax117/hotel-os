@@ -11,6 +11,7 @@ type StepShellProps = {
   onNext: () => void | Promise<void>;
   nextLabel?: string;
   isNextDisabled?: boolean;
+  isBackDisabled?: boolean;
   nextHint?: string;
   children: React.ReactNode;
 };
@@ -24,6 +25,7 @@ export function StepShell({
   onNext,
   nextLabel = 'Continue',
   isNextDisabled = false,
+  isBackDisabled = false,
   nextHint,
   children,
 }: StepShellProps) {
@@ -53,7 +55,13 @@ export function StepShell({
             <button
               type="button"
               onClick={onBack}
-              className="rounded-lg border border-[var(--ob-border)] px-5 py-2.5 text-sm font-medium text-[var(--ob-primary)] transition-colors hover:bg-[var(--ob-muted)]"
+              disabled={isBackDisabled}
+              className={
+                'rounded-lg border border-[var(--ob-border)] px-5 py-2.5 text-sm font-medium text-[var(--ob-primary)] transition-colors ' +
+                (isBackDisabled
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'hover:bg-[var(--ob-muted)]')
+              }
             >
               Back
             </button>

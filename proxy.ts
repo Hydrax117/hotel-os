@@ -94,6 +94,11 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // /hotel-review — pass through (verification pending page has its own auth guard)
+    if (pathname === '/hotel-review') {
+      return NextResponse.next();
+    }
+
     // Any other path on the hotel subdomain → redirect to /hotel-home
     const url = request.nextUrl.clone();
     url.pathname = '/hotel-home';

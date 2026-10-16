@@ -2,11 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/app/lib/auth-context';
-import {
-  createHotel,
-  createRoomType,
-} from '@/app/lib/api/onboarding';
-import { saveHotelImage } from '@/app/lib/api/images';
+import { submitApplication } from '@/app/lib/api/applications';
 import { uploadImage, uploadDocument } from '@/app/lib/supabase';
 import { ApiError } from '@/app/lib/api/client';
 
@@ -63,8 +59,6 @@ export type RoomType = {
   pricePerNight: number;
 };
 
-export type SubscriptionPlan = 'starter' | 'professional' | 'enterprise' | null;
-
 export type OnboardingState = {
   currentStep: number;
   account: AccountData;
@@ -73,7 +67,6 @@ export type OnboardingState = {
   propertyInfo: PropertyInfoData;
   images: ImageSlot[];
   rooms: RoomType[];
-  subscription: SubscriptionPlan;
   submitted: boolean;
   submitting: boolean;
   submitError: string | null;
@@ -90,7 +83,6 @@ export type OnboardingContextValue = OnboardingState & {
   addRoom: () => void;
   updateRoom: (id: string, data: Partial<RoomType>) => void;
   removeRoom: (id: string) => void;
-  setSubscription: (plan: SubscriptionPlan) => void;
   submit: () => Promise<void>;
 };
 
@@ -129,7 +121,6 @@ const defaultState: OnboardingState = {
   },
   images: DEFAULT_IMAGE_SLOTS,
   rooms: [],
-  subscription: null,
   submitted: false,
   submitting: false,
   submitError: null,
@@ -141,9 +132,6 @@ const defaultState: OnboardingState = {
 // NOTE: Onboarding state is intentionally ephemeral (React context only).
 // A hard refresh will lose all entered data. File objects (verification docs,
 // images) cannot be serialized, so sessionStorage cannot fully restore a session.
-// TODO(persistence): serialize scalar fields to sessionStorage on update and restore
-//                    on mount; show a notice if the session is restored mid-flow
-//                    asking users to re-upload any files they had selected.
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
@@ -202,9 +190,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const removeRoom = (id: string) =>
     setState(s => ({ ...s, rooms: s.rooms.filter(room => room.id !== id) }));
 
-  const setSubscription = (plan: SubscriptionPlan) =>
-    setState(s => ({ ...s, subscription: plan }));
-
   // Pre-populate account data from the authenticated user so step 1 is no
   // longer needed (registration happens on the signup page before onboarding).
   const { user } = useAuth();
@@ -221,12 +206,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const submit = async (): Promise<void> => {
     // ── Pre-flight validation ─────────────────────────────────────────────────
-    // Validate ALL fields before making any network request.
-    // Collect every error so the user sees them all at once.
     const snap = state;
     const errors: string[] = [];
 
-    // Step 2 — Property
     if (!snap.property.hotelName.trim())
       errors.push('Hotel name is required (Step 2).');
     if (!snap.property.description.trim())
@@ -238,12 +220,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     if (!snap.property.state.trim())
       errors.push('State is required (Step 2).');
 
-    // Step 3 — Required verification documents
     const missingDocs = snap.verification.filter(d => d.required && !d.file);
     if (missingDocs.length > 0)
       errors.push(`Missing required documents: ${missingDocs.map(d => d.label).join(', ')} (Step 3).`);
 
-    // Step 6 — Room types (at least one required)
     if (snap.rooms.length === 0)
       errors.push('Add at least one room type (Step 6).');
     snap.rooms.forEach((room, i) => {
@@ -258,76 +238,72 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     });
 
     if (errors.length > 0) {
-      setState(s => ({
-        ...s,
-        submitError: errors.join('\n'),
-      }));
+      setState(s => ({ ...s, submitError: errors.join('\n') }));
       return;
     }
     // ── End validation ────────────────────────────────────────────────────────
 
     setState(s => ({ ...s, submitting: true, submitError: null, submitStep: null }));
     try {
-      // 1. Create hotel
-      setState(s => ({ ...s, submitStep: 'Creating hotel…' }));
-      const hotel = await createHotel({
+      // 1. Upload verification documents to Supabase
+      setState(s => ({ ...s, submitStep: 'Uploading documents…' }));
+      const uploadedDocuments: Array<{ url: string; documentType: string; label: string }> = [];
+      for (const doc of snap.verification) {
+        if (!doc.file) continue;
+        const url = await uploadDocument(doc.file, 'application', doc.id);
+        uploadedDocuments.push({ url, documentType: doc.id, label: doc.label });
+      }
+
+      // 2. Upload images to Supabase
+      setState(s => ({ ...s, submitStep: 'Uploading images…' }));
+      const uploadedImages: Array<{
+        url: string;
+        caption: string;
+        isPrimary: boolean;
+        sortOrder: number;
+      }> = [];
+      let imgIdx = 0;
+      for (const slot of snap.images) {
+        if (!slot.file) { imgIdx++; continue; }
+        const url = await uploadImage(slot.file, 'application', slot.id);
+        uploadedImages.push({
+          url,
+          caption: slot.label,
+          isPrimary: slot.id === 'exterior',
+          sortOrder: imgIdx,
+        });
+        imgIdx++;
+      }
+
+      // 3. Submit application
+      setState(s => ({ ...s, submitStep: 'Submitting application…' }));
+      await submitApplication({
         name: snap.property.hotelName,
         description: snap.property.description,
         address: snap.property.address,
         city: snap.property.city,
         state: snap.property.state,
-        country: snap.property.country,
+        country: snap.property.country || 'Nigeria',
         latitude: snap.property.latitude ? parseFloat(snap.property.latitude) : undefined,
         longitude: snap.property.longitude ? parseFloat(snap.property.longitude) : undefined,
-        amenities: snap.propertyInfo.amenities,
+        phone: undefined,
+        email: undefined,
         checkInTime: snap.propertyInfo.checkInTime,
         checkOutTime: snap.propertyInfo.checkOutTime,
-        cancellationPolicy: snap.propertyInfo.cancellationPolicy || undefined,
-        houseRules: snap.propertyInfo.houseRules || undefined,
+        amenityIds: snap.propertyInfo.amenities,
         languages: snap.propertyInfo.languages,
-      });
-      const hotelId = hotel.id;
-
-      // 3. Upload verification documents to Supabase Storage
-      setState(s => ({ ...s, submitStep: 'Uploading documents…' }));
-      for (const doc of snap.verification) {
-        if (!doc.file) continue;
-        // Upload to Supabase hotel-documents bucket — URL stored in Supabase, not DB
-        // (no backend documents endpoint exists yet — Supabase is the source of truth)
-        await uploadDocument(doc.file, hotelId, doc.id);
-      }
-
-      // 4. Upload & save hotel images (parallel for speed)
-      setState(s => ({ ...s, submitStep: 'Uploading images…' }));
-      await Promise.all(
-        snap.images
-          .filter(slot => slot.file !== null)
-          .map(slot =>
-            uploadImage(slot.file!, hotelId, slot.id).then(url =>
-              saveHotelImage(hotelId, {
-                url,
-                caption: slot.label,
-                isPrimary: slot.id === 'exterior',
-                sortOrder: 0,
-              })
-            )
-          )
-      );
-
-      // 5. Create room types
-      setState(s => ({ ...s, submitStep: 'Saving room types…' }));
-      for (const room of snap.rooms) {
-        await createRoomType(hotelId, {
+        images: uploadedImages,
+        documents: uploadedDocuments,
+        rooms: snap.rooms.map(room => ({
           name: room.name,
-          capacity: room.capacity,
           bedType: room.bedType,
-          bathroomType: room.bathroomType,
-          totalRooms: room.totalRooms,
+          capacity: room.capacity,
           pricePerNight: room.pricePerNight,
-        });
-      }
+          totalRooms: room.totalRooms,
+          bathroomType: room.bathroomType || undefined,
+        })),
+      });
 
-      // Done — clear password from state
       setState(s => ({
         ...s,
         submitted: true,
@@ -359,7 +335,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     addRoom,
     updateRoom,
     removeRoom,
-    setSubscription,
     submit,
   };
 

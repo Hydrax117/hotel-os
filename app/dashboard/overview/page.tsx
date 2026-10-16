@@ -55,7 +55,8 @@ export default function OverviewPage() {
         const hotelData = await getMyHotel();
         if (cancelled) return;
         if (!hotelData) {
-          setError('Could not load hotel data. Please try again.');
+          // 404 — no hotel yet (guard should have caught this, but handle defensively)
+          setError('No hotel found for your account.');
           setIsLoading(false);
           return;
         }

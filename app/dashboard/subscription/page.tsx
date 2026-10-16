@@ -139,7 +139,7 @@ function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
     setErrorMsg(null);
     try {
       // TODO: integrate Paystack payment before calling createSubscription
-      await createSubscription(hotel.id, { plan: selectedPlan });
+      await createSubscription(hotel.id, { plan: selectedPlan.toUpperCase() });
       setStep('success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
@@ -423,7 +423,9 @@ export default function SubscriptionPage() {
   const [hotel, setHotel] = useState<DashboardHotel | null | undefined>(undefined);
 
   useEffect(() => {
-    getMyHotel().then(result => setHotel(result));
+    getMyHotel()
+      .then(result => setHotel(result))
+      .catch(() => setHotel(null));
   }, []);
 
   return (

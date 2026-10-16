@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { register } from '../../lib/api/auth';
 import { ApiError } from '../../lib/api/client';
 import { useAuth } from '../../lib/auth-context';
+import { Toast, useToast } from '../../components/Toast';
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
 
@@ -115,7 +116,18 @@ function SignUpForm() {
   const router = useRouter();
   const { setUser } = useAuth();
   const searchParams = useSearchParams();
-  const isOwnerContext = searchParams.get('context') === 'owner';
+
+  // Detect hotel subdomain on the client. We use state + useEffect so the
+  // component re-renders with the correct context after hydration — avoiding
+  // a server/client mismatch and ensuring the UI reflects the real hostname.
+  const [isOwnerContext, setIsOwnerContext] = React.useState(
+    searchParams.get('context') === 'owner'
+  );
+  React.useEffect(() => {
+    const fromHostname = window.location.hostname.startsWith('hotel.');
+    const fromParam = searchParams.get('context') === 'owner';
+    setIsOwnerContext(fromHostname || fromParam);
+  }, [searchParams]);
 
   // Effective role is determined entirely by the subdomain context
   const effectiveRole = isOwnerContext ? 'HOTEL_OWNER' : 'TRAVELER';
@@ -131,6 +143,7 @@ function SignUpForm() {
   const [termsChecked, setTermsChecked] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,6 +180,9 @@ function SignUpForm() {
         role: effectiveRole,
       });
       setUser(res.user);
+      showToast('Account created successfully! Welcome to HotelOS.', 'success');
+      // Small delay so the toast is briefly visible before redirect
+      await new Promise(r => setTimeout(r, 800));
       if (isOwnerContext) {
         router.push('/onboarding/steps/step-2');
       } else {
@@ -196,6 +212,7 @@ function SignUpForm() {
 
   return (
     <div className="w-full max-w-sm">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       {/* Heading */}
       <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--tp-primary)' }}>
         {isOwnerContext ? 'Create your Hotel OS account' : 'Create your account'}

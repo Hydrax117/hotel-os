@@ -102,7 +102,17 @@ function SignInForm() {
   const router = useRouter();
   const { setUser } = useAuth();
   const searchParams = useSearchParams();
-  const isOwnerContext = searchParams.get('context') === 'owner';
+
+  // Detect hotel subdomain on the client. State + useEffect avoids a
+  // server/client hydration mismatch and re-renders with the real hostname.
+  const [isOwnerContext, setIsOwnerContext] = React.useState(
+    searchParams.get('context') === 'owner'
+  );
+  React.useEffect(() => {
+    const fromHostname = window.location.hostname.startsWith('hotel.');
+    const fromParam = searchParams.get('context') === 'owner';
+    setIsOwnerContext(fromHostname || fromParam);
+  }, [searchParams]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -112,10 +122,14 @@ function SignInForm() {
 
   // Compute the hotel subdomain URL for the static hint shown on the traveler signin page.
   // Uses NEXT_PUBLIC_HOTEL_DOMAIN if set; otherwise prepends "hotel." to the current host.
-  const hotelDomainHref =
-    typeof window !== 'undefined'
-      ? (process.env.NEXT_PUBLIC_HOTEL_DOMAIN ?? `hotel.${window.location.host}`)
-      : '#';
+  const hotelSigninUrl = React.useMemo(() => {
+    if (typeof window === 'undefined') return '#';
+    if (process.env.NEXT_PUBLIC_HOTEL_DOMAIN) {
+      return `https://${process.env.NEXT_PUBLIC_HOTEL_DOMAIN}/auth/signin`;
+    }
+    // Local dev: preserve the protocol (http for localhost)
+    return `${window.location.protocol}//hotel.${window.location.host}/auth/signin`;
+  }, []);
 
   // Roles that belong exclusively to the hotel subdomain
   const HOTEL_ROLES = ['HOTEL_OWNER', 'HOTEL_MANAGER', 'HOTEL_STAFF'] as const;
@@ -320,11 +334,11 @@ function SignInForm() {
         <p className="mt-4 text-center text-xs" style={{ color: 'var(--tp-secondary)' }}>
           Hotel owner?{' '}
           <a
-            href={`https://${hotelDomainHref}`}
+            href={hotelSigninUrl}
             className="underline underline-offset-2 transition-opacity hover:opacity-70"
             style={{ color: 'var(--tp-secondary)' }}
           >
-            {hotelDomainHref}
+            Sign in on the hotel portal
           </a>
         </p>
       )}

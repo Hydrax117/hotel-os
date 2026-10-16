@@ -1,6 +1,8 @@
 'use client';
 
-import type { SubscriptionPlan } from '../context/OnboardingContext';
+// SubscriptionPlan is no longer exported from OnboardingContext (plan selection
+// was moved post-approval). Define it locally for this component.
+type SubscriptionPlan = 'starter' | 'professional' | 'enterprise' | null;
 
 type PlanConfig = {
   id: SubscriptionPlan;

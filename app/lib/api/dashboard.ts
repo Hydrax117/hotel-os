@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, ApiError } from './client';
 import type { BookingStatus } from '../../dashboard/types';
 
 // ── Exported Types ─────────────────────────────────────────────────────────────
@@ -121,13 +121,15 @@ type ApiRoomType = {
 /**
  * Returns the hotel owned by the authenticated user.
  * GET /api/v1/hotels/my
- * Returns null on any error (caller shows error state).
+ * Returns null if the owner has no hotel yet (404).
+ * Re-throws on any other error so callers can distinguish "no hotel" from "API failure".
  */
 export async function getMyHotel(): Promise<DashboardHotel | null> {
   try {
     return await apiClient.get<DashboardHotel>('/api/v1/hotels/my');
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
   }
 }
 

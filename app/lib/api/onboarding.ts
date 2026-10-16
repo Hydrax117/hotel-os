@@ -70,10 +70,10 @@ export function saveDocument(
   return apiClient.post<DocumentResponse>(`/api/v1/hotels/${hotelId}/documents`, payload);
 }
 
-/** Creates a subscription for a hotel. POST /api/v1/hotels/:hotelId/subscription */
+/** Creates a subscription for a hotel. POST /api/v1/subscriptions/hotels/:hotelId */
 export function createSubscription(
   hotelId: string,
   payload: CreateSubscriptionPayload,
 ): Promise<SubscriptionResponse> {
-  return apiClient.post<SubscriptionResponse>(`/api/v1/hotels/${hotelId}/subscription`, payload);
+  return apiClient.post<SubscriptionResponse>(`/api/v1/subscriptions/hotels/${hotelId}`, payload);
 }

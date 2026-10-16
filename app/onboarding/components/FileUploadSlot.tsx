@@ -16,6 +16,8 @@ type FileUploadSlotProps = {
    * The `preview` prop is ignored when showPreview=true.
    */
   showPreview?: boolean;
+  /** When true, show a spinner overlay indicating the file is being uploaded. */
+  isLoading?: boolean;
 };
 
 export function FileUploadSlot({
@@ -26,6 +28,7 @@ export function FileUploadSlot({
   required,
   onChange,
   showPreview = false,
+  isLoading = false,
 }: FileUploadSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -94,7 +97,15 @@ export function FileUploadSlot({
         }
         style={{ minHeight: '100px' }}
       >
-        {showPreview && displayPreview ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-2">
+            <svg className="h-6 w-6 animate-spin text-[var(--ob-accent)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-label="Uploading">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            <span className="text-xs text-[var(--ob-secondary)]">Uploading…</span>
+          </div>
+        ) : showPreview && displayPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={displayPreview}
