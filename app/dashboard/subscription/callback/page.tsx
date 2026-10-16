@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { verifySubscriptionPayment } from '@/app/lib/api/subscriptions';
 
@@ -72,7 +72,15 @@ function CallbackInner() {
   const [pageState, setPageState] = useState<PageState>('verifying');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  // Guard against React StrictMode double-invocation (dev) and fast refresh.
+  // Without this, two verify calls fire back-to-back: the first succeeds, the
+  // second hits the idempotency check in the backend and returns the existing
+  // subscription — which is fine — but we still avoid the unnecessary round-trip.
+  const verifiedRef = useRef(false);
+
   useEffect(() => {
+    if (verifiedRef.current) return;
+    verifiedRef.current = true;
     // Read reference from URL param; fall back to sessionStorage
     const refFromUrl = searchParams.get('reference') ?? searchParams.get('trxref');
     const reference = refFromUrl ?? sessionStorage.getItem('pending_sub_ref') ?? '';

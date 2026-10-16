@@ -196,7 +196,7 @@ function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
         </h2>
         <p className="text-sm mb-6" style={{ color: 'var(--db-secondary)' }}>
           {isEnterprise
-            ? 'Our team will contact you to set up your Enterprise plan. Confirm to proceed.'
+            ? `You will be redirected to Paystack to complete your ₦150,000/month Enterprise plan payment securely.`
             : `You will be redirected to Paystack to complete your ${plan.priceNum}/month payment securely.`}
         </p>
         {errorMsg && (
