@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMyHotel, type DashboardHotel } from '@/app/lib/api/dashboard';
-import { createSubscription } from '@/app/lib/api/onboarding';
+import { initializeSubscriptionPayment } from '@/app/lib/api/subscriptions';
 
 // ── Plan catalogue ─────────────────────────────────────────────────────────────
 
@@ -138,16 +138,20 @@ function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // TODO: integrate Paystack payment before calling createSubscription
-      await createSubscription(hotel.id, { plan: selectedPlan.toUpperCase() });
-      setStep('success');
+      const { authorizationUrl, reference } = await initializeSubscriptionPayment(
+        hotel.id,
+        selectedPlan.toUpperCase(),
+      );
+      sessionStorage.setItem('pending_sub_ref', reference);
+      sessionStorage.setItem('pending_sub_hotel', hotel.id);
+      window.location.href = authorizationUrl;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const message =
+        err instanceof Error ? err.message : 'Could not start payment. Please try again.';
       setErrorMsg(message);
-      setStep('select');
-    } finally {
       setLoading(false);
     }
+    // Do not setLoading(false) on success — page is navigating away
   }
 
   if (step === 'success') {
@@ -193,7 +197,7 @@ function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
         <p className="text-sm mb-6" style={{ color: 'var(--db-secondary)' }}>
           {isEnterprise
             ? 'Our team will contact you to set up your Enterprise plan. Confirm to proceed.'
-            : `You will be billed ${plan.priceNum}/month. Confirm to activate.`}
+            : `You will be redirected to Paystack to complete your ${plan.priceNum}/month payment securely.`}
         </p>
         {errorMsg && (
           <p className="text-sm mb-4 rounded-lg px-4 py-2" style={{ background: '#fee2e2', color: '#991b1b' }}>
@@ -213,7 +217,7 @@ function PlanSelection({ hotel }: { hotel: DashboardHotel }) {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
             )}
-            Confirm
+            {isEnterprise ? 'Confirm' : 'Proceed to Payment'}
           </button>
           <button
             onClick={() => { setStep('select'); setErrorMsg(null); }}

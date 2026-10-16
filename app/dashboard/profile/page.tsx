@@ -6,6 +6,8 @@ import { useAuth } from '../../lib/auth-context';
 import {
   getMyHotel,
   type DashboardHotel,
+  publishHotel,
+  unpublishHotel,
 } from '../../lib/api/dashboard';
 import { ImageUploadSlot } from '@/app/components/ImageUploadSlot';
 import { getHotelImages, type HotelImage } from '@/app/lib/api/images';
@@ -67,6 +69,24 @@ export default function ProfilePage() {
   const [images,    setImages]    = useState<HotelImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error,     setError]     = useState<string | null>(null);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishError,   setPublishError]   = useState<string | null>(null);
+
+  async function handlePublishToggle(publish: boolean) {
+    if (!hotel) return;
+    setPublishLoading(true);
+    setPublishError(null);
+    try {
+      const updated = publish ? await publishHotel(hotel.id) : await unpublishHotel(hotel.id);
+      setHotel(prev => prev ? { ...prev, isPublished: updated.isPublished } : prev);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Action failed. Please try again.';
+      setPublishError(message);
+    } finally {
+      setPublishLoading(false);
+    }
+  }
 
   // Auth gate
   useEffect(() => {
@@ -138,13 +158,85 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '24px 28px' }}>
-      {/* Not published banner */}
+      {/* Publish status banner */}
       {hotel && hotel.isPublished === false && (
         <div
-          className="mb-4 rounded-lg border px-4 py-3 text-sm"
-          style={{ background: '#fef3c7', borderColor: '#fbbf24', color: '#92400e' }}
+          className="mb-4 rounded-xl border p-5"
+          style={{
+            background: '#fffbeb',
+            borderColor: '#fbbf24',
+            borderLeftWidth: '4px',
+          }}
         >
-          Your property is not published. Guests cannot find it on the platform yet.
+          <div className="flex items-start gap-3">
+            {/* Eye-off icon */}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#92400e"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ flexShrink: 0, marginTop: 2 }}
+            >
+              <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: '#92400e' }}>
+                Your hotel is not visible to travellers yet
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: '#b45309' }}>
+                Publish it to start receiving bookings.
+              </p>
+              <div className="mt-3 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <button
+                  onClick={() => handlePublishToggle(true)}
+                  disabled={publishLoading}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ background: '#16a34a' }}
+                >
+                  {publishLoading ? (
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                  Publish Hotel
+                </button>
+                {publishError && (
+                  <p className="text-xs" style={{ color: '#991b1b' }}>
+                    {publishError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -163,18 +255,57 @@ export default function ProfilePage() {
                 Pending verification
               </span>
             )}
+            {hotel?.isPublished === true && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                style={{ background: '#dcfce7', color: '#166534' }}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Published
+              </span>
+            )}
           </div>
           <p className="text-sm mt-1" style={{ color: 'var(--db-secondary)' }}>
             {locationStr}
           </p>
         </div>
-        <button
-          className="rounded-lg border px-4 py-2 text-sm font-medium"
-          style={{ borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
-        >
-          Edit Profile
-        </button>
+        <div className="flex items-center gap-2">
+          {hotel?.isPublished === true && (
+            <button
+              onClick={() => handlePublishToggle(false)}
+              disabled={publishLoading}
+              className="rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-60"
+              style={{ borderColor: 'var(--db-border)', color: 'var(--db-secondary)' }}
+            >
+              {publishLoading ? 'Updating...' : 'Unpublish'}
+            </button>
+          )}
+          <button
+            className="rounded-lg border px-4 py-2 text-sm font-medium"
+            style={{ borderColor: 'var(--db-border)', color: 'var(--db-primary)' }}
+          >
+            Edit Profile
+          </button>
+        </div>
       </div>
+
+      {/* Publish/Unpublish error (for header unpublish action) */}
+      {hotel?.isPublished === true && publishError && (
+        <p className="mb-3 text-xs" style={{ color: '#991b1b' }}>{publishError}</p>
+      )}
 
       {/* Info sections */}
       <div className="flex flex-col gap-4">

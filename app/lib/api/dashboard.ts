@@ -363,3 +363,20 @@ export async function updateRoomTypePricing(
     imageUrl: raw.imageUrl,
   };
 }
+
+/**
+ * Publishes the hotel so it becomes visible to travellers.
+ * PATCH /api/v1/hotels/:hotelId/publish
+ * Requires an approved hotel with an active subscription.
+ */
+export async function publishHotel(hotelId: string): Promise<DashboardHotel> {
+  return apiClient.patch<DashboardHotel>(`/api/v1/hotels/${hotelId}/publish`);
+}
+
+/**
+ * Unpublishes the hotel, hiding it from travellers.
+ * PATCH /api/v1/hotels/:hotelId/unpublish
+ */
+export async function unpublishHotel(hotelId: string): Promise<DashboardHotel> {
+  return apiClient.patch<DashboardHotel>(`/api/v1/hotels/${hotelId}/unpublish`);
+}

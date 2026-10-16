@@ -1,0 +1,60 @@
+## Build Verification Log
+Generated after implementing three-fixes-plan.md
+
+---
+
+### Backend build (c:\Users\Pkaka\music\hotel-os-api)
+Command: npm run build
+
+> hotel-os-api@0.0.1 build
+> nest build
+
+Exit code: 0 — no TypeScript errors
+
+---
+
+### Frontend build (c:\Users\Pkaka\music\hotel-os)
+Command: npx next build
+
+▲ Next.js 16.4.0 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 152ms
+- Cache Components enabled
+- Partial Prefetching enabled
+Creating an optimized production build ...
+✓ Compiled successfully in 13.3s
+  Running TypeScript ...
+  Finished TypeScript in 15.6s
+  Collecting page data using 3 workers ...
+✓ Collecting page data using 3 workers in 2.4s
+  Generating static pages (61/61) in 3.0s
+✓ Finalizing page optimization in 106ms
+
+New routes confirmed in build output:
+  ○ /dashboard/subscription
+  ○ /dashboard/subscription/callback   ← NEW Paystack return page
+  ○ /dashboard/profile
+
+Exit code: 0 — no TypeScript errors
+
+---
+
+### Changes made
+
+FIX 1 — Paystack payment integration:
+  CREATED  hotel-os-api/src/subscriptions/dto/initialize-payment.dto.ts
+  CREATED  hotel-os-api/src/subscriptions/dto/verify-payment.dto.ts
+  MODIFIED hotel-os-api/src/subscriptions/subscriptions.service.ts  (added initializePayment, verifyPayment)
+  MODIFIED hotel-os-api/src/subscriptions/subscriptions.controller.ts  (added POST .../initialize, POST .../verify)
+  CREATED  hotel-os/app/lib/api/subscriptions.ts
+  MODIFIED hotel-os/app/dashboard/subscription/page.tsx  (handleConfirm now uses Paystack redirect)
+  CREATED  hotel-os/app/dashboard/subscription/callback/page.tsx
+
+FIX 2 — Hotel publish/unpublish control:
+  MODIFIED hotel-os-api/src/hotels/hotels.service.ts  (added publishHotel, unpublishHotel)
+  MODIFIED hotel-os-api/src/hotels/hotels.controller.ts  (added PATCH :id/publish, PATCH :id/unpublish)
+  MODIFIED hotel-os/app/lib/api/dashboard.ts  (added publishHotel, unpublishHotel)
+  MODIFIED hotel-os/app/dashboard/profile/page.tsx  (full publish/unpublish UI with SVG icons)
+
+FIX 3 — Reapplication flow:
+  No code changes needed (verified end-to-end flow is correct per plan analysis).
