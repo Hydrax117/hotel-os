@@ -13,6 +13,34 @@ export type HotelSummary = {
   imageUrl?: string;
 };
 
+// Shape returned by GET /api/v1/search/hotels
+type HotelSearchResult = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  state: string;
+  rating: number | null;
+  reviewCount: number;
+  primaryImageUrl: string | null;
+  amenities: string[];
+  lowestPrice: number | null;
+};
+
+function mapSearchResult(h: HotelSearchResult): HotelSummary {
+  return {
+    id: h.id,
+    name: h.name,
+    city: h.city,
+    state: h.state,
+    rating: h.rating ?? 0,
+    reviewCount: h.reviewCount,
+    pricePerNight: h.lowestPrice ?? 0,
+    amenities: h.amenities,
+    imageUrl: h.primaryImageUrl ?? undefined,
+  };
+}
+
 export type SearchHotelsParams = {
   destination?: string;
   checkIn?: string;
@@ -52,13 +80,13 @@ async function serverFetch<T>(path: string): Promise<T> {
  */
 export async function searchHotels(params: SearchHotelsParams): Promise<SearchHotelsResponse> {
   const qs = new URLSearchParams();
-  if (params.destination) qs.set('destination', params.destination);
+  if (params.destination) qs.set('q', params.destination);
   if (params.checkIn)     qs.set('checkIn', params.checkIn);
   if (params.checkOut)    qs.set('checkOut', params.checkOut);
   if (params.guests)      qs.set('guests', String(params.guests));
   if (params.page)        qs.set('page', String(params.page));
   if (params.limit)       qs.set('limit', String(params.limit));
-  const res = await fetch(`${BASE_URL}/api/v1/hotels?${qs.toString()}`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/v1/search/hotels?${qs.toString()}`, { cache: 'no-store' });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -67,7 +95,13 @@ export async function searchHotels(params: SearchHotelsParams): Promise<SearchHo
     } catch { /* ignore */ }
     throw new Error(msg);
   }
-  return res.json() as Promise<SearchHotelsResponse>;
+  const data = await res.json() as { hotels: HotelSearchResult[]; total: number; page: number; limit: number };
+  return {
+    hotels: data.hotels.map(mapSearchResult),
+    total: data.total,
+    page: data.page,
+    limit: data.limit,
+  };
 }
 
 /**
@@ -75,25 +109,33 @@ export async function searchHotels(params: SearchHotelsParams): Promise<SearchHo
  */
 export async function fetchFeaturedHotels(): Promise<HotelSummary[]> {
   try {
-    const data = await serverFetch<SearchHotelsResponse>('/api/v1/hotels?featured=true&limit=4');
-    return data.hotels;
+    const data = await serverFetch<{ hotels: HotelSearchResult[] }>('/api/v1/search/featured?limit=4');
+    return data.hotels.map(h => ({
+      id: h.id,
+      name: h.name,
+      city: h.city,
+      state: h.state,
+      rating: h.rating ?? 0,
+      reviewCount: h.reviewCount,
+      pricePerNight: h.lowestPrice ?? 0,
+      amenities: h.amenities,
+      featured: true,
+      imageUrl: h.primaryImageUrl ?? undefined,
+    }));
   } catch {
     return [];
   }
 }
 
 /**
- * Fetch city counts — used by homepage server component, returns distinct
- * cities with hotel counts derived from the full hotel list.
+ * Fetch city counts — uses the dedicated popular-cities endpoint.
  */
 export async function fetchCityCounts(): Promise<CityCount[]> {
   try {
-    const data = await serverFetch<SearchHotelsResponse>('/api/v1/hotels?limit=100');
-    const counts = new Map<string, number>();
-    for (const h of data.hotels) {
-      counts.set(h.city, (counts.get(h.city) ?? 0) + 1);
-    }
-    return Array.from(counts.entries()).map(([city, hotelCount]) => ({ city, hotelCount }));
+    const data = await serverFetch<{ city: string; state: string; hotelCount: number }[]>(
+      '/api/v1/search/popular-cities',
+    );
+    return data.map(d => ({ city: d.city, hotelCount: d.hotelCount }));
   } catch {
     return [];
   }
