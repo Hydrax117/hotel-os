@@ -12,8 +12,9 @@ type RoomCardProps = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function RoomCard({ room, hotelId }: RoomCardProps) {
-  const isFreeCancel = room.cancellationPolicy.toLowerCase().includes('free');
-  const isNonRefundable = room.cancellationPolicy.toLowerCase().includes('non-refundable');
+  const cancellationPolicy = room.cancellationPolicy ?? '';
+  const isFreeCancel = cancellationPolicy.toLowerCase().includes('free');
+  const isNonRefundable = cancellationPolicy.toLowerCase().includes('non-refundable');
 
   const cancellationColor = isFreeCancel
     ? 'var(--tp-accent)'
@@ -88,22 +89,26 @@ export function RoomCard({ room, hotelId }: RoomCardProps) {
         </div>
 
         {/* Row 2: size */}
-        <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-          {room.sizeSqm} sqm
-        </p>
+        {room.sizeSqm != null && (
+          <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
+            {room.sizeSqm} sqm
+          </p>
+        )}
 
         {/* Row 3: amenities chips (max 5) */}
-        <div className="flex flex-wrap gap-1.5">
-          {room.amenities.slice(0, 5).map(amenity => (
-            <span
-              key={amenity}
-              className="rounded-md px-2 py-1 text-xs"
-              style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}
-            >
-              {amenity}
-            </span>
-          ))}
-        </div>
+        {(room.amenities ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {(room.amenities ?? []).slice(0, 5).map(amenity => (
+              <span
+                key={amenity}
+                className="rounded-md px-2 py-1 text-xs"
+                style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}
+              >
+                {amenity}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Row 4: breakfast + cancellation */}
         <div className="flex flex-wrap items-center gap-3">
@@ -122,9 +127,11 @@ export function RoomCard({ room, hotelId }: RoomCardProps) {
               Room only
             </span>
           )}
-          <span className="text-xs" style={{ color: cancellationColor }}>
-            {room.cancellationPolicy}
-          </span>
+          {cancellationPolicy && (
+            <span className="text-xs" style={{ color: cancellationColor }}>
+              {cancellationPolicy}
+            </span>
+          )}
         </div>
 
         {/* Price + CTA row */}
@@ -139,18 +146,18 @@ export function RoomCard({ room, hotelId }: RoomCardProps) {
             <span className="text-xs" style={{ color: 'var(--tp-secondary)' }}>
               per night
             </span>
-            {room.available <= 3 && (
+            {typeof room.availableRooms === 'number' && room.availableRooms <= 3 && room.availableRooms > 0 && (
               <span
                 className="mt-1 text-xs font-medium"
                 style={{ color: '#d97706' }}
               >
-                Only {room.available} left
+                Only {room.availableRooms} left
               </span>
             )}
           </div>
 
           <Link
-            href={`/checkout?hotelId=${hotelId}&roomId=${room.id}&guests=1`}
+            href={`/checkout?hotelId=${hotelId}&roomId=${room.roomTypeId ?? room.id}&guests=1`}
             className="inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white text-center transition-opacity hover:opacity-80"
             style={{ background: 'var(--tp-primary)' }}
           >

@@ -144,16 +144,18 @@ export async function fetchCityCounts(): Promise<CityCount[]> {
 // ── Hotel detail types ────────────────────────────────────────────────────────
 
 export type RoomAvailability = {
-  id: string;
+  roomTypeId: string;
+  id?: string;             // alias, not always present
   name: string;
-  bedType: string;               // 'King' | 'Twin' | 'Queen' | 'Double'
+  bedType: string;
   capacity: number;
-  sizeSqm: number;
+  sizeSqm?: number;
   pricePerNight: number;
-  amenities: string[];
-  breakfastIncluded: boolean;
-  cancellationPolicy: string;
-  available: number;             // rooms available; may be 0
+  availableRooms: number;
+  available: boolean;          // true if at least one room is available
+  amenities?: string[];
+  breakfastIncluded?: boolean;
+  cancellationPolicy?: string;
 };
 
 export type NearbyAttraction = { name: string; distance: string };

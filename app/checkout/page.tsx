@@ -151,7 +151,7 @@ function CheckoutInner() {
         if (room) {
           setRoomName(room.name);
           setPricePerNight(room.pricePerNight);
-          setCancellationPolicy(room.cancellationPolicy);
+          setCancellationPolicy(room.cancellationPolicy ?? '');
         } else {
           setDataError('Room not found.');
         }
