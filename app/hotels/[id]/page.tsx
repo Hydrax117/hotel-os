@@ -190,7 +190,7 @@ export default async function HotelDetailPage({
     Infinity
   );
 
-  const stars = Array.from({ length: 5 }, (_, i) => i + 1 <= Math.floor(detail.rating));
+  const stars = Array.from({ length: 5 }, (_, i) => i + 1 <= Math.floor(detail.rating ?? 0));
 
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
@@ -331,11 +331,13 @@ export default async function HotelDetailPage({
                   <IconStar key={i} filled={filled} />
                 ))}
               </div>
-              <span className="text-sm font-semibold" style={{ color: 'var(--tp-primary)' }}>
-                {detail.rating.toFixed(1)}
-              </span>
+              {detail.rating != null && (
+                <span className="text-sm font-semibold" style={{ color: 'var(--tp-primary)' }}>
+                  {detail.rating.toFixed(1)}
+                </span>
+              )}
               <span className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-                ({detail.reviewCount.toLocaleString()} reviews)
+                ({(detail.reviewCount ?? 0).toLocaleString()} reviews)
               </span>
             </div>
 

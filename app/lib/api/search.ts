@@ -181,7 +181,7 @@ export type HotelDetail = {
 
 export async function fetchHotelDetail(id: string): Promise<HotelDetail | null> {
   try {
-    return await serverFetch<HotelDetail>(`/api/v1/hotels/${id}`);
+    return await serverFetch<HotelDetail>(`/api/v1/search/hotels/${id}`);
   } catch (err) {
     // 404 = not found, return null so the page can call notFound()
     if (err instanceof Error && err.message.startsWith('API 404')) return null;
@@ -191,8 +191,12 @@ export async function fetchHotelDetail(id: string): Promise<HotelDetail | null> 
 
 export async function fetchHotelRooms(hotelId: string): Promise<RoomAvailability[]> {
   try {
-    const data = await serverFetch<{ rooms: RoomAvailability[] }>(`/api/v1/hotels/${hotelId}/rooms`);
-    return data.rooms ?? [];
+    // The search detail endpoint includes rooms — no separate call needed.
+    // This function returns [] so the page degrades gracefully if called standalone.
+    const data = await serverFetch<{ availableRooms?: RoomAvailability[]; rooms?: RoomAvailability[] }>(
+      `/api/v1/search/hotels/${hotelId}`,
+    );
+    return data.availableRooms ?? data.rooms ?? [];
   } catch {
     return [];
   }
