@@ -1,0 +1,22 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": "approved-state-stranded-ux",
+      "severity": "should-fix",
+      "confidence": "confirmed",
+      "title": "APPROVED state with no hotel — stranded UX",
+      "description": "In hotel-review/page.tsx, when handleRefresh finds the application is APPROVED but getMyHotel() returns null, it sets a checkMessage string but renders no navigation button. The user sees 'Choose a subscription plan to activate your hotel' with no link to /dashboard/subscription.",
+      "action": "Add a 'Choose a plan' button in the APPROVED state that navigates to /dashboard/subscription when checkMessage is set and hotel is null."
+    },
+    {
+      "id": "verify-payment-unvalidated-plan-metadata",
+      "severity": "should-fix",
+      "confidence": "confirmed",
+      "title": "verifyPayment plan cast from metadata is unvalidated",
+      "description": "verifyPayment casts paystackData.data.metadata.plan directly to SubscriptionPlan and passes it to createSubscription, which immediately accesses SUBSCRIPTION_PLANS[dto.plan].priceNgn with no null guard. If the metadata field is absent or corrupt, the endpoint throws an unhandled TypeError (500) instead of a user-friendly error.",
+      "action": "Add: if (!SUBSCRIPTION_PLANS[planFromMeta]) throw new BadRequestException('Invalid plan received from payment gateway. Please contact support.') before calling createSubscription."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\Pkaka\\music\\hotel-os\\.agents\\tasks\\three-fixes-review.md"
+}

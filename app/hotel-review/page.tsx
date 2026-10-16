@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/app/lib/auth-context';
 import { getMyApplication, type HotelApplication } from '@/app/lib/api/applications';
-import { getMyHotel } from '@/app/lib/api/dashboard';
 import { logout } from '@/app/lib/api/auth';
 import { useRouter } from 'next/navigation';
 
@@ -128,14 +127,9 @@ export default function HotelReviewPage() {
     setApplication(a);
 
     if (a?.status === 'APPROVED') {
-      // Check if the hotel has been created
-      const hotel = await getMyHotel();
-      if (hotel) {
-        router.replace('/dashboard/overview');
-        return;
-      }
-      // Hotel not yet created — show subscription message
-      setCheckMessage('Your application has been approved! Choose a subscription plan to activate your hotel.');
+      // Hotel was created by admin approval — go straight to subscription selection
+      router.replace('/dashboard/subscription');
+      return;
     } else {
       setCheckMessage('Your application is still under review. We will email you when it has been approved.');
     }
@@ -507,29 +501,21 @@ export default function HotelReviewPage() {
                 choose a subscription plan and complete payment.
               </p>
 
-              <div style={{ textAlign: 'center' }}>
-                <button
-                  onClick={handleRefresh}
-                  disabled={checking}
-                  style={{
-                    background: '#3d6b4f',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 10,
-                    cursor: checking ? 'not-allowed' : 'pointer',
-                    fontWeight: 600,
-                    fontSize: 14,
-                    padding: '10px 24px',
-                    marginBottom: 12,
-                    opacity: checking ? 0.7 : 1,
-                  }}
-                >
-                  {checking ? 'Checking...' : 'Continue to dashboard'}
-                </button>
-                {checkMessage && (
-                  <p style={{ fontSize: 13, color: '#6b7280', marginTop: 10 }}>{checkMessage}</p>
-                )}
-              </div>
+              <button
+                onClick={() => router.push('/dashboard/subscription')}
+                style={{
+                  background: '#3d6b4f',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  padding: '10px 24px',
+                }}
+              >
+                Choose a subscription plan
+              </button>
             </>
           )}
 
