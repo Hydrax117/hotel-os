@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { MOCK_HOTEL } from '../mock/data';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/app/lib/auth-context';
+import { logout } from '@/app/lib/api/auth';
 
 type NavItem = {
   label: string;
@@ -200,7 +201,24 @@ type DashboardSidebarProps = {
 
 export function DashboardSidebar({ mobileOpen, onClose }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   const [frontDeskOpen, setFrontDeskOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const initials = user
+    ? (user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')
+    : 'HO';
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Hotel Owner';
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await logout();
+    } catch { /* ignore — clear locally regardless */ }
+    signOut();
+    router.replace('/auth/signin');
+  }
 
   const frontDeskSubItems = [
     { label: 'Check In', href: '/dashboard/front-desk/check-in' },
@@ -323,17 +341,42 @@ export function DashboardSidebar({ mobileOpen, onClose }: DashboardSidebarProps)
           </ul>
         </nav>
 
-        {/* Hotel name footer */}
+        {/* User footer with logout */}
         <div
           className="shrink-0 border-t px-4 py-4"
           style={{ borderColor: 'rgba(255,255,255,0.08)' }}
         >
-          <p className="truncate text-xs font-medium" style={{ color: 'var(--db-sidebar-text)' }}>
-            {MOCK_HOTEL.name}
-          </p>
-          <p className="text-xs" style={{ color: 'rgba(168,162,158,0.6)' }}>
-            {MOCK_HOTEL.city}, {MOCK_HOTEL.state}
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+              style={{ background: 'var(--db-accent)' }}
+              aria-hidden="true"
+            >
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold" style={{ color: 'var(--db-sidebar-active)' }}>
+                {displayName}
+              </p>
+              <p className="truncate text-xs" style={{ color: 'rgba(168,162,158,0.6)' }}>
+                {user?.email ?? ''}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSignOut()}
+            disabled={signingOut}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors hover:bg-white/10 disabled:opacity-50"
+            style={{ color: 'rgba(168,162,158,0.8)', background: 'none', border: 'none', cursor: signingOut ? 'not-allowed' : 'pointer' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
         </div>
       </aside>
     </>
