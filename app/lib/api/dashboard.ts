@@ -135,12 +135,12 @@ export async function getMyHotel(): Promise<DashboardHotel | null> {
 
 /**
  * Returns all reservations for a given hotel.
- * GET /api/v1/hotels/:hotelId/bookings
+ * GET /api/v1/bookings/hotel/:hotelId
  * Handles both plain-array and { data: [...] } paginated response shapes.
  */
 export async function getDashboardReservations(hotelId: string): Promise<DashboardReservation[]> {
   const raw = await apiClient.get<ApiBooking[] | { data: ApiBooking[] }>(
-    `/api/v1/hotels/${hotelId}/bookings`,
+    `/api/v1/bookings/hotel/${hotelId}`,
   );
 
   const bookings: ApiBooking[] = Array.isArray(raw) ? raw : raw.data;
@@ -172,12 +172,12 @@ export async function getDashboardReservations(hotelId: string): Promise<Dashboa
 
 /**
  * Returns all room types for a given hotel.
- * GET /api/v1/hotels/:hotelId/rooms
+ * GET /api/v1/hotels/:hotelId/room-types
  * Handles both plain-array and { rooms: [...] } response shapes.
  */
 export async function getDashboardRoomTypes(hotelId: string): Promise<DashboardRoomType[]> {
   const raw = await apiClient.get<ApiRoomType[] | { rooms: ApiRoomType[] }>(
-    `/api/v1/hotels/${hotelId}/rooms`,
+    `/api/v1/hotels/${hotelId}/room-types`,
   );
 
   const rooms: ApiRoomType[] = Array.isArray(raw) ? raw : raw.rooms;
@@ -196,15 +196,34 @@ export async function getDashboardRoomTypes(hotelId: string): Promise<DashboardR
 
 /**
  * Returns room inventory calendar data for a given hotel.
- * GET /api/v1/hotels/:hotelId/inventory
- * Returns [] if the endpoint is absent (404/500) so the inventory page degrades gracefully.
+ * The backend inventory endpoint is per-room-type (/api/v1/room-types/:roomTypeId/inventory).
+ * This function fetches room types first, then aggregates inventory per type.
+ * Returns [] gracefully if unavailable.
  */
 export async function getDashboardInventory(hotelId: string): Promise<DashboardRoomInventory[]> {
   try {
-    const raw = await apiClient.get<DashboardRoomInventory[]>(
-      `/api/v1/hotels/${hotelId}/inventory`,
+    // First get room types for this hotel
+    const roomTypes = await getDashboardRoomTypes(hotelId);
+    if (roomTypes.length === 0) return [];
+
+    const results = await Promise.all(
+      roomTypes.map(async (rt) => {
+        try {
+          const raw = await apiClient.get<{ days?: DashboardInventoryDay[]; calendar?: DashboardInventoryDay[] }>(
+            `/api/v1/room-types/${rt.id}/inventory/calendar`,
+          );
+          const days = raw.days ?? raw.calendar ?? [];
+          return {
+            roomTypeId: rt.id,
+            roomTypeName: rt.name,
+            days: Array.isArray(days) ? days : [],
+          } satisfies DashboardRoomInventory;
+        } catch {
+          return { roomTypeId: rt.id, roomTypeName: rt.name, days: [] } satisfies DashboardRoomInventory;
+        }
+      }),
     );
-    return Array.isArray(raw) ? raw : [];
+    return results;
   } catch {
     return [];
   }
@@ -283,19 +302,11 @@ export async function getDashboardStats(hotelId: string): Promise<DashboardStats
 
 /**
  * Returns staff members for a given hotel.
- * GET /api/v1/hotels/:hotelId/staff
- * Handles both plain array and { data: [...] } shapes.
- * Returns [] on any error so pages degrade gracefully.
+ * NOTE: No dedicated staff endpoint exists on the backend yet.
+ * Returns [] gracefully so pages degrade without crashing.
  */
-export async function getHotelStaff(hotelId: string): Promise<DashboardStaffMember[]> {
-  try {
-    const raw = await apiClient.get<DashboardStaffMember[] | { data: DashboardStaffMember[] }>(
-      `/api/v1/hotels/${hotelId}/staff`,
-    );
-    return Array.isArray(raw) ? raw : raw.data;
-  } catch {
-    return [];
-  }
+export async function getHotelStaff(_hotelId: string): Promise<DashboardStaffMember[]> {
+  return [];
 }
 
 /**
