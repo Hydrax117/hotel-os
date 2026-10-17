@@ -13,10 +13,15 @@ export type ApiBookingStatus =
   | 'PENDING';
 
 export type CreateBookingPayload = {
-  roomId: string;
+  hotelId: string;
+  roomTypeId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
+  guestFirstName: string;
+  guestLastName: string;
+  guestEmail: string;
+  guestPhone: string;
   specialRequests?: string;
 };
 
@@ -64,10 +69,10 @@ export function createBooking(payload: CreateBookingPayload): Promise<BookingRes
  * Initialize payment for a booking — returns a Paystack redirect URL.
  * POST /api/v1/payments/initialize
  */
-export function initializePayment(bookingId: string): Promise<InitPaymentResponse> {
+export function initializePayment(bookingId: string, email: string): Promise<InitPaymentResponse> {
   return apiClient.post<InitPaymentResponse>(
     `/api/v1/payments/initialize`,
-    { bookingId },
+    { bookingId, email },
   );
 }
 

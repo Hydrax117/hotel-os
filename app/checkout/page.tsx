@@ -236,14 +236,19 @@ function CheckoutInner() {
     setSubmitError('');
     try {
       const payload: CreateBookingPayload = {
-        roomId,
+        hotelId,
+        roomTypeId: roomId,
         checkIn: checkInInput,
         checkOut: checkOutInput,
         guests: Number(guests),
+        guestFirstName: firstName.trim(),
+        guestLastName: lastName.trim(),
+        guestEmail: email.trim(),
+        guestPhone: phone.trim(),
         specialRequests: specialRequests.trim() || undefined,
       };
       const booking = await createBooking(payload);
-      const payment = await initializePayment(booking.id);
+      const payment = await initializePayment(booking.id, email.trim());
       window.location.href = payment.paymentUrl;
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';

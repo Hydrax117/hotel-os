@@ -311,36 +311,33 @@ export async function getHotelStaff(_hotelId: string): Promise<DashboardStaffMem
 
 /**
  * Invites a new staff member to the hotel.
- * POST /api/v1/hotels/:hotelId/staff
- * Throws on error so the UI can display the message.
+ * NOTE: No staff management endpoint exists on the backend yet.
  */
 export async function inviteStaffMember(
-  hotelId: string,
-  payload: { name: string; email: string; role: string },
+  _hotelId: string,
+  _payload: { name: string; email: string; role: string },
 ): Promise<DashboardStaffMember> {
-  return apiClient.post<DashboardStaffMember>(`/api/v1/hotels/${hotelId}/staff`, payload);
+  throw new Error('Staff management is not yet available.');
 }
 
 /**
  * Updates the status of a staff member.
- * PATCH /api/v1/hotels/:hotelId/staff/:staffId
- * Throws on error so the UI can revert optimistic state.
+ * NOTE: No staff management endpoint exists on the backend yet.
  */
 export async function updateStaffStatus(
-  hotelId: string,
-  staffId: string,
-  status: 'active' | 'inactive',
+  _hotelId: string,
+  _staffId: string,
+  _status: 'active' | 'inactive',
 ): Promise<void> {
-  await apiClient.patch<unknown>(`/api/v1/hotels/${hotelId}/staff/${staffId}`, { status });
+  throw new Error('Staff management is not yet available.');
 }
 
 /**
  * Removes a staff member from the hotel.
- * DELETE /api/v1/hotels/:hotelId/staff/:staffId
- * Throws on error so the UI can revert optimistic state.
+ * NOTE: No staff management endpoint exists on the backend yet.
  */
-export async function removeStaffMember(hotelId: string, staffId: string): Promise<void> {
-  await apiClient.delete<unknown>(`/api/v1/hotels/${hotelId}/staff/${staffId}`);
+export async function removeStaffMember(_hotelId: string, _staffId: string): Promise<void> {
+  throw new Error('Staff management is not yet available.');
 }
 
 /**
