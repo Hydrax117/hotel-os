@@ -62,20 +62,21 @@ export function createBooking(payload: CreateBookingPayload): Promise<BookingRes
 
 /**
  * Initialize payment for a booking — returns a Paystack redirect URL.
- * POST /api/v1/bookings/{bookingId}/payment/initialize
+ * POST /api/v1/payments/initialize
  */
 export function initializePayment(bookingId: string): Promise<InitPaymentResponse> {
   return apiClient.post<InitPaymentResponse>(
-    `/api/v1/bookings/${bookingId}/payment/initialize`,
+    `/api/v1/payments/initialize`,
+    { bookingId },
   );
 }
 
 /**
  * Fetch all bookings for the authenticated user.
- * GET /api/v1/bookings/my
+ * GET /api/v1/bookings
  */
 export function getMyBookings(): Promise<BookingResponse[]> {
-  return apiClient.get<BookingResponse[]>('/api/v1/bookings/my');
+  return apiClient.get<BookingResponse[]>('/api/v1/bookings');
 }
 
 /**

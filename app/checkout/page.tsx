@@ -142,12 +142,13 @@ function CheckoutInner() {
     setDataLoading(true);
     Promise.all([
       apiClient.get<HotelDetail>(`/api/v1/hotels/${hotelId}`),
-      apiClient.get<{ rooms: RoomAvailability[] }>(`/api/v1/hotels/${hotelId}/rooms`),
+      apiClient.get<{ rooms: RoomAvailability[] } | RoomAvailability[]>(`/api/v1/hotels/${hotelId}/room-types`),
     ])
-      .then(([hotel, roomsData]) => {
+      .then(([hotel, roomsRaw]) => {
         setHotelName(hotel.name);
         setHotelCity(hotel.city);
-        const room = roomsData.rooms.find(r => r.id === roomId);
+        const rooms = Array.isArray(roomsRaw) ? roomsRaw : (roomsRaw as { rooms: RoomAvailability[] }).rooms ?? [];
+        const room = rooms.find((r: RoomAvailability) => (r.roomTypeId ?? r.id) === roomId);
         if (room) {
           setRoomName(room.name);
           setPricePerNight(room.pricePerNight);
