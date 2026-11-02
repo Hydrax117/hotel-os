@@ -1,25 +1,36 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MOCK_COMPLAINTS } from '../mock/data';
-import type { Complaint } from '../types';
 
-type StatusFilter = 'All' | 'Open' | 'In Progress' | 'Resolved';
+type Priority = 'High' | 'Medium' | 'Low';
+type ComplaintStatus = 'Open' | 'In Progress' | 'Resolved';
+type StatusFilter = 'All' | ComplaintStatus;
 
-const PRIORITY_STYLES: Record<Complaint['priority'], { bg: string; color: string }> = {
+type Complaint = {
+  id: string;
+  guestName: string;
+  roomNumber: string;
+  date: string;
+  category: string;
+  priority: Priority;
+  status: ComplaintStatus;
+  description: string;
+};
+
+const PRIORITY_STYLES: Record<Priority, { bg: string; color: string }> = {
   High:   { bg: '#fee2e2', color: '#991b1b' },
   Medium: { bg: '#fef3c7', color: '#92400e' },
   Low:    { bg: '#dcfce7', color: '#166534' },
 };
 
-const STATUS_STYLES: Record<Complaint['status'], { bg: string; color: string }> = {
+const STATUS_STYLES: Record<ComplaintStatus, { bg: string; color: string }> = {
   'Open':        { bg: '#fee2e2', color: '#991b1b' },
   'In Progress': { bg: '#fef3c7', color: '#92400e' },
   'Resolved':    { bg: '#dcfce7', color: '#166534' },
 };
 
 export default function ComplaintsPage() {
-  const [complaints,  setComplaints]  = useState<Complaint[]>(MOCK_COMPLAINTS);
+  const [complaints,  setComplaints]  = useState<Complaint[]>([]);
   const [filter,      setFilter]      = useState<StatusFilter>('All');
   const [expandedId,  setExpandedId]  = useState<string | null>(null);
 
