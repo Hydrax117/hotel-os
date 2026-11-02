@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getCurrentUser, clearTokens, type AuthUser } from './api/client';
+import { getCurrentUser, clearTokens, storeUser, type AuthUser } from './api/client';
 import { getMe } from './api/auth';
 
 type AuthContextValue = {
@@ -9,6 +9,24 @@ type AuthContextValue = {
   setUser: (user: AuthUser | null) => void;
   signOut: () => void;
 };
+
+/**
+ * The backend may return user fields in snake_case (first_name / last_name) or
+ * nested inside a `user` wrapper.  This normaliser ensures we always have a
+ * consistent AuthUser shape regardless of the server's response format.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeUser(raw: any): AuthUser {
+  // Unwrap a possible `{ user: {...} }` envelope
+  const u = raw?.user ?? raw;
+  return {
+    id:        u.id        ?? u._id        ?? '',
+    email:     u.email     ?? '',
+    firstName: u.firstName ?? u.first_name ?? '',
+    lastName:  u.lastName  ?? u.last_name  ?? '',
+    role:      u.role      ?? 'HOTEL_OWNER',
+  };
+}
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, isLoading: true, setUser: () => {}, signOut: () => {},
@@ -29,8 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(stored);
     getMe()
       .then(serverUser => {
-        // Update with fresh server data in case role/name changed
-        setUser(serverUser);
+        // The backend may return snake_case or nested fields — normalise to
+        // match the AuthUser shape so firstName/lastName are never undefined.
+        const normalized: AuthUser = normalizeUser(serverUser);
+        // Persist the fresh, normalized user so getCurrentUser() stays in sync
+        storeUser(normalized);
+        setUser(normalized);
       })
       .catch(() => {
         // Token is invalid or expired — clear session

@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
+import { logout } from '../../lib/api/auth';
 
 type DashboardTopbarProps = {
   onMenuToggle: () => void;
@@ -30,13 +31,22 @@ function getPageTitle(pathname: string): string {
 export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   const initials = user
     ? (user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')
     : 'HO';
 
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Hotel OS';
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await logout();
+    setUser(null);
+    router.replace('/auth/signin');
+  }
 
   return (
     <header
@@ -103,6 +113,24 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
       >
         {initials}
       </div>
+
+      {/* Sign out */}
+      <button
+        type="button"
+        onClick={handleSignOut}
+        disabled={signingOut}
+        className="hidden items-center rounded-md border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--db-muted)] sm:flex"
+        style={{
+          borderColor: 'var(--db-border)',
+          color: 'var(--db-secondary)',
+          cursor: signingOut ? 'not-allowed' : 'pointer',
+          opacity: signingOut ? 0.6 : 1,
+          background: 'transparent',
+        }}
+        aria-label="Sign out"
+      >
+        {signingOut ? 'Signing out…' : 'Sign out'}
+      </button>
     </header>
   );
 }
