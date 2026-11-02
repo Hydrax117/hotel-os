@@ -72,8 +72,15 @@ export default function ReservationsPage() {
           setIsLoading(false);
           return;
         }
-        const data = await getDashboardReservations(hotelData.id);
-        if (!cancelled) setReservations(data);
+        // Use a try/catch around reservations separately — an empty or
+        // newly-active hotel may return a 404/error before any bookings exist.
+        // In that case we just show "No reservations found" rather than an error.
+        try {
+          const data = await getDashboardReservations(hotelData.id);
+          if (!cancelled) setReservations(data);
+        } catch {
+          if (!cancelled) setReservations([]);
+        }
       } catch {
         if (!cancelled) setError('Failed to load reservations. Please try again.');
       } finally {

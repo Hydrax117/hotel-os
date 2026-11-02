@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import { logout } from '../../lib/api/auth';
 
@@ -32,7 +32,6 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
   const { user, setUser } = useAuth();
-  const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
   const initials = user
@@ -45,7 +44,10 @@ export function DashboardTopbar({ onMenuToggle }: DashboardTopbarProps) {
     setSigningOut(true);
     await logout();
     setUser(null);
-    router.replace('/auth/signin');
+    // Hard-navigate so the entire React tree is unmounted immediately.
+    // router.replace() is async and leaves the dashboard briefly visible
+    // while the navigation is in flight.
+    window.location.href = '/auth/signin';
   }
 
   return (
