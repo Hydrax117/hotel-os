@@ -45,7 +45,14 @@ export function SearchResults({
         }
       })
       .catch(err => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load hotels');
+        if (!cancelled) {
+          const raw = err instanceof Error ? err.message : '';
+          // "Failed to fetch" is a network-level error (server unreachable)
+          const friendly = raw === 'Failed to fetch' || raw.includes('NetworkError') || raw.includes('fetch')
+            ? 'Unable to reach the server. Please check your connection and try again.'
+            : raw || 'Something went wrong. Please try again.';
+          setError(friendly);
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
