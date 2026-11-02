@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_HOTEL } from '../mock/data';
+import { getMyHotel, type DashboardHotel } from '@/app/lib/api/dashboard';
+import { useAuth } from '@/app/lib/auth-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,10 +67,10 @@ const inputStyle: React.CSSProperties = {
 
 // ── Sub-tabs ──────────────────────────────────────────────────────────────────
 
-function GeneralTab() {
-  const [name, setName]   = useState(MOCK_HOTEL.name);
-  const [email, setEmail] = useState('info@ekosignature.ng');
-  const [phone, setPhone] = useState('+234 812 345 6789');
+function GeneralTab({ hotel }: { hotel: DashboardHotel | null }) {
+  const [name, setName]   = useState(hotel?.name ?? '');
+  const [email, setEmail] = useState(hotel?.email ?? '');
+  const [phone, setPhone] = useState(hotel?.phone ?? '');
   const [saved, setSaved] = useState(false);
 
   function save() {
@@ -302,14 +303,16 @@ function SecurityTab() {
   );
 }
 
-function BillingTab() {
+function BillingTab({ hotel }: { hotel: DashboardHotel | null }) {
   const BILLING_HISTORY = [
     { date: '2026-10-01', description: 'Professional Plan — October 2026',  amount: '₦45,000', status: 'Paid' },
     { date: '2026-09-01', description: 'Professional Plan — September 2026', amount: '₦45,000', status: 'Paid' },
     { date: '2026-08-01', description: 'Professional Plan — August 2026',    amount: '₦45,000', status: 'Paid' },
   ];
 
-  const planDisplay = MOCK_HOTEL.subscription.charAt(0).toUpperCase() + MOCK_HOTEL.subscription.slice(1);
+  const planDisplay = hotel?.subscriptionPlan
+    ? hotel.subscriptionPlan.charAt(0).toUpperCase() + hotel.subscriptionPlan.slice(1).toLowerCase()
+    : 'No active plan';
 
   return (
     <div className="flex flex-col gap-6">
@@ -404,7 +407,14 @@ function BillingTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('general');
+  const [hotel, setHotel] = useState<DashboardHotel | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    getMyHotel().then(h => setHotel(h)).catch(() => {});
+  }, [user]);
 
   return (
     <div className="flex flex-col gap-8" style={{ color: 'var(--db-primary)' }}>
@@ -447,10 +457,10 @@ export default function SettingsPage() {
 
       {/* Tab content */}
       <div role="tabpanel" id="settings-tabpanel" aria-labelledby={`tab-${activeTab}`}>
-        {activeTab === 'general'       && <GeneralTab />}
+        {activeTab === 'general'       && <GeneralTab hotel={hotel} />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'security'      && <SecurityTab />}
-        {activeTab === 'billing'       && <BillingTab />}
+        {activeTab === 'billing'       && <BillingTab hotel={hotel} />}
       </div>
 
     </div>

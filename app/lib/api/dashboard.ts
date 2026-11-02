@@ -18,6 +18,8 @@ export type DashboardHotel = {
   name: string;
   city: string;
   state: string;
+  email?: string | null;
+  phone?: string | null;
   subscriptionPlan?: string;
   occupancyRate?: number;
   verificationStatus?: string;
