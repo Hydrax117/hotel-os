@@ -181,7 +181,7 @@ function SecurityTab() {
   const [pwSaved, setPwSaved]       = useState(false);
   const [pwError, setPwError]       = useState('');
 
-  const MOCK_SESSIONS = [
+  const SESSIONS = [
     { id: 's1', device: 'Chrome on macOS',  location: 'Lagos, Nigeria',    lastActive: 'Now',          current: true  },
     { id: 's2', device: 'Safari on iPhone', location: 'Lagos, Nigeria',    lastActive: '3 hours ago',  current: false },
   ];
@@ -266,11 +266,11 @@ function SecurityTab() {
         <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--db-border)' }}>
           <h2 className="text-sm font-semibold">Active sessions</h2>
         </div>
-        {MOCK_SESSIONS.map((session, idx) => (
+        {SESSIONS.map((session, idx) => (
           <div
             key={session.id}
             className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
-            style={{ borderBottom: idx < MOCK_SESSIONS.length - 1 ? '1px solid var(--db-border)' : 'none' }}
+            style={{ borderBottom: idx < SESSIONS.length - 1 ? '1px solid var(--db-border)' : 'none' }}
           >
             <div>
               <div className="flex items-center gap-2 mb-1">

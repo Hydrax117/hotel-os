@@ -1,8 +1,10 @@
-// TODO: Wire to real payouts API when GET /api/v1/hotels/:hotelId/payouts endpoint is implemented
-// Currently using mock data as the hotel-facing payout list endpoint is not yet built
+// Payouts API is not yet implemented on the backend.
+// This page will show real data once GET /api/v1/hotels/:hotelId/payouts is available.
 
 import React from 'react';
-import { MOCK_PAYOUTS } from '../mock/data';
+import type { PayoutTransaction } from '../types';
+
+const PAYOUTS: PayoutTransaction[] = [];
 import { StatCard } from '../components/StatCard';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -34,11 +36,11 @@ function PayoutBadge({ status }: { status: PayoutStatus }) {
 
 // ── Derived balances ──────────────────────────────────────────────────────────
 
-const availableBalance = MOCK_PAYOUTS.filter(p => p.status === 'settled').reduce(
+const availableBalance = PAYOUTS.filter(p => p.status === 'settled').reduce(
   (s, p) => s + p.netNgn,
   0,
 );
-const pendingBalance = MOCK_PAYOUTS.filter(p => p.status === 'pending').reduce(
+const pendingBalance = PAYOUTS.filter(p => p.status === 'pending').reduce(
   (s, p) => s + p.netNgn,
   0,
 );
@@ -47,9 +49,9 @@ const totalSettled = availableBalance;
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PayoutsPage() {
-  const totalGross = MOCK_PAYOUTS.reduce((s, p) => s + p.grossNgn, 0);
-  const totalFee = MOCK_PAYOUTS.reduce((s, p) => s + p.commissionNgn, 0);
-  const totalNet = MOCK_PAYOUTS.reduce((s, p) => s + p.netNgn, 0);
+  const totalGross = PAYOUTS.reduce((s, p) => s + p.grossNgn, 0);
+  const totalFee = PAYOUTS.reduce((s, p) => s + p.commissionNgn, 0);
+  const totalNet = PAYOUTS.reduce((s, p) => s + p.netNgn, 0);
 
   return (
     <div style={{ padding: '24px 28px' }}>
@@ -104,7 +106,7 @@ export default function PayoutsPage() {
               </tr>
             </thead>
             <tbody>
-              {MOCK_PAYOUTS.map((p, i) => (
+              {PAYOUTS.map((p, i) => (
                 <tr
                   key={p.id}
                   style={{
