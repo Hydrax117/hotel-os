@@ -62,15 +62,21 @@ export default function OverviewPage() {
         }
         setHotel(hotelData);
 
-        const [statsData, reservationsData, roomTypesData] = await Promise.all([
+        // Use allSettled so a failure in reservations/room-types (common for
+        // freshly-subscribed hotels with no data yet) does not block the whole
+        // dashboard. getDashboardStats already has its own internal fallback.
+        const [statsResult, reservationsResult, roomTypesResult] = await Promise.allSettled([
           getDashboardStats(hotelData.id),
           getDashboardReservations(hotelData.id),
           getDashboardRoomTypes(hotelData.id),
         ]);
         if (cancelled) return;
-        setStats(statsData);
-        setReservations(reservationsData);
-        setRoomTypes(roomTypesData);
+        if (statsResult.status === 'fulfilled')       setStats(statsResult.value);
+        if (reservationsResult.status === 'fulfilled') setReservations(reservationsResult.value);
+        if (roomTypesResult.status === 'fulfilled')    setRoomTypes(roomTypesResult.value);
+
+        // Only show an error if the critical hotel fetch above failed — secondary
+        // data failures are silent (the sections just render as empty).
       } catch {
         if (!cancelled) setError('Failed to load dashboard data. Please try again.');
       } finally {
