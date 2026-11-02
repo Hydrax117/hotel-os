@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/lib/auth-context';
 import { getMyHotel } from '@/app/lib/api/dashboard';
@@ -18,6 +18,9 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
 
   const [hotelChecked, setHotelChecked] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  // Prevent re-running the hotel API check on every client-side navigation.
+  // Once we know the hotel is approved the guard just lets children render.
+  const hotelCheckRunRef = useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -35,6 +38,11 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
     // Only HOTEL_OWNER can be in an incomplete-onboarding or pending-review state.
     // Managers and staff are assigned to a hotel by the owner, so they always have one.
     if (user.role === 'HOTEL_OWNER') {
+      // Skip the hotel API check if it already passed for this session — avoids
+      // firing getMyHotel() on every page navigation inside the dashboard.
+      if (hotelCheckRunRef.current) return;
+      hotelCheckRunRef.current = true;
+
       setFetchError(false);
       getMyHotel()
         .then(async hotel => {
@@ -94,13 +102,18 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
         })
         .catch(() => {
           // API error (network, token expired, etc.) — don't redirect to onboarding,
-          // show a retry prompt instead so the user is not stuck in a loop
+          // show a retry prompt instead so the user is not stuck in a loop.
+          // Reset the ref so the user can retry from the error screen.
+          hotelCheckRunRef.current = false;
           setFetchError(true);
         });
     } else {
       setHotelChecked(true);
     }
-  }, [user, isLoading, router, pathname, isUnderReviewPage]);
+  // pathname intentionally excluded — the hotel check runs once per user session,
+  // not on every client-side page navigation within the dashboard.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading]);
 
   if (isLoading || (!hotelChecked && !fetchError)) {
     return (
