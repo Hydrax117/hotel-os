@@ -1,96 +1,497 @@
 @import "tailwindcss";
 
+/*
+  Cormorant Garamond — editorial serif for display headings / hero text.
+  Loaded at runtime via CSS @import so it does not require a build-time
+  Google Fonts fetch (which fails in offline/proxy build environments).
+  Degrades gracefully to Georgia if unavailable.
+  Weights: 300 (light italic), 400 (regular + italic), 500 (medium), 600 (semi-bold).
+*/
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&display=swap');
+
+/* ============================================================
+   HOTEL OS — UNIFIED DESIGN SYSTEM
+   ============================================================
+
+   Architecture
+   ─────────────
+   1. Primitive tokens   — raw values, no semantics
+   2. Semantic tokens    — surface / text / brand / state
+   3. Component tokens   — button, input, badge, card
+   4. Legacy namespaces  — --tp-*, --db-*, --ob-*, --ad-* kept
+                           as aliases so existing pages don't
+                           break during the incremental redesign
+   5. Tailwind @theme    — exposes design tokens as Tailwind
+                           utility classes (e.g. bg-surface,
+                           text-primary, border-border)
+   ============================================================ */
+
+/* ── 1. Primitive Palette ──────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Warm neutrals */
+  --primitive-ivory-50:  #FDFCF9;
+  --primitive-ivory-100: #F8F7F3;
+  --primitive-ivory-200: #F0EEE8;
+  --primitive-ivory-300: #E8E5DD;
+  --primitive-ivory-400: #D9D5CC;
+  --primitive-ivory-500: #C8C3B8;
+
+  /* Stone — muted warm greys */
+  --primitive-stone-50:  #F5F4F2;
+  --primitive-stone-100: #EDEBE6;
+  --primitive-stone-200: #D8D4CD;
+  --primitive-stone-300: #B5B0A7;
+  --primitive-stone-400: #908B83;
+  --primitive-stone-500: #777A73;
+  --primitive-stone-600: #5C5F58;
+  --primitive-stone-700: #44473F;
+  --primitive-stone-800: #2E312A;
+  --primitive-stone-900: #20231F;
+
+  /* Forest greens */
+  --primitive-forest-50:  #EDF3EF;
+  --primitive-forest-100: #D4E4D9;
+  --primitive-forest-200: #A8C8B3;
+  --primitive-forest-300: #71816B;
+  --primitive-forest-400: #4A6B54;
+  --primitive-forest-500: #244735;
+  --primitive-forest-600: #1C3829;
+  --primitive-forest-700: #142A1E;
+
+  /* Bronze / gold */
+  --primitive-bronze-100: #F3ECE0;
+  --primitive-bronze-200: #DFC9A2;
+  --primitive-bronze-300: #C9A96E;
+  --primitive-bronze-400: #AD9167;
+  --primitive-bronze-500: #8B6E47;
+  --primitive-bronze-600: #6B5234;
+
+  /* Ink — near-blacks for dark surfaces */
+  --primitive-ink-900: #111110;
+  --primitive-ink-800: #1A1A18;
+  --primitive-ink-700: #252522;
+
+  /* Semantic state primitives */
+  --primitive-success-bg:   #DCFCE7;
+  --primitive-success-text: #166534;
+  --primitive-warning-bg:   #FEF3C7;
+  --primitive-warning-text: #92400E;
+  --primitive-danger-bg:    #FEE2E2;
+  --primitive-danger-text:  #991B1B;
+  --primitive-info-bg:      #DBEAFE;
+  --primitive-info-text:    #1E40AF;
 }
 
+/* ── 2. Semantic Design Tokens ─────────────────────────────── */
+:root {
+  /* Surfaces */
+  --color-bg:        var(--primitive-ivory-100);   /* warm page background    */
+  --color-bg-alt:    var(--primitive-ivory-200);   /* secondary bg / sections */
+  --color-surface:   #FFFFFF;                      /* card / panel surface    */
+  --color-surface-raised: #FFFFFF;                 /* elevated (modal, popover) */
+  --color-muted:     var(--primitive-stone-50);    /* muted surfaces, chips   */
+
+  /* Text */
+  --color-text-primary:   var(--primitive-stone-900); /* #20231F headings     */
+  --color-text-secondary: var(--primitive-stone-500); /* #777A73 body / meta  */
+  --color-text-muted:     var(--primitive-stone-400); /* placeholder / hint   */
+  --color-text-inverse:   #FFFFFF;                    /* text on dark bg      */
+
+  /* Brand */
+  --color-brand:          var(--primitive-forest-500); /* #244735 primary CTA  */
+  --color-brand-hover:    var(--primitive-forest-600); /* button hover          */
+  --color-brand-light:    var(--primitive-forest-100); /* brand tint background */
+  --color-brand-secondary:var(--primitive-forest-300); /* #71816B secondary     */
+  --color-accent:         var(--primitive-bronze-400); /* #AD9167 accent/star   */
+  --color-accent-light:   var(--primitive-bronze-100); /* #F3ECE0 accent tint   */
+
+  /* Border */
+  --color-border:         var(--primitive-ivory-300); /* #E8E5DD subtle border  */
+  --color-border-strong:  var(--primitive-ivory-500); /* stronger border        */
+  --color-border-focus:   var(--primitive-forest-500); /* focus ring            */
+
+  /* State */
+  --color-success-bg:    var(--primitive-success-bg);
+  --color-success-text:  var(--primitive-success-text);
+  --color-warning-bg:    var(--primitive-warning-bg);
+  --color-warning-text:  var(--primitive-warning-text);
+  --color-danger-bg:     var(--primitive-danger-bg);
+  --color-danger-text:   var(--primitive-danger-text);
+  --color-info-bg:       var(--primitive-info-bg);
+  --color-info-text:     var(--primitive-info-text);
+
+  /* Typography */
+  --font-sans:    var(--font-geist-sans, 'Inter', 'Helvetica Neue', Arial, sans-serif);
+  --font-mono:    var(--font-geist-mono, 'Fira Code', 'Courier New', monospace);
+  /* Cormorant Garamond is loaded via CSS @import above, so we reference it
+     by family name directly — no next/font CSS variable needed. */
+  --font-serif:   'Cormorant Garamond', 'Georgia', 'Times New Roman', serif;
+
+  /* Spacing scale (base 4px) */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+
+  /* Radius scale */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  18px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadow scale */
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  --shadow-xl:  0 16px 40px rgba(0,0,0,0.10), 0 6px 12px rgba(0,0,0,0.05);
+
+  /* Z-index scale */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-dropdown:200;
+  --z-sticky:  300;
+  --z-overlay: 400;
+  --z-modal:   500;
+  --z-toast:   600;
+
+  /* Layout */
+  --nav-height:     64px;
+  --sidebar-w:      240px;
+  --sidebar-w-admin:256px;
+  --topbar-h:       56px;
+  --max-content:    80rem;   /* 1280px */
+  --max-wide:       90rem;   /* 1440px */
+}
+
+/* ── 3. Component Tokens ───────────────────────────────────── */
+:root {
+  /* Button — primary */
+  --btn-primary-bg:      var(--color-brand);
+  --btn-primary-bg-hover:var(--color-brand-hover);
+  --btn-primary-text:    #FFFFFF;
+  --btn-primary-radius:  var(--radius-md);
+  --btn-primary-px:      24px;
+  --btn-primary-py:      11px;
+
+  /* Button — secondary / outline */
+  --btn-secondary-bg:    transparent;
+  --btn-secondary-border:var(--color-border);
+  --btn-secondary-text:  var(--color-text-primary);
+  --btn-secondary-radius:var(--radius-md);
+
+  /* Button — ghost */
+  --btn-ghost-bg:    transparent;
+  --btn-ghost-text:  var(--color-text-secondary);
+
+  /* Input */
+  --input-bg:       var(--color-surface);
+  --input-border:   var(--color-border);
+  --input-border-focus: var(--color-brand);
+  --input-text:     var(--color-text-primary);
+  --input-placeholder:  var(--color-text-muted);
+  --input-radius:   var(--radius-md);
+  --input-px:       16px;
+  --input-py:       11px;
+
+  /* Card */
+  --card-bg:        var(--color-surface);
+  --card-border:    var(--color-border);
+  --card-radius:    var(--radius-lg);
+  --card-shadow:    var(--shadow-sm);
+  --card-shadow-hover: var(--shadow-md);
+
+  /* Badge */
+  --badge-radius:   var(--radius-full);
+
+  /* Star / rating gold */
+  --color-star:     var(--primitive-bronze-300);
+}
+
+/* ── 4. Tailwind @theme integration ────────────────────────── */
+/*
+   Exposes semantic tokens as Tailwind utilities in v4's CSS-first config.
+   Usage examples:
+     bg-bg          → background-color: var(--color-bg)
+     text-primary   → color: var(--color-text-primary)
+     border-border  → border-color: var(--color-border)
+     shadow-card    → box-shadow: var(--shadow-sm)
+     rounded-card   → border-radius: var(--radius-lg)
+*/
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colours */
+  --color-bg:             var(--color-bg);
+  --color-bg-alt:         var(--color-bg-alt);
+  --color-surface:        var(--color-surface);
+  --color-muted:          var(--color-muted);
+  --color-primary:        var(--color-text-primary);
+  --color-secondary:      var(--color-text-secondary);
+  --color-brand:          var(--color-brand);
+  --color-brand-light:    var(--color-brand-light);
+  --color-accent:         var(--color-accent);
+  --color-accent-light:   var(--color-accent-light);
+  --color-border:         var(--color-border);
+  --color-star:           var(--color-star);
+
+  /* State colours */
+  --color-success:        var(--color-success-text);
+  --color-warning:        var(--color-warning-text);
+  --color-danger:         var(--color-danger-text);
+
+  /* Fonts */
+  --font-sans:   var(--font-sans);
+  --font-mono:   var(--font-mono);
+  --font-serif:  var(--font-serif);
+
+  /* Shadows */
+  --shadow-xs:   var(--shadow-xs);
+  --shadow-sm:   var(--shadow-sm);
+  --shadow-md:   var(--shadow-md);
+  --shadow-lg:   var(--shadow-lg);
+  --shadow-xl:   var(--shadow-xl);
+  --shadow-card: var(--card-shadow);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── 5. Base styles ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  /* Use --font-sans which resolves to Geist when the CSS variable is set by
+     next/font. Arial is NOT listed as the first fallback so Geist actually renders. */
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
 }
 
-/* Onboarding design tokens */
-:root {
-  --ob-bg:        #f9f7f4;   /* warm off-white page background   */
-  --ob-surface:   #ffffff;   /* card / panel surface             */
-  --ob-primary:   #1a1a1a;   /* deep charcoal text + buttons     */
-  --ob-secondary: #6b6560;   /* stone/warm gray                  */
-  --ob-accent:    #3d6b4f;   /* muted earthy green               */
-  --ob-border:    #e8e4df;   /* subtle warm border               */
-  --ob-muted:     #f1ede8;   /* muted surface (chips, slots)     */
+/* Ensure focus rings are visible for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
-/* Dashboard design tokens */
-:root {
-  --db-sidebar-bg:     #111110;   /* near-black sidebar              */
-  --db-sidebar-text:   #a8a29e;   /* stone-400 nav text              */
-  --db-sidebar-active: #ffffff;   /* active nav item text            */
-  --db-sidebar-w:      240px;     /* sidebar width (desktop)         */
-  --db-topbar-h:       56px;      /* topbar height                   */
-  --db-surface:        #ffffff;   /* card / panel surface            */
-  --db-bg:             #f5f4f2;   /* warm off-white page bg          */
-  --db-primary:        #1a1a1a;   /* headings + primary text         */
-  --db-secondary:      #6b6560;   /* secondary / muted text          */
-  --db-accent:         #3d6b4f;   /* same earthy green as onboarding */
-  --db-border:         #e8e4df;   /* warm subtle border              */
-  --db-muted:          #f1ede8;   /* muted surface (chips, pills)    */
-  --db-danger:         #dc2626;   /* destructive actions             */
-  --db-warning:        #d97706;   /* caution / pending states        */
-  --db-success:        #16a34a;   /* confirmed / active states       */
-  --db-star:           #b5935a;   /* star / rating gold (dashboard)  */
-  --db-danger-surface: #fee2e2;   /* danger tint surface             */
-  --db-success-surface:#dcfce7;   /* success tint surface            */
+/* Remove outline on mouse clicks only */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
-/* Traveler platform design tokens */
-:root {
-  --tp-bg:           #faf9f7;   /* warm page background              */
-  --tp-surface:      #ffffff;   /* card / panel surface              */
-  --tp-primary:      #1a1a1a;   /* primary headings / text           */
-  --tp-secondary:    #6b6560;   /* secondary / muted text            */
-  --tp-accent:       #3d6b4f;   /* earthy green CTA                  */
-  --tp-accent-light: #e8f0eb;   /* light tint of accent              */
-  --tp-border:       #e8e4df;   /* subtle warm border                */
-  --tp-muted:        #f5f3f0;   /* muted surface (chips, badges)     */
-  --tp-gold:         #b5935a;   /* star / rating gold                */
+/* Accessible reduced-motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-/* Admin platform design tokens */
-:root {
-  --ad-sidebar-bg:     #0f1117;
-  --ad-sidebar-text:   #8b92a5;
-  --ad-sidebar-active: #ffffff;
-  --ad-sidebar-w:      256px;
-  --ad-topbar-h:       56px;
-  --ad-surface:        #ffffff;
-  --ad-bg:             #f4f6f9;
-  --ad-primary:        #1a1d2e;
-  --ad-secondary:      #6b7280;
-  --ad-accent:         #2563eb;
-  --ad-border:         #e5e7eb;
-  --ad-muted:          #f9fafb;
-  --ad-danger:         #dc2626;
-  --ad-warning:        #d97706;
-  --ad-success:        #16a34a;
+/* ── 6. Scrollbar styling (subtle, brand-aligned) ───────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primitive-ivory-400);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primitive-stone-400);
 }
 
+/* ── 7. Typography utilities ────────────────────────────────── */
+.font-display {
+  font-family: var(--font-serif);
+}
+
+.text-display-xl {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+.text-display-lg {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  font-weight: 400;
+}
+
+.text-display-md {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+
+.text-label {
+  font-size: 0.6875rem;  /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── 8. Common animation keyframes ──────────────────────────── */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in  { animation: fade-in  0.2s ease both; }
+.animate-slide-up { animation: slide-up 0.25s ease both; }
+.animate-spin     { animation: spin 1s linear infinite; }
+.animate-pulse    { animation: pulse 1.8s ease-in-out infinite; }
+
+/* ── 9. Skeleton loading pattern ─────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--primitive-ivory-200) 25%,
+    var(--primitive-ivory-300) 50%,
+    var(--primitive-ivory-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   LEGACY NAMESPACE ALIASES
+   ─────────────────────────────────────────────────────────
+   All existing --tp-*, --db-*, --ob-*, --ad-* references in
+   the current codebase remain functional. These aliases map
+   legacy names to the new unified tokens so pages continue
+   to render correctly during the incremental redesign.
+   Once all pages are migrated, these can be removed.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Traveler platform  (--tp-*) ─────────────────────────── */
+:root {
+  --tp-bg:           var(--color-bg);
+  --tp-surface:      var(--color-surface);
+  --tp-primary:      var(--color-text-primary);
+  --tp-secondary:    var(--color-text-secondary);
+  --tp-accent:       var(--color-brand);
+  --tp-accent-light: var(--color-brand-light);   /* ← was missing, now defined */
+  --tp-border:       var(--color-border);
+  --tp-muted:        var(--color-muted);
+  --tp-gold:         var(--color-star);
+}
+
+/* ── Hotel dashboard  (--db-*) ───────────────────────────── */
+:root {
+  --db-sidebar-bg:      var(--primitive-ink-900);
+  --db-sidebar-text:    var(--primitive-stone-400);
+  --db-sidebar-active:  #FFFFFF;
+  --db-sidebar-w:       var(--sidebar-w);
+  --db-topbar-h:        var(--topbar-h);
+  --db-surface:         var(--color-surface);
+  --db-bg:              var(--color-bg-alt);
+  --db-primary:         var(--color-text-primary);
+  --db-secondary:       var(--color-text-secondary);
+  --db-accent:          var(--color-brand);
+  --db-border:          var(--color-border);
+  --db-muted:           var(--color-muted);
+  --db-danger:          var(--color-danger-text);
+  --db-warning:         var(--color-warning-text);
+  --db-success:         var(--color-success-text);
+  --db-star:            var(--color-star);
+  --db-danger-surface:  var(--color-danger-bg);
+  --db-success-surface: var(--color-success-bg);
+}
+
+/* ── Onboarding  (--ob-*) ────────────────────────────────── */
+:root {
+  --ob-bg:        var(--color-bg);
+  --ob-surface:   var(--color-surface);
+  --ob-primary:   var(--color-text-primary);
+  --ob-secondary: var(--color-text-secondary);
+  --ob-accent:    var(--color-brand);
+  --ob-border:    var(--color-border);
+  --ob-muted:     var(--color-muted);
+}
+
+/* ── Admin platform  (--ad-*) ────────────────────────────── */
+/*
+   The admin sidebar previously used a blue accent (#2563eb).
+   It is now aligned to the brand forest green for visual
+   consistency. Admin-specific functionality is unchanged.
+*/
+:root {
+  --ad-sidebar-bg:     var(--primitive-ink-900);
+  --ad-sidebar-text:   var(--primitive-stone-400);
+  --ad-sidebar-active: #FFFFFF;
+  --ad-sidebar-w:      var(--sidebar-w-admin);
+  --ad-topbar-h:       var(--topbar-h);
+  --ad-surface:        var(--color-surface);
+  --ad-bg:             var(--color-bg-alt);
+  --ad-primary:        var(--color-text-primary);
+  --ad-secondary:      var(--color-text-secondary);
+  --ad-accent:         var(--color-brand);          /* was #2563eb, now brand green */
+  --ad-border:         var(--color-border);
+  --ad-muted:          var(--color-muted);
+  --ad-danger:         var(--color-danger-text);
+  --ad-warning:        var(--color-warning-text);
+  --ad-success:        var(--color-success-text);
 }

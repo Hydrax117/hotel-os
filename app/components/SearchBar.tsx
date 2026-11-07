@@ -3,33 +3,42 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// ── Inline SVG icons ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function today(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const IconSearch = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
 const IconLocation = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z" />
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
 
 const IconMinus = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
 const IconPlus = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
@@ -42,247 +51,345 @@ type SearchBarProps = {
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialGuests?: number;
+  initialRooms?: number;
 };
+
+// ── Counter subcomponent ──────────────────────────────────────────────────────
+
+function Counter({
+  id,
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <button
+        type="button"
+        id={`${id}-dec`}
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="flex h-7 w-7 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text-primary)',
+          background: 'transparent',
+        }}
+        aria-label={`Decrease ${label}`}
+        onMouseEnter={e => { if (value > min) (e.currentTarget as HTMLElement).style.background = 'var(--color-muted)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      >
+        <IconMinus />
+      </button>
+      <span
+        id={id}
+        className="w-5 text-center text-sm font-semibold"
+        style={{ color: 'var(--color-text-primary)' }}
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={`${value} ${label}`}
+      >
+        {value}
+      </span>
+      <button
+        type="button"
+        id={`${id}-inc`}
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+        className="flex h-7 w-7 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text-primary)',
+          background: 'transparent',
+        }}
+        aria-label={`Increase ${label}`}
+        onMouseEnter={e => { if (value < max) (e.currentTarget as HTMLElement).style.background = 'var(--color-muted)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      >
+        <IconPlus />
+      </button>
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SearchBar({
   initialDestination = '',
-  initialCheckIn = '',
-  initialCheckOut = '',
-  initialGuests = 1,
+  initialCheckIn    = '',
+  initialCheckOut   = '',
+  initialGuests     = 2,
+  initialRooms      = 1,
 }: SearchBarProps) {
   const router = useRouter();
+
   const [destination, setDestination] = useState(initialDestination);
-  const [checkIn, setCheckIn] = useState(initialCheckIn);
+  const [checkIn,  setCheckIn]  = useState(initialCheckIn);
   const [checkOut, setCheckOut] = useState(initialCheckOut);
   const [guests, setGuests] = useState(initialGuests);
+  const [rooms,  setRooms]  = useState(initialRooms);
+  const [error, setError] = useState('');
 
-  const handleSearch = () => {
-    router.push(
-      `/search?destination=${encodeURIComponent(destination)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}&guests=${guests}`
-    );
-  };
+  function handleCheckInChange(value: string) {
+    setCheckIn(value);
+    setError('');
+    // If check-out is before new check-in, push it forward
+    if (checkOut && value >= checkOut) {
+      setCheckOut(addDays(value, 1));
+    }
+  }
 
-  const decrementGuests = () => setGuests(g => Math.max(1, g - 1));
-  const incrementGuests = () => setGuests(g => Math.min(20, g + 1));
+  function handleCheckOutChange(value: string) {
+    if (checkIn && value <= checkIn) {
+      setError('Check-out must be after check-in');
+      return;
+    }
+    setCheckOut(value);
+    setError('');
+  }
 
-  return (
+  function handleSearch() {
+    if (!destination.trim()) { setError('Please enter a destination'); return; }
+    if (!checkIn)  { setError('Please select a check-in date'); return; }
+    if (!checkOut) { setError('Please select a check-out date'); return; }
+    if (checkIn >= checkOut) { setError('Check-out must be after check-in'); return; }
+    setError('');
+
+    const params = new URLSearchParams({
+      destination: destination.trim(),
+      checkIn,
+      checkOut,
+      guests: String(guests),
+      rooms:  String(rooms),
+    });
+    router.push(`/search?${params.toString()}`);
+  }
+
+  const tdMin = today();
+  const checkOutMin = checkIn ? addDays(checkIn, 1) : addDays(tdMin, 1);
+
+  // ── Desktop layout ──────────────────────────────────────────────────────────
+
+  const desktopField = (
+    content: React.ReactNode,
+    opts: { flex?: string; noBorder?: boolean } = {}
+  ) => (
     <div
-      className="w-full rounded-2xl shadow-lg"
+      className={`hidden md:flex flex-col justify-center px-5 py-3.5 ${opts.noBorder ? '' : 'border-r'}`}
       style={{
-        background: 'var(--tp-surface)',
-        border: '1px solid var(--tp-border)',
+        flex: opts.flex ?? '0 0 auto',
+        borderColor: 'var(--color-border)',
       }}
     >
-      {/* Desktop: horizontal pill layout */}
-      <div className="hidden md:flex items-stretch divide-x" style={{ borderColor: 'var(--tp-border)' }}>
-        {/* Destination field */}
-        <div className="flex flex-1 items-center gap-3 px-5 py-4">
-          <span style={{ color: 'var(--tp-secondary)' }}>
-            <IconLocation />
-          </span>
-          <div className="flex flex-col flex-1 min-w-0">
-            <label htmlFor="destination" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Where
-            </label>
-            <input
-              id="destination"
-              type="text"
-              value={destination}
-              onChange={e => setDestination(e.target.value)}
-              placeholder="Where are you going?"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
-              style={{ color: 'var(--tp-primary)' }}
-            />
-          </div>
-        </div>
+      {content}
+    </div>
+  );
 
-        {/* Divider */}
-        <div style={{ width: '1px', background: 'var(--tp-border)', alignSelf: 'stretch' }} />
+  return (
+    <div className="w-full">
+      {/* Container */}
+      <div
+        className="overflow-hidden"
+        style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        {/* ── Desktop: horizontal pill ── */}
+        <div className="hidden md:flex items-stretch min-h-[68px]">
 
-        {/* Check-in field */}
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="checkin" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Check-in
-            </label>
-            <input
-              id="checkin"
-              type="date"
-              value={checkIn}
-              onChange={e => setCheckIn(e.target.value)}
-              className="bg-transparent text-sm outline-none cursor-pointer"
-              style={{ color: checkIn ? 'var(--tp-primary)' : 'var(--tp-secondary)' }}
-            />
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div style={{ width: '1px', background: 'var(--tp-border)', alignSelf: 'stretch' }} />
-
-        {/* Check-out field */}
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex flex-col min-w-0">
-            <label htmlFor="checkout" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Check-out
-            </label>
-            <input
-              id="checkout"
-              type="date"
-              value={checkOut}
-              onChange={e => setCheckOut(e.target.value)}
-              className="bg-transparent text-sm outline-none cursor-pointer"
-              style={{ color: checkOut ? 'var(--tp-primary)' : 'var(--tp-secondary)' }}
-            />
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div style={{ width: '1px', background: 'var(--tp-border)', alignSelf: 'stretch' }} />
-
-        {/* Guests field */}
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Guests
+          {/* Destination */}
+          <div
+            className="flex flex-1 items-center gap-3 px-5 py-3 border-r"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <span style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }}>
+              <IconLocation />
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={decrementGuests}
-                disabled={guests <= 1}
-                className="flex h-7 w-7 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
-                style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-primary)' }}
-                aria-label="Remove guest"
-              >
-                <IconMinus />
-              </button>
-              <span className="w-5 text-center text-sm font-medium" style={{ color: 'var(--tp-primary)' }}>
-                {guests}
-              </span>
-              <button
-                onClick={incrementGuests}
-                disabled={guests >= 20}
-                className="flex h-7 w-7 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
-                style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-primary)' }}
-                aria-label="Add guest"
-              >
-                <IconPlus />
-              </button>
+            <div className="flex flex-col flex-1 min-w-0">
+              <label htmlFor="sb-destination" className="text-label mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Where
+              </label>
+              <input
+                id="sb-destination"
+                type="text"
+                value={destination}
+                onChange={e => { setDestination(e.target.value); setError(''); }}
+                placeholder="City, neighbourhood, landmark…"
+                className="w-full bg-transparent text-sm outline-none"
+                style={{
+                  color: 'var(--color-text-primary)',
+                  caretColor: 'var(--color-brand)',
+                }}
+                onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+                autoComplete="off"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Search button */}
-        <div className="flex items-center px-4 py-3">
-          <button
-            type="button"
-            onClick={handleSearch}
-            className="h-full rounded-xl px-6 text-sm font-semibold text-white transition-opacity hover:opacity-80 whitespace-nowrap"
-            style={{ background: 'var(--tp-accent)' }}
-          >
-            Search hotels
-          </button>
-        </div>
-      </div>
+          {/* Check-in */}
+          {desktopField(
+            <>
+              <label htmlFor="sb-checkin" className="text-label mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Check-in
+              </label>
+              <input
+                id="sb-checkin"
+                type="date"
+                value={checkIn}
+                onChange={e => handleCheckInChange(e.target.value)}
+                min={tdMin}
+                className="bg-transparent text-sm outline-none cursor-pointer"
+                style={{ color: checkIn ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              />
+            </>
+          )}
 
-      {/* Mobile: stacked layout */}
-      <div className="flex flex-col gap-0 md:hidden">
-        {/* Destination */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: 'var(--tp-border)' }}>
-          <span style={{ color: 'var(--tp-secondary)' }}>
-            <IconLocation />
-          </span>
-          <div className="flex flex-col flex-1">
-            <label htmlFor="destination-mobile" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Where
-            </label>
-            <input
-              id="destination-mobile"
-              type="text"
-              value={destination}
-              onChange={e => setDestination(e.target.value)}
-              placeholder="Where are you going?"
-              className="bg-transparent text-sm outline-none placeholder:text-gray-400"
-              style={{ color: 'var(--tp-primary)' }}
-            />
-          </div>
-        </div>
+          {/* Check-out */}
+          {desktopField(
+            <>
+              <label htmlFor="sb-checkout" className="text-label mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Check-out
+              </label>
+              <input
+                id="sb-checkout"
+                type="date"
+                value={checkOut}
+                onChange={e => handleCheckOutChange(e.target.value)}
+                min={checkOutMin}
+                className="bg-transparent text-sm outline-none cursor-pointer"
+                style={{ color: checkOut ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              />
+            </>
+          )}
 
-        {/* Check-in */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: 'var(--tp-border)' }}>
-          <div className="flex flex-col flex-1">
-            <label htmlFor="checkin-mobile" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Check-in
-            </label>
-            <input
-              id="checkin-mobile"
-              type="date"
-              value={checkIn}
-              onChange={e => setCheckIn(e.target.value)}
-              className="bg-transparent text-sm outline-none"
-              style={{ color: checkIn ? 'var(--tp-primary)' : 'var(--tp-secondary)' }}
-            />
-          </div>
-        </div>
+          {/* Guests */}
+          {desktopField(
+            <>
+              <span className="text-label mb-1" style={{ color: 'var(--color-text-secondary)' }}>Guests</span>
+              <Counter id="sb-guests" label="guests" value={guests} min={1} max={30} onChange={setGuests} />
+            </>
+          )}
 
-        {/* Check-out */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: 'var(--tp-border)' }}>
-          <div className="flex flex-col flex-1">
-            <label htmlFor="checkout-mobile" className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tp-primary)' }}>
-              Check-out
-            </label>
-            <input
-              id="checkout-mobile"
-              type="date"
-              value={checkOut}
-              onChange={e => setCheckOut(e.target.value)}
-              className="bg-transparent text-sm outline-none"
-              style={{ color: checkOut ? 'var(--tp-primary)' : 'var(--tp-secondary)' }}
-            />
-          </div>
-        </div>
+          {/* Rooms */}
+          {desktopField(
+            <>
+              <span className="text-label mb-1" style={{ color: 'var(--color-text-secondary)' }}>Rooms</span>
+              <Counter id="sb-rooms" label="rooms" value={rooms} min={1} max={10} onChange={setRooms} />
+            </>,
+            { noBorder: true }
+          )}
 
-        {/* Guests */}
-        <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: 'var(--tp-border)' }}>
-          <span className="text-sm font-medium" style={{ color: 'var(--tp-primary)' }}>Guests</span>
-          <div className="flex items-center gap-3">
+          {/* Search button */}
+          <div className="flex items-center px-4 py-3 shrink-0">
             <button
-              onClick={decrementGuests}
-              disabled={guests <= 1}
-              className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
-              style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-primary)' }}
-              aria-label="Remove guest"
+              type="button"
+              onClick={handleSearch}
+              className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 whitespace-nowrap"
+              style={{ background: 'var(--color-brand)' }}
+              aria-label="Search hotels"
             >
-              <IconMinus />
-            </button>
-            <span className="w-6 text-center text-sm font-medium" style={{ color: 'var(--tp-primary)' }}>
-              {guests}
-            </span>
-            <button
-              onClick={incrementGuests}
-              disabled={guests >= 20}
-              className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-30"
-              style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-primary)' }}
-              aria-label="Add guest"
-            >
-              <IconPlus />
+              <IconSearch />
+              Search
             </button>
           </div>
         </div>
 
-        {/* Search button */}
-        <div className="p-4">
-          <button
-            type="button"
-            onClick={handleSearch}
-            className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-80"
-            style={{ background: 'var(--tp-accent)' }}
-          >
-            Search hotels
-          </button>
+        {/* ── Mobile: stacked ── */}
+        <div className="flex flex-col md:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
+          {/* Destination */}
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <span style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }}><IconLocation /></span>
+            <div className="flex flex-col flex-1">
+              <label htmlFor="sb-destination-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Where</label>
+              <input
+                id="sb-destination-m"
+                type="text"
+                value={destination}
+                onChange={e => { setDestination(e.target.value); setError(''); }}
+                placeholder="City, neighbourhood…"
+                className="bg-transparent text-sm outline-none"
+                style={{ color: 'var(--color-text-primary)' }}
+              />
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex flex-col px-4 py-3.5">
+              <label htmlFor="sb-checkin-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Check-in</label>
+              <input
+                id="sb-checkin-m"
+                type="date"
+                value={checkIn}
+                onChange={e => handleCheckInChange(e.target.value)}
+                min={tdMin}
+                className="bg-transparent text-sm outline-none cursor-pointer"
+                style={{ color: checkIn ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              />
+            </div>
+            <div className="flex flex-col px-4 py-3.5">
+              <label htmlFor="sb-checkout-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Check-out</label>
+              <input
+                id="sb-checkout-m"
+                type="date"
+                value={checkOut}
+                onChange={e => handleCheckOutChange(e.target.value)}
+                min={checkOutMin}
+                className="bg-transparent text-sm outline-none cursor-pointer"
+                style={{ color: checkOut ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+              />
+            </div>
+          </div>
+
+          {/* Guests + Rooms */}
+          <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex flex-col px-4 py-3.5">
+              <span className="text-label mb-2" style={{ color: 'var(--color-text-secondary)' }}>Guests</span>
+              <Counter id="sb-guests-m" label="guests" value={guests} min={1} max={30} onChange={setGuests} />
+            </div>
+            <div className="flex flex-col px-4 py-3.5">
+              <span className="text-label mb-2" style={{ color: 'var(--color-text-secondary)' }}>Rooms</span>
+              <Counter id="sb-rooms-m" label="rooms" value={rooms} min={1} max={10} onChange={setRooms} />
+            </div>
+          </div>
+
+          {/* Search button */}
+          <div className="px-4 py-3">
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              style={{ background: 'var(--color-brand)' }}
+            >
+              <IconSearch />
+              Search hotels
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Validation error */}
+      {error && (
+        <p
+          role="alert"
+          className="mt-2 text-sm font-medium animate-fade-in"
+          style={{ color: 'var(--color-danger-text)' }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
