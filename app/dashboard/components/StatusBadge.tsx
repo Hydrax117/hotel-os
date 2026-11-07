@@ -5,56 +5,34 @@ import type { BookingStatus } from '../types';
 
 type StatusBadgeProps = {
   status: BookingStatus;
+  size?: 'sm' | 'md';
 };
 
-type BadgeStyle = {
-  bg: string;
-  color: string;
-  label: string;
+const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; dot: string; label: string }> = {
+  pending:     { bg: 'var(--color-warning-bg)',  color: 'var(--color-warning-text)',  dot: '#d97706', label: 'Pending'     },
+  confirmed:   { bg: 'var(--color-info-bg)',     color: 'var(--color-info-text)',     dot: '#2563eb', label: 'Confirmed'   },
+  checked_in:  { bg: 'var(--color-success-bg)',  color: 'var(--color-success-text)',  dot: '#16a34a', label: 'Checked In'  },
+  checked_out: { bg: 'var(--color-muted)',       color: 'var(--color-text-secondary)',dot: '#78716c', label: 'Checked Out' },
+  cancelled:   { bg: 'var(--color-danger-bg)',   color: 'var(--color-danger-text)',   dot: '#dc2626', label: 'Cancelled'   },
+  no_show:     { bg: '#ffedd5',                  color: '#c2410c',                    dot: '#f97316', label: 'No Show'     },
 };
 
-const STATUS_MAP: Record<BookingStatus, BadgeStyle> = {
-  pending: {
-    bg: '#fef3c7',
-    color: '#92400e',
-    label: 'Pending',
-  },
-  confirmed: {
-    bg: '#dbeafe',
-    color: '#1e40af',
-    label: 'Confirmed',
-  },
-  checked_in: {
-    bg: '#dcfce7',
-    color: '#166534',
-    label: 'Checked In',
-  },
-  checked_out: {
-    bg: '#f5f5f4',
-    color: '#44403c',
-    label: 'Checked Out',
-  },
-  cancelled: {
-    bg: '#fee2e2',
-    color: '#991b1b',
-    label: 'Cancelled',
-  },
-  no_show: {
-    bg: '#ffedd5',
-    color: '#9a3412',
-    label: 'No Show',
-  },
-};
-
-export function StatusBadge({ status }: StatusBadgeProps) {
-  const { bg, color, label } = STATUS_MAP[status];
+export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+  const cfg = STATUS_CONFIG[status];
+  const px  = size === 'sm' ? '6px 10px' : '4px 10px';
+  const fs  = size === 'sm' ? '11px' : '12px';
 
   return (
     <span
-      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-      style={{ background: bg, color }}
+      className="inline-flex items-center gap-1.5 rounded-full font-medium"
+      style={{ background: cfg.bg, color: cfg.color, padding: px, fontSize: fs }}
     >
-      {label}
+      <span
+        className="rounded-full shrink-0"
+        style={{ width: 6, height: 6, background: cfg.dot }}
+        aria-hidden="true"
+      />
+      {cfg.label}
     </span>
   );
 }
