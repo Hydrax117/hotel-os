@@ -1,28 +1,16 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { RoomAvailability } from '@/app/lib/api/search';
 
 type RoomCardProps = {
   room: RoomAvailability;
   hotelId: string;
-  /** Initial values from server searchParams — widget overrides these via URL */
   checkIn?: string;
   checkOut?: string;
   guests?: number;
 };
 
-export function RoomCard({ room, hotelId, checkIn: initCheckIn, checkOut: initCheckOut, guests: initGuests = 1 }: RoomCardProps) {
-  // Always read live from URL so Reserve link reflects whatever the widget shows
-  const searchParams = useSearchParams();
-  const checkIn  = searchParams.get('checkIn')  ?? initCheckIn  ?? '';
-  const checkOut = searchParams.get('checkOut') ?? initCheckOut ?? '';
-  const guests   = Number(searchParams.get('guests') ?? initGuests);
-
-  const reserveHref = `/checkout?hotelId=${hotelId}&roomId=${room.roomTypeId ?? room.id}&guests=${guests}${checkIn ? `&checkIn=${checkIn}` : ''}${checkOut ? `&checkOut=${checkOut}` : ''}`;
-
+export function RoomCard({ room, hotelId, checkIn, checkOut, guests = 1 }: RoomCardProps) {
   const cancellationPolicy = room.cancellationPolicy ?? '';
   const isFreeCancel     = cancellationPolicy.toLowerCase().includes('free');
   const isNonRefundable  = cancellationPolicy.toLowerCase().includes('non-refundable');
@@ -38,6 +26,16 @@ export function RoomCard({ room, hotelId, checkIn: initCheckIn, checkOut: initCh
     : isNonRefundable
     ? 'var(--primitive-warning-bg)'
     : 'var(--color-muted)';
+
+  // Build checkout URL — include dates if available
+  const params = new URLSearchParams({
+    hotelId,
+    roomId: room.roomTypeId ?? room.id,
+    guests: String(guests),
+  });
+  if (checkIn)  params.set('checkIn',  checkIn);
+  if (checkOut) params.set('checkOut', checkOut);
+  const reserveHref = `/checkout?${params.toString()}`;
 
   return (
     <article
@@ -157,13 +155,14 @@ export function RoomCard({ room, hotelId, checkIn: initCheckIn, checkOut: initCh
             )}
           </div>
 
-          <Link
+          {/* Plain <a> tag — always works, no hydration dependency */}
+          <a
             href={reserveHref}
             className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 shrink-0"
             style={{ background: 'var(--color-brand)' }}
           >
             Reserve
-          </Link>
+          </a>
         </div>
       </div>
     </article>
