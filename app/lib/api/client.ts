@@ -51,7 +51,7 @@ export function getCurrentUser(): AuthUser | null {
 
 // Attempt to refresh the access token using the stored refresh token.
 // Returns the new access token on success, or null if refresh fails.
-async function attemptTokenRefresh(): Promise<string | null> {
+async function attemptTokenRefresh(): Promise<string | 'network_error' | null> {
   if (typeof window === 'undefined') return null;
   const refreshToken = localStorage.getItem('hotel_os_refresh_token');
   if (!refreshToken) return null;
@@ -62,12 +62,17 @@ async function attemptTokenRefresh(): Promise<string | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) return null;
+    // 401/403 means the refresh token is genuinely invalid/expired
+    if (res.status === 401 || res.status === 403) return null;
+    // Any other non-OK (5xx, network-level timeout surfaced as !ok) — don't
+    // treat as an auth failure; signal the caller to preserve the session.
+    if (!res.ok) return 'network_error';
     const data = (await res.json()) as { accessToken: string; refreshToken: string };
     storeTokens(data.accessToken, data.refreshToken);
     return data.accessToken;
   } catch {
-    return null;
+    // Fetch itself threw (network down, CORS, timeout) — not an auth failure
+    return 'network_error';
   }
 }
 
@@ -83,13 +88,17 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
 
   // On 401, attempt a one-time token refresh then retry the original request
   if (res.status === 401 && !isRetry) {
-    const newToken = await attemptTokenRefresh();
-    if (newToken) {
-      // Retry with the fresh token — pass isRetry=true to prevent infinite loops
+    const refreshResult = await attemptTokenRefresh();
+    if (typeof refreshResult === 'string' && refreshResult !== 'network_error') {
+      // Got a fresh token — retry the original request
       return request<T>(path, options, true);
     }
-    // Refresh failed — clear everything and throw so the UI can redirect to sign in
-    clearTokens();
+    if (refreshResult === null) {
+      // Refresh token is genuinely invalid/expired — clear session
+      clearTokens();
+    }
+    // refreshResult === 'network_error': backend unreachable, keep tokens and
+    // let the ApiError propagate so the caller can decide what to do
   }
 
   if (!res.ok) {
