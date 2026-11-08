@@ -48,7 +48,7 @@ export function RoomCard({ room, hotelId, checkIn, checkOut, guests = 1 }: RoomC
     >
       {/* Image placeholder */}
       <div
-        className="relative flex-shrink-0"
+        className="room-card-img relative flex-shrink-0"
         style={{
           width: '100%',
           height: '180px',
@@ -75,7 +75,11 @@ export function RoomCard({ room, hotelId, checkIn, checkOut, guests = 1 }: RoomC
           <path d="M6 8v8"/><path d="M18 8v8"/>
           <rect x="6" y="8" width="12" height="4" rx="1"/>
         </svg>
-        <style>{`@media(min-width:768px){.room-card-img{width:220px!important;height:auto!important}}`}</style>
+        <style>{`
+          @media(min-width:768px){
+            .room-card-img { width: 220px !important; height: auto !important; min-height: 180px; }
+          }
+        `}</style>
       </div>
 
       {/* Content */}
