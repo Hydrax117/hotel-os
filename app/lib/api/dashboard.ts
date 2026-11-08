@@ -94,12 +94,23 @@ function normalizeStatus(apiStatus: string): BookingStatus {
 // Raw shapes returned by the API (not exported — internal mapper use only)
 type ApiBooking = {
   id: string;
+  reference?: string;
+  // Backend includes guest details on the booking itself (not nested under user)
+  guestFirstName?: string;
+  guestLastName?: string;
+  guestEmail?: string;
+  // user is only present if backend joins it (not in getHotelBookings)
   user?: { firstName?: string; lastName?: string; email?: string };
-  room?: { name?: string; number?: string };
+  // Backend uses roomType (not room)
+  roomType?: { name?: string };
+  room?: { name?: string; number?: string };  // kept for backwards compat
   roomNumber?: string;
   checkIn: string;
   checkOut: string;
-  totalAmount: number;
+  nights?: number;
+  // Backend stores as totalNgn (Decimal), not totalAmount
+  totalNgn?: number;
+  totalAmount?: number;  // kept for backwards compat
   status: string;
   createdAt: string;
 };
@@ -138,36 +149,55 @@ export async function getMyHotel(): Promise<DashboardHotel | null> {
 /**
  * Returns all reservations for a given hotel.
  * GET /api/v1/bookings/hotel/:hotelId
- * Handles both plain-array and { data: [...] } paginated response shapes.
+ * Backend returns { bookings: [...], total: N }
  */
 export async function getDashboardReservations(hotelId: string): Promise<DashboardReservation[]> {
-  const raw = await apiClient.get<ApiBooking[] | { data: ApiBooking[] }>(
-    `/api/v1/bookings/hotel/${hotelId}`,
-  );
+  const raw = await apiClient.get<
+    ApiBooking[] | { bookings: ApiBooking[]; total: number } | { data: ApiBooking[] }
+  >(`/api/v1/bookings/hotel/${hotelId}`);
 
-  const bookings: ApiBooking[] = Array.isArray(raw) ? raw : raw.data;
+  // Handle all response shapes gracefully
+  let bookings: ApiBooking[];
+  if (Array.isArray(raw)) {
+    bookings = raw;
+  } else if ('bookings' in raw && Array.isArray(raw.bookings)) {
+    bookings = raw.bookings;
+  } else if ('data' in raw && Array.isArray(raw.data)) {
+    bookings = raw.data;
+  } else {
+    bookings = [];
+  }
 
   return bookings.map((booking) => {
+    // Dates come as ISO strings or Date objects from Prisma — handle both
     const checkInMs  = new Date(booking.checkIn).getTime();
     const checkOutMs = new Date(booking.checkOut).getTime();
-    const nights     = Math.round((checkOutMs - checkInMs) / 86_400_000);
+    const nights     = booking.nights ?? Math.round((checkOutMs - checkInMs) / 86_400_000);
 
-    const firstName = booking.user?.firstName ?? '';
-    const lastName  = booking.user?.lastName  ?? '';
+    // Guest name: prefer direct booking fields, fall back to nested user
+    const firstName = booking.guestFirstName ?? booking.user?.firstName ?? '';
+    const lastName  = booking.guestLastName  ?? booking.user?.lastName  ?? '';
     const guestName = (firstName + ' ' + lastName).trim() || 'Unknown Guest';
+    const guestEmail = booking.guestEmail ?? booking.user?.email ?? '';
+
+    // Room type name: backend returns roomType (not room)
+    const roomTypeName = booking.roomType?.name ?? booking.room?.name ?? 'Room';
+
+    // Total: backend stores as totalNgn
+    const amountNgn = Number(booking.totalNgn ?? booking.totalAmount ?? 0);
 
     return {
-      id:           booking.id,
+      id:          booking.id,
       guestName,
-      guestEmail:   booking.user?.email  ?? '',
-      roomTypeName: booking.room?.name   ?? 'Room',
-      roomNumber:   booking.roomNumber   ?? booking.room?.number ?? '–',
-      checkIn:      booking.checkIn,
-      checkOut:     booking.checkOut,
-      nights:       isNaN(nights) ? 0 : nights,
-      amountNgn:    booking.totalAmount,
-      status:       normalizeStatus(booking.status),
-      createdAt:    booking.createdAt,
+      guestEmail,
+      roomTypeName,
+      roomNumber:  booking.roomNumber ?? booking.room?.number ?? '–',
+      checkIn:     booking.checkIn.slice(0, 10),
+      checkOut:    booking.checkOut.slice(0, 10),
+      nights:      isNaN(nights) ? 0 : nights,
+      amountNgn,
+      status:      normalizeStatus(booking.status),
+      createdAt:   booking.createdAt,
     };
   });
 }
