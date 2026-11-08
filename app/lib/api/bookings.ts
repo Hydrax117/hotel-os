@@ -27,12 +27,18 @@ export type CreateBookingPayload = {
 
 export type BookingResponse = {
   id: string;
+  /** Human-readable reference, e.g. HOS-12345 */
+  reference?: string;
   hotelId: string;
-  roomId: string;
+  /** The backend returns this field as roomTypeId, not roomId */
+  roomTypeId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
-  totalAmount: number;
+  /** The backend stores this as totalNgn (Decimal) */
+  totalNgn: number;
+  subtotalNgn?: number;
+  serviceFeeNgn?: number;
   status: ApiBookingStatus;
   specialRequests?: string;
   createdAt: string;
@@ -42,7 +48,8 @@ export type BookingResponse = {
     city: string;
     state: string;
   };
-  room?: {
+  /** The backend includes room type as roomType, not room */
+  roomType?: {
     id: string;
     name: string;
     pricePerNight: number;
@@ -52,7 +59,7 @@ export type BookingResponse = {
 export type InitPaymentResponse = {
   paymentUrl: string;
   reference: string;
-  accessCode: string;
+  bookingReference: string;
 };
 
 // ── API functions ─────────────────────────────────────────────────────────────
@@ -69,19 +76,38 @@ export function createBooking(payload: CreateBookingPayload): Promise<BookingRes
  * Initialize payment for a booking — returns a Paystack redirect URL.
  * POST /api/v1/payments/initialize
  */
-export function initializePayment(bookingId: string, email: string): Promise<InitPaymentResponse> {
+export function initializePayment(
+  bookingId: string,
+  email: string,
+  callbackUrl?: string,
+): Promise<InitPaymentResponse> {
   return apiClient.post<InitPaymentResponse>(
     `/api/v1/payments/initialize`,
-    { bookingId, email },
+    { bookingId, email, ...(callbackUrl ? { callbackUrl } : {}) },
   );
 }
+
+/**
+ * Verify a payment by Paystack reference and confirm the booking.
+ * GET /api/v1/payments/verify/:reference
+ */
+export function verifyPayment(reference: string): Promise<{ status: string; bookingId: string }> {
+  return apiClient.get<{ status: string; bookingId: string }>(
+    `/api/v1/payments/verify/${encodeURIComponent(reference)}`,
+  );
+}
+
+type MyBookingsResponse = { bookings: BookingResponse[]; total: number } | BookingResponse[];
 
 /**
  * Fetch all bookings for the authenticated user.
  * GET /api/v1/bookings
  */
-export function getMyBookings(): Promise<BookingResponse[]> {
-  return apiClient.get<BookingResponse[]>('/api/v1/bookings');
+export async function getMyBookings(): Promise<BookingResponse[]> {
+  const raw = await apiClient.get<MyBookingsResponse>('/api/v1/bookings');
+  // The backend returns { bookings: [...], total: N } — handle both shapes for safety
+  if (Array.isArray(raw)) return raw;
+  return (raw as { bookings: BookingResponse[]; total: number }).bookings ?? [];
 }
 
 /**
