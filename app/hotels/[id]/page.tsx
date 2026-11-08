@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
 import { RoomCard } from './components/RoomCard';
+import { BookingWidget } from './components/BookingWidget';
 import { fetchHotelDetail, fetchHotelRooms } from '@/app/lib/api/search';
 
 // @next-codemod-ignore
@@ -61,10 +62,17 @@ function StarRating({ rating }: { rating: number }) {
 
 export default async function HotelDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ checkIn?: string; checkOut?: string; guests?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+
+  const checkIn  = sp.checkIn  ?? '';
+  const checkOut = sp.checkOut ?? '';
+  const guests   = Number(sp.guests ?? '1');
 
   const [detail, rooms] = await Promise.all([
     fetchHotelDetail(id),
@@ -261,7 +269,7 @@ export default async function HotelDetailPage({
             )}
 
             {/* Available rooms */}
-            <section aria-labelledby="rooms-heading">
+            <section aria-labelledby="rooms-heading" id="rooms-section">
               <h2
                 id="rooms-heading"
                 className="mb-4 text-xl font-semibold"
@@ -272,7 +280,14 @@ export default async function HotelDetailPage({
               {rooms.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {rooms.map(room => (
-                    <RoomCard key={room.roomTypeId ?? room.id} room={room} hotelId={id} />
+                    <RoomCard
+                      key={room.roomTypeId ?? room.id}
+                      room={room}
+                      hotelId={id}
+                      checkIn={checkIn || undefined}
+                      checkOut={checkOut || undefined}
+                      guests={guests}
+                    />
                   ))}
                 </div>
               ) : (
@@ -394,65 +409,24 @@ export default async function HotelDetailPage({
             className="lg:w-[340px] shrink-0"
             style={{ position: 'sticky', top: 'calc(var(--nav-height) + 1.5rem)', alignSelf: 'flex-start' }}
           >
-            <div
-              className="rounded-2xl border p-6 flex flex-col gap-4"
-              style={{
-                background: 'var(--color-surface)',
-                borderColor: 'var(--color-border)',
-                boxShadow: 'var(--shadow-lg)',
-              }}
+            <React.Suspense
+              fallback={
+                <div
+                  className="rounded-2xl border p-6"
+                  style={{
+                    background: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                    boxShadow: 'var(--shadow-lg)',
+                    minHeight: 280,
+                  }}
+                />
+              }
             >
-              {/* Price */}
-              <div>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>From</p>
-                <p className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                  {priceDisplay ?? 'Contact us'}
-                  {priceDisplay && (
-                    <span className="ml-1 text-sm font-normal" style={{ color: 'var(--color-text-secondary)' }}>
-                      / night
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              {/* Placeholder date/guest inputs */}
-              <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--color-border)' }}>
-                {[
-                  { label: 'Check-in', placeholder: 'Add date' },
-                  { label: 'Check-out', placeholder: 'Add date' },
-                  { label: 'Guests', placeholder: '1 guest' },
-                ].map((field, i, arr) => (
-                  <div
-                    key={field.label}
-                    className="flex items-center gap-3 px-4 py-3"
-                    style={{ borderBottom: i < arr.length - 1 ? `1px solid var(--color-border)` : 'none' }}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} aria-hidden="true">
-                      {i < 2
-                        ? <><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>
-                        : <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>
-                      }
-                    </svg>
-                    <div>
-                      <p className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>{field.label}</p>
-                      <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>{field.placeholder}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA */}
-              <a
-                href={`/search?destination=${encodeURIComponent(detail.name)}`}
-                className="block w-full rounded-xl py-3 text-center text-sm font-semibold text-white transition-opacity hover:opacity-85"
-                style={{ background: 'var(--color-brand)' }}
-              >
-                Check availability
-              </a>
-              <p className="text-center text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                You won&apos;t be charged yet
-              </p>
-            </div>
+              <BookingWidget
+                lowestPrice={isFinite(lowestPrice) ? lowestPrice : null}
+                hotelId={id}
+              />
+            </React.Suspense>
           </aside>
         </div>
       </div>
