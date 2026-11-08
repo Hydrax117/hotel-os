@@ -1,16 +1,28 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { RoomAvailability } from '@/app/lib/api/search';
 
 type RoomCardProps = {
   room: RoomAvailability;
   hotelId: string;
+  /** Initial values from server searchParams — widget overrides these via URL */
   checkIn?: string;
   checkOut?: string;
   guests?: number;
 };
 
-export function RoomCard({ room, hotelId, checkIn, checkOut, guests = 1 }: RoomCardProps) {
+export function RoomCard({ room, hotelId, checkIn: initCheckIn, checkOut: initCheckOut, guests: initGuests = 1 }: RoomCardProps) {
+  // Always read live from URL so Reserve link reflects whatever the widget shows
+  const searchParams = useSearchParams();
+  const checkIn  = searchParams.get('checkIn')  ?? initCheckIn  ?? '';
+  const checkOut = searchParams.get('checkOut') ?? initCheckOut ?? '';
+  const guests   = Number(searchParams.get('guests') ?? initGuests);
+
+  const reserveHref = `/checkout?hotelId=${hotelId}&roomId=${room.roomTypeId ?? room.id}&guests=${guests}${checkIn ? `&checkIn=${checkIn}` : ''}${checkOut ? `&checkOut=${checkOut}` : ''}`;
+
   const cancellationPolicy = room.cancellationPolicy ?? '';
   const isFreeCancel     = cancellationPolicy.toLowerCase().includes('free');
   const isNonRefundable  = cancellationPolicy.toLowerCase().includes('non-refundable');
@@ -146,7 +158,7 @@ export function RoomCard({ room, hotelId, checkIn, checkOut, guests = 1 }: RoomC
           </div>
 
           <Link
-            href={`/checkout?hotelId=${hotelId}&roomId=${room.roomTypeId ?? room.id}&guests=${guests}${checkIn ? `&checkIn=${checkIn}` : ''}${checkOut ? `&checkOut=${checkOut}` : ''}`}
+            href={reserveHref}
             className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 shrink-0"
             style={{ background: 'var(--color-brand)' }}
           >
