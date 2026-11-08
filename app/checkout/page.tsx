@@ -248,7 +248,9 @@ function CheckoutInner() {
         specialRequests: specialRequests.trim() || undefined,
       };
       const booking = await createBooking(payload);
-      const payment = await initializePayment(booking.id, email.trim());
+      // Build the Paystack callbackUrl so it lands on our payment callback page
+      const callbackUrl = `${window.location.origin}/payment/callback`;
+      const payment = await initializePayment(booking.id, email.trim(), callbackUrl);
       window.location.href = payment.paymentUrl;
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
