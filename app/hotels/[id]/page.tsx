@@ -278,32 +278,18 @@ export default async function HotelDetailPage({
                 Available rooms
               </h2>
               {rooms.length > 0 ? (
-                <React.Suspense
-                  fallback={
-                    <div className="flex flex-col gap-4">
-                      {rooms.map(r => (
-                        <div
-                          key={r.roomTypeId ?? r.id}
-                          className="rounded-2xl"
-                          style={{ height: 180, background: 'var(--color-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}
-                        />
-                      ))}
-                    </div>
-                  }
-                >
-                  <div className="flex flex-col gap-4">
-                    {rooms.map(room => (
-                      <RoomCard
-                        key={room.roomTypeId ?? room.id}
-                        room={room}
-                        hotelId={id}
-                        checkIn={checkIn || undefined}
-                        checkOut={checkOut || undefined}
-                        guests={guests}
-                      />
-                    ))}
-                  </div>
-                </React.Suspense>
+                <div className="flex flex-col gap-4">
+                  {rooms.map(room => (
+                    <RoomCard
+                      key={room.roomTypeId ?? room.id}
+                      room={room}
+                      hotelId={id}
+                      checkIn={checkIn || undefined}
+                      checkOut={checkOut || undefined}
+                      guests={guests}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div
                   className="rounded-xl py-10 text-center"

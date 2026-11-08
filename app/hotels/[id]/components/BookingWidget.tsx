@@ -71,6 +71,21 @@ export function BookingWidget({ lowestPrice, hotelId }: Props) {
     ? `/checkout?hotelId=${hotelId}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`
     : `/checkout?hotelId=${hotelId}&guests=${guests}`;
 
+  function handleCheckAvailability() {
+    // Scroll the rooms section into view and briefly highlight it
+    const section = document.getElementById('rooms-section');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Flash a highlight ring on the section so users know to pick a room
+      section.style.transition = 'outline 0s';
+      section.style.outline = '2px solid var(--color-brand)';
+      section.style.borderRadius = '12px';
+      setTimeout(() => {
+        section.style.outline = 'none';
+      }, 1800);
+    }
+  }
+
   const hasValidDates = nights > 0;
 
   return (
@@ -224,13 +239,14 @@ export function BookingWidget({ lowestPrice, hotelId }: Props) {
       )}
 
       {/* CTA */}
-      <a
-        href="#rooms-section"
+      <button
+        type="button"
+        onClick={handleCheckAvailability}
         className="block w-full rounded-xl py-3 text-center text-sm font-semibold text-white transition-opacity hover:opacity-85"
-        style={{ background: 'var(--color-brand)' }}
+        style={{ background: 'var(--color-brand)', cursor: 'pointer', border: 'none' }}
       >
         Check availability
-      </a>
+      </button>
 
       <p className="text-center text-xs" style={{ color: 'var(--color-text-secondary)' }}>
         You won&apos;t be charged yet
