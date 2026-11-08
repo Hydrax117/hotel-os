@@ -54,10 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storeUser(normalized);
         setUser(normalized);
       })
-      .catch(() => {
-        // Token is invalid or expired — clear session
-        clearTokens();
-        setUser(null);
+      .catch((err) => {
+        // Only clear the session on a definitive auth failure (401/403).
+        // Network errors, timeouts, or backend cold-start failures (503 etc.)
+        // should NOT log the user out — their token is likely still valid.
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          clearTokens();
+          setUser(null);
+        }
+        // For any other error (network, timeout, 5xx) keep the stored user
       })
       .finally(() => {
         setIsLoading(false);
