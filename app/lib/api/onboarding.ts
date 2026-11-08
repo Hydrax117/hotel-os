@@ -27,9 +27,10 @@ export type HotelResponse = {
 
 export type CreateRoomTypePayload = {
   name: string;
+  description?: string;
   capacity: number;
   bedType: string;
-  bathroomType: string;
+  sizeSqm?: number;
   totalRooms: number;
   pricePerNight: number;
 };
