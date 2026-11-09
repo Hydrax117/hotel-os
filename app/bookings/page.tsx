@@ -15,10 +15,11 @@ import { calcNights } from '../lib/booking';
 
 function mapStatus(apiStatus: BookingResponse['status']): BookingStatus {
   switch (apiStatus) {
+    case 'CHECKED_IN':
+      return 'checked-in';
     case 'CONFIRMED':
     case 'HELD':
     case 'PAYMENT_PENDING':
-    case 'CHECKED_IN':
     case 'PENDING':
       return 'upcoming';
     case 'CHECKED_OUT':
@@ -48,6 +49,7 @@ function mapApiBooking(b: BookingResponse): TravelerBooking {
     status: mapStatus(b.status),
     createdAt: b.createdAt,
     specialRequests: b.specialRequests,
+    hasReview: (b as BookingResponse & { hasReview?: boolean }).hasReview ?? false,
   };
 }
 
@@ -81,9 +83,10 @@ function fmtNgn(amount: number): string {
 
 function StatusBadge({ status }: { status: BookingStatus }) {
   const styles: Record<BookingStatus, { background: string; color: string; label: string }> = {
-    upcoming:  { background: '#dbeafe', color: '#1d4ed8', label: 'Upcoming' },
-    completed: { background: '#dcfce7', color: '#15803d', label: 'Completed' },
-    cancelled: { background: '#fee2e2', color: '#dc2626', label: 'Cancelled' },
+    upcoming:    { background: '#dbeafe', color: '#1d4ed8', label: 'Upcoming' },
+    'checked-in':{ background: '#dcfce7', color: '#15803d', label: '● Checked In' },
+    completed:   { background: '#f3f4f6', color: '#6b7280', label: 'Completed' },
+    cancelled:   { background: '#fee2e2', color: '#dc2626', label: 'Cancelled' },
   };
   const s = styles[status];
   return (
@@ -357,6 +360,57 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
               </>
             )}
 
+            {booking.status === 'checked-in' && (
+              <>
+                <Link
+                  href={`/room-service?bookingId=${booking.id}&hotelId=${booking.hotelId}`}
+                  style={{
+                    background: 'var(--tp-accent)',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                  }}
+                >
+                  🍽 Room Service
+                </Link>
+                <Link
+                  href={`/bookings/${booking.id}/extend`}
+                  style={{
+                    border: '1px solid var(--tp-accent)',
+                    color: 'var(--tp-accent)',
+                    background: 'transparent',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                  }}
+                >
+                  Extend stay
+                </Link>
+                <Link
+                  href={detailsHref}
+                  style={{
+                    border: '1px solid var(--tp-border)',
+                    background: 'transparent',
+                    color: 'var(--tp-primary)',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                  }}
+                >
+                  View details
+                </Link>
+              </>
+            )}
+
             {booking.status === 'completed' && (
               <>
                 <Link
@@ -374,22 +428,36 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
                 >
                   View details
                 </Link>
-                <Link
-                  href={`/reviews/new?hotelId=${booking.hotelId}&bookingId=${booking.id}`}
-                  style={{
-                    border: '1px solid var(--tp-accent)',
-                    color: 'var(--tp-accent)',
-                    background: 'transparent',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  Leave a review
-                </Link>
+                {!booking.hasReview && (
+                  <Link
+                    href={`/reviews/new?hotelId=${booking.hotelId}&bookingId=${booking.id}`}
+                    style={{
+                      border: '1px solid var(--tp-accent)',
+                      color: 'var(--tp-accent)',
+                      background: 'transparent',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                    }}
+                  >
+                    Leave a review
+                  </Link>
+                )}
+                {booking.hasReview && (
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      color: '#15803d',
+                      fontWeight: 500,
+                      padding: '8px 0',
+                    }}
+                  >
+                    ✓ Review submitted
+                  </span>
+                )}
               </>
             )}
 
@@ -421,6 +489,7 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 const EMPTY_MESSAGES: Record<BookingStatus, string> = {
+  'checked-in': 'You are not currently checked in anywhere.',
   upcoming: 'You have no upcoming reservations. Start exploring hotels and plan your next stay.',
   completed: 'You have no completed stays yet. Your past reservations will appear here.',
   cancelled: 'You have no cancelled bookings.',
@@ -458,7 +527,7 @@ function EmptyState({ status }: { status: BookingStatus }) {
       <p style={{ fontSize: '14px', color: 'var(--tp-secondary)', margin: 0, maxWidth: '360px' }}>
         {EMPTY_MESSAGES[status]}
       </p>
-      {status === 'upcoming' && (
+      {(status === 'upcoming' || status === 'checked-in') && (
         <Link
           href="/search"
           style={{
@@ -528,9 +597,10 @@ function ReviewedBanner() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const TABS: { status: BookingStatus; label: string }[] = [
-  { status: 'upcoming',  label: 'Upcoming' },
-  { status: 'completed', label: 'Completed' },
-  { status: 'cancelled', label: 'Cancelled' },
+  { status: 'checked-in', label: 'Checked In' },
+  { status: 'upcoming',   label: 'Upcoming' },
+  { status: 'completed',  label: 'Completed' },
+  { status: 'cancelled',  label: 'Cancelled' },
 ];
 
 export default function BookingsPage() {
@@ -582,6 +652,7 @@ export default function BookingsPage() {
   }, []);
 
   const counts = {
+    'checked-in': bookings.filter(b => b.status === 'checked-in').length,
     upcoming:  bookings.filter(b => b.status === 'upcoming').length,
     completed: bookings.filter(b => b.status === 'completed').length,
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
@@ -730,7 +801,9 @@ export default function BookingsPage() {
                     fontWeight: 500,
                     border: 'none',
                     cursor: 'pointer',
-                    background: isActive ? 'var(--tp-primary)' : 'transparent',
+                    background: isActive
+                      ? tab.status === 'checked-in' ? '#15803d' : 'var(--tp-primary)'
+                      : 'transparent',
                     color: isActive ? 'white' : 'var(--tp-secondary)',
                     display: 'flex',
                     alignItems: 'center',

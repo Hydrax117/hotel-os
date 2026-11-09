@@ -1,4 +1,4 @@
-export type BookingStatus = 'upcoming' | 'completed' | 'cancelled';
+export type BookingStatus = 'upcoming' | 'checked-in' | 'completed' | 'cancelled';
 
 export type TravelerBooking = {
   id: string;
@@ -16,6 +16,7 @@ export type TravelerBooking = {
   status: BookingStatus;
   createdAt: string;
   specialRequests?: string;
+  hasReview?: boolean;
 };
 
 export const MOCK_TRAVELER_BOOKINGS: TravelerBooking[] = [
