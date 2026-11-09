@@ -44,7 +44,7 @@ function mapApiBooking(b: BookingResponse): TravelerBooking {
     checkOut: b.checkOut,
     nights: calcNights(b.checkIn, b.checkOut),
     guests: b.guests,
-    totalNgn: b.totalNgn,
+    totalNgn: Number(b.totalNgn),
     status: mapStatus(b.status),
     createdAt: b.createdAt,
     specialRequests: b.specialRequests,
@@ -74,7 +74,7 @@ function fmtDate(iso: string): string {
 }
 
 function fmtNgn(amount: number): string {
-  return '\u20A6' + amount.toLocaleString('en-NG');
+  return '\u20A6' + Number(amount).toLocaleString('en-NG');
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -212,9 +212,9 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
         overflow: 'hidden',
         marginBottom: '16px',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
       }}
-      className="md:flex-row md:flex"
     >
       {/* Image placeholder */}
       <div
@@ -224,6 +224,8 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          width: '180px',
+          minHeight: '120px',
         }}
         className="booking-card-img"
       >
@@ -412,19 +414,6 @@ function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
         </div>
       </div>
 
-      {/* Inline style for responsive image placeholder */}
-      <style>{`
-        .booking-card-img {
-          height: 120px;
-          width: 100%;
-        }
-        @media (min-width: 768px) {
-          .booking-card-img {
-            height: auto;
-            width: 180px;
-          }
-        }
-      `}</style>
     </div>
   );
 }
