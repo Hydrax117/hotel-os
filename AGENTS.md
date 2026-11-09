@@ -8,4 +8,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## we are using proxy.ts 
 we are using proxy.ts not middleware.ts
-<!-- END:nextjs-agent-rules -->
+<!-- END:nextjs-agent-rules --> 
