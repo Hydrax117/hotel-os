@@ -21,6 +21,7 @@ import {
   type ServiceVenueType,
   type ServiceOrderStatus,
 } from '../../lib/api/room-service';
+import { useRoomServiceSocket } from '../../lib/use-room-service-socket';
 import { ApiError } from '../../lib/api/client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -103,6 +104,35 @@ export default function DashboardRoomServicePage() {
   const [tab, setTab] = useState<Tab>('orders');
   const [selectedVenue, setSelectedVenue] = useState<ServiceVenue | null>(null);
   const [error, setError] = useState('');
+  // Real-time: track unseen new orders so the badge shows even on venues tab
+  const [newOrderCount, setNewOrderCount] = useState(0);
+
+  // ── Real-time socket ───────────────────────────────────────────────────────
+  useRoomServiceSocket(hotelId || undefined, {
+    onNewOrder: (order) => {
+      setOrders(prev => {
+        // Avoid duplicates (e.g. if the confirming browser tab also receives the event)
+        if (prev.some(o => o.id === order.id)) return prev;
+        setNewOrderCount(c => c + 1);
+        return [order, ...prev];
+      });
+      // Show toast notification
+      const guestName = order.booking
+        ? `${order.booking.guestFirstName} ${order.booking.guestLastName}`
+        : 'A guest';
+      setToast({ message: `🛎 New order from ${guestName}`, id: Date.now() });
+      // If the user is on another tab, switch them to orders
+      setTab('orders');
+    },
+    onOrderUpdate: ({ orderId, status }) => {
+      setOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status } : o),
+      );
+    },
+  });
+
+  // Toast for new real-time orders
+  const [toast, setToast] = useState<{ message: string; id: number } | null>(null);
 
   // Venue form
   const [showVenueForm, setShowVenueForm] = useState(false);
@@ -267,6 +297,15 @@ export default function DashboardRoomServicePage() {
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1100 }}>
 
+      {/* Real-time toast */}
+      {toast && (
+        <NewOrderToast
+          key={toast.id}
+          message={toast.message}
+          onDismiss={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -301,7 +340,7 @@ export default function DashboardRoomServicePage() {
           <button
             key={t}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => { setTab(t); if (t === 'orders') setNewOrderCount(0); }}
             style={{
               padding: '10px 20px', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500,
               borderRadius: '8px 8px 0 0',
@@ -309,7 +348,9 @@ export default function DashboardRoomServicePage() {
               color: tab === t ? 'white' : '#6b7280',
             }}
           >
-            {t === 'orders' ? `Orders${activeOrders.length ? ` (${activeOrders.length})` : ''}` : 'Venues & Menu'}
+            {t === 'orders'
+              ? `Orders${activeOrders.length ? ` (${activeOrders.length})` : ''}${newOrderCount > 0 && tab !== 'orders' ? ` 🔴` : ''}`
+              : 'Venues & Menu'}
           </button>
         ))}
       </div>
@@ -587,6 +628,53 @@ export default function DashboardRoomServicePage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── New order toast ───────────────────────────────────────────────────────────
+
+function NewOrderToast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  // Auto-dismiss after 8 seconds
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 8000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: 'fixed', top: 24, right: 24, zIndex: 9999,
+        background: '#111', color: 'white',
+        borderRadius: 12, padding: '14px 20px',
+        display: 'flex', alignItems: 'center', gap: 12,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
+        fontSize: 14, fontWeight: 500,
+        animation: 'slideIn 0.3s ease',
+        maxWidth: 360,
+      }}
+    >
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
+      <span style={{ fontSize: 20 }}>🛎</span>
+      <span style={{ flex: 1 }}>{message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        style={{
+          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
+          color: 'white', cursor: 'pointer', padding: '3px 8px', fontSize: 13,
+        }}
+      >
+        ✕
+      </button>
     </div>
   );
 }
