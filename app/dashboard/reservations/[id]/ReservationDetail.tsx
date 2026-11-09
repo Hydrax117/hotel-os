@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth-context';
 import { apiClient, ApiError } from '../../../lib/api/client';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -71,11 +71,9 @@ function getSteps(status: BookingStatus): StepItem[] {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ReservationDetail() {
-  const params = useParams<{ id: string }>();
+export default function ReservationDetail({ id }: { id: string }) {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const id = params.id;
 
   const [booking, setBooking] = useState<RawBooking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
