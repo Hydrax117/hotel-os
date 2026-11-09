@@ -216,7 +216,7 @@ function PersonalInfoSection({ profile }: { profile: UserProfile | null }) {
 
       {/* Form */}
       <form onSubmit={handleSave}>
-        <div style={{ display: 'grid', gap: '16px' }} className="sm:grid-cols-2">
+        <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(2, 1fr)' }}>
           <div>
             <label htmlFor="firstName" style={labelStyle}>First name</label>
             <input
@@ -496,7 +496,7 @@ function SavedHotelsSection() {
       {hotels.length === 0 && (
         <p style={{ color: 'var(--tp-secondary)', fontSize: '14px' }}>No saved hotels.</p>
       )}
-      <div style={{ display: 'grid', gap: '16px' }} className="sm:grid-cols-2 lg:grid-cols-3">
+      <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
         {hotels.map(hotel => (
           <div
             key={hotel.id}
@@ -910,7 +910,7 @@ function PreferencesSection() {
         <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--tp-primary)', marginBottom: '16px' }}>
           Display Settings
         </h3>
-        <div style={{ display: 'grid', gap: '16px' }} className="sm:grid-cols-2">
+        <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(2, 1fr)' }}>
           <div>
             <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--tp-secondary)', display: 'block', marginBottom: '6px' }}>
               Currency
@@ -1028,18 +1028,18 @@ export default function ProfilePage() {
             My Profile
           </h1>
 
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }} className="flex-col lg:flex-row">
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap' }}>
             {/* Sidebar nav */}
             <aside
               style={{
-                width: '100%',
+                width: '220px',
+                minWidth: '180px',
+                flexShrink: 0,
                 background: 'white',
                 border: '1px solid var(--tp-border)',
                 borderRadius: '12px',
                 padding: '8px',
-                flexShrink: 0,
               }}
-              className="lg:w-60"
               aria-label="Profile sections"
             >
               {NAV_ITEMS.map(item => {
