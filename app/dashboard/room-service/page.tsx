@@ -112,15 +112,39 @@ export default function DashboardRoomServicePage() {
     onNewOrder: (order) => {
       setOrders(prev => {
         // Avoid duplicates (e.g. if the confirming browser tab also receives the event)
-        if (prev.some(o => o.id === order.id)) return prev;
+        if (prev.some(o => o.id === order.orderId)) return prev;
         setNewOrderCount(c => c + 1);
-        return [order, ...prev];
+        // Shape the payload into the ServiceOrder structure the list expects
+        const asOrder: ServiceOrder = {
+          id: order.orderId,
+          reference: order.reference,
+          bookingId: '',
+          venueId: '',
+          userId: '',
+          status: order.status,
+          totalNgn: order.totalNgn,
+          notes: order.notes,
+          roomNumber: order.roomNumber,
+          createdAt: new Date().toISOString(),
+          items: order.items.map((i, idx) => ({
+            id: idx.toString(),
+            menuItemId: '',
+            quantity: i.quantity,
+            unitPrice: i.lineTotal / i.quantity,
+            lineTotal: i.lineTotal,
+            menuItem: { name: i.name },
+          })),
+          venue: { name: order.venueName, type: 'RESTAURANT' },
+          booking: {
+            reference: '',
+            guestFirstName: order.guestName.split(' ')[0],
+            guestLastName: order.guestName.split(' ').slice(1).join(' '),
+          },
+        };
+        return [asOrder, ...prev];
       });
       // Show toast notification
-      const guestName = order.booking
-        ? `${order.booking.guestFirstName} ${order.booking.guestLastName}`
-        : 'A guest';
-      setToast({ message: `🛎 New order from ${guestName}`, id: Date.now() });
+      setToast({ message: `🛎 New order from ${order.guestName}`, id: Date.now() });
       // If the user is on another tab, switch them to orders
       setTab('orders');
     },
