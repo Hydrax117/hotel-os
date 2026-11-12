@@ -70,15 +70,14 @@ export function HotelListCard({
         boxShadow: 'var(--shadow-xs)',
       }}
     >
-      {/* Image */}
+      {/* Image — full width on mobile, fixed 260×200 px column on md+ */}
       <Link
         href={`/hotels/${id}`}
-        className="relative block flex-shrink-0 overflow-hidden"
-        style={{ width: '100%', height: '200px' }}
+        className="relative block flex-shrink-0 overflow-hidden w-full h-[200px] md:w-[260px] md:h-[200px]"
         tabIndex={-1}
         aria-hidden="true"
       >
-        <div className="md:w-[260px] md:h-full h-full w-full relative">
+        <div className="relative w-full h-full">
           {imageUrl ? (
             <Image
               src={imageUrl}
