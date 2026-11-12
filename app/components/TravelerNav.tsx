@@ -245,7 +245,7 @@ export function TravelerNav() {
           <Link
             href="/"
             className="flex items-baseline gap-0.5 shrink-0"
-            aria-label="Hotel OS home"
+            aria-label="Lodgen home"
           >
             <span
               className="text-xl tracking-tight"
@@ -256,13 +256,13 @@ export function TravelerNav() {
                 letterSpacing: '-0.01em',
               }}
             >
-              Hotel
+              Lod
             </span>
             <span
               className="text-xl font-bold tracking-tight"
               style={{ color: 'var(--color-brand)' }}
             >
-              OS
+              gen
             </span>
           </Link>
 

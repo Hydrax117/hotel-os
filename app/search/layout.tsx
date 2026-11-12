@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Search hotels — Hotel OS',
+  title: 'Search hotels — Lodgen',
 };
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {

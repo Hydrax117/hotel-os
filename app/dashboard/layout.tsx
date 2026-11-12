@@ -4,7 +4,7 @@ import { DashboardSidebarWrapper } from './components/DashboardSidebarWrapper';
 import { DashboardAuthGuard } from './components/DashboardAuthGuard';
 
 export const metadata: Metadata = {
-  title: 'Hotel OS — Dashboard',
+  title: 'Lodgen — Dashboard',
 };
 
 export default function DashboardLayout({

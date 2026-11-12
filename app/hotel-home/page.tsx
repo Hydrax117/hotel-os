@@ -57,7 +57,7 @@ export default function HotelHomePage() {
             >
               Grow your hotel business
               <br />
-              <span style={{ color: 'var(--tp-accent)' }}>with HotelOS</span>
+              <span style={{ color: 'var(--tp-accent)' }}>with Lodgen</span>
             </h1>
 
             <p
@@ -243,7 +243,7 @@ export default function HotelHomePage() {
         }}
       >
         <p className="text-sm" style={{ color: 'var(--tp-secondary)' }}>
-          &copy; 2025 HotelOS. All rights reserved.
+          &copy; 2025 Lodgen. All rights reserved.
         </p>
       </footer>
 

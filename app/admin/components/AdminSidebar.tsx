@@ -164,7 +164,7 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
         {/* Logo */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-5">
           <span className="text-lg font-bold tracking-tight text-white">
-            Hotel<span style={{ color: 'var(--ad-accent)' }}>OS</span>
+            Lod<span style={{ color: 'var(--ad-accent)' }}>gen</span>
           </span>
           <span
             className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"

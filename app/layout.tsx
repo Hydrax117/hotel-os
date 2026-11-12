@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 // so it degrades gracefully to Georgia when unavailable.
 
 export const metadata: Metadata = {
-  title: "Hotel OS — Book verified hotels across Nigeria",
+  title: "Lodgen — Book verified hotels across Nigeria",
   description:
     "Discover and book premium hotels across Lagos, Abuja, Port Harcourt and more Nigerian cities.",
 };
