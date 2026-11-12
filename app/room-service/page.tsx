@@ -441,6 +441,70 @@ function RoomServiceInner() {
                   )}
                 </>
               )}
+
+              {/* ── Order History — below the menu ── */}
+              {(historyLoading || pastOrders.length > 0) && (
+                <div style={{ marginTop: 40 }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--tp-primary)', margin: '0 0 12px' }}>
+                    Your orders this stay
+                  </h2>
+                  {historyLoading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {[1, 2].map(i => (
+                        <div key={i} style={{ height: 72, background: 'var(--tp-border)', borderRadius: 12, opacity: 0.35 }} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {pastOrders.map(order => {
+                        const sc = ORDER_STATUS_COLOR[order.status] ?? ORDER_STATUS_COLOR.PENDING;
+                        return (
+                          <div
+                            key={order.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              gap: 12, flexWrap: 'wrap',
+                              background: 'white', border: '1px solid var(--tp-border)',
+                              borderRadius: 12, padding: '14px 16px',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tp-primary)' }}>
+                                  {order.venue?.name ?? 'Order'}
+                                </span>
+                                <span style={{
+                                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                                  background: sc.bg, color: sc.text,
+                                }}>
+                                  {ORDER_STATUS_LABEL[order.status] ?? order.status}
+                                </span>
+                              </div>
+                              <p style={{ fontSize: 12, color: 'var(--tp-secondary)', margin: 0 }}>
+                                {order.items.map(i => `${i.quantity}× ${i.menuItem?.name ?? 'item'}`).join(', ')}
+                              </p>
+                              <p style={{ fontSize: 12, color: '#9ca3af', margin: '3px 0 0' }}>
+                                {fmtNgn(Number(order.totalNgn))} · Ref: {order.reference}
+                              </p>
+                            </div>
+                            <Link
+                              href={`/room-service/orders/${order.id}`}
+                              style={{
+                                fontSize: 13, fontWeight: 600, color: 'var(--tp-accent)',
+                                textDecoration: 'none', flexShrink: 0,
+                                border: '1px solid var(--tp-accent)',
+                                borderRadius: 8, padding: '6px 14px',
+                              }}
+                            >
+                              {order.status === 'DELIVERED' || order.status === 'CANCELLED' ? 'View' : 'Track'}
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right column: order summary */}
