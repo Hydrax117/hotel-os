@@ -1,98 +1,91 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiClient } from '@/app/lib/api/client';
+import { getMyHotel } from '@/app/lib/api/dashboard';
 
-// ── Local types ───────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-type DiscountType = 'percentage' | 'fixed';
+type DiscountType = 'PERCENTAGE' | 'FIXED';
 
-type Promotion = {
+export type Promotion = {
   id: string;
   name: string;
   discountType: DiscountType;
   discountValue: number;
   validFrom: string;
   validTo: string;
-  conditions: string;
+  minNights: number;
+  advanceBookingDays: number;
   active: boolean;
-  badgeColor: string;
-  expired?: boolean;
+  createdAt: string;
 };
 
-// ── Mock data defined inline ──────────────────────────────────────────────────
+// ── API helpers ────────────────────────────────────────────────────────────────
+// These call POST/GET /api/v1/hotels/:hotelId/promotions.
+// If the backend returns 404 or 501 we surface a "not available" state rather
+// than silently losing data in local state.
 
-const INITIAL_PROMOTIONS: Promotion[] = [
-  {
-    id: 'promo-001',
-    name: 'Early Bird',
-    discountType: 'percentage',
-    discountValue: 15,
-    validFrom: '2025-01-01',
-    validTo: '2026-12-31',
-    conditions: 'Min. 7 days advance booking',
-    active: true,
-    badgeColor: '#2563eb',
-  },
-  {
-    id: 'promo-002',
-    name: 'Weekend Special',
-    discountType: 'percentage',
-    discountValue: 10,
-    validFrom: '2026-10-01',
-    validTo: '2026-12-31',
-    conditions: 'Fri–Sun stays only',
-    active: true,
-    badgeColor: '#7c3aed',
-  },
-  {
-    id: 'promo-003',
-    name: 'Long Stay',
-    discountType: 'percentage',
-    discountValue: 20,
-    validFrom: '2026-01-01',
-    validTo: '2026-12-31',
-    conditions: 'Min. 5 nights',
-    active: true,
-    badgeColor: '#16a34a',
-  },
-];
+async function fetchPromotions(hotelId: string): Promise<Promotion[]> {
+  const raw = await apiClient.get<Promotion[] | { promotions: Promotion[] }>(
+    `/api/v1/hotels/${hotelId}/promotions`,
+  );
+  return Array.isArray(raw) ? raw : (raw as { promotions: Promotion[] }).promotions ?? [];
+}
 
-const EXPIRED_PROMOTIONS: Promotion[] = [
-  {
-    id: 'promo-exp-001',
-    name: 'New Year Flash',
-    discountType: 'percentage',
-    discountValue: 25,
-    validFrom: '2025-12-28',
-    validTo: '2026-01-03',
-    conditions: 'All room types',
-    active: false,
-    badgeColor: '#6b7280',
-    expired: true,
-  },
-  {
-    id: 'promo-exp-002',
-    name: 'Summer Deal',
-    discountType: 'fixed',
-    discountValue: 10000,
-    validFrom: '2025-07-01',
-    validTo: '2025-08-31',
-    conditions: 'Deluxe King only',
-    active: false,
-    badgeColor: '#6b7280',
-    expired: true,
-  },
-];
+async function createPromotion(
+  hotelId: string,
+  payload: Omit<Promotion, 'id' | 'createdAt'>,
+): Promise<Promotion> {
+  return apiClient.post<Promotion>(`/api/v1/hotels/${hotelId}/promotions`, payload);
+}
 
-// ── CSS Toggle component ──────────────────────────────────────────────────────
+async function togglePromotion(
+  hotelId: string,
+  promotionId: string,
+  active: boolean,
+): Promise<Promotion> {
+  return apiClient.patch<Promotion>(
+    `/api/v1/hotels/${hotelId}/promotions/${promotionId}`,
+    { active },
+  );
+}
 
-function CSSToggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id: string }) {
+async function deletePromotion(hotelId: string, promotionId: string): Promise<void> {
+  return apiClient.delete(`/api/v1/hotels/${hotelId}/promotions/${promotionId}`);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDiscount(p: Promotion): string {
+  if (p.discountType === 'PERCENTAGE') return `${p.discountValue}% off`;
+  return `₦${p.discountValue.toLocaleString('en-NG')} off`;
+}
+
+function isExpired(p: Promotion): boolean {
+  return new Date(p.validTo) < new Date();
+}
+
+// ── CSS Toggle ────────────────────────────────────────────────────────────────
+
+function CSSToggle({
+  checked,
+  onChange,
+  id,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  id: string;
+  disabled?: boolean;
+}) {
   return (
     <button
       role="switch"
       aria-checked={checked}
       id={id}
-      onClick={() => onChange(!checked)}
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -102,11 +95,12 @@ function CSSToggle({ checked, onChange, id }: { checked: boolean; onChange: (v: 
         background: checked ? 'var(--db-accent)' : 'var(--db-border)',
         border: 'none',
         padding: 2,
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background 0.2s',
         flexShrink: 0,
+        opacity: disabled ? 0.5 : 1,
       }}
-      aria-label="Toggle promotion active state"
+      aria-label="Toggle promotion"
     >
       <span
         style={{
@@ -124,49 +118,92 @@ function CSSToggle({ checked, onChange, id }: { checked: boolean; onChange: (v: 
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDiscount(promo: Promotion): string {
-  if (promo.discountType === 'percentage') return `${promo.discountValue}% off`;
-  return `₦${promo.discountValue.toLocaleString('en-NG')} off`;
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PromotionsPage() {
-  const [promotions, setPromotions] = useState<Promotion[]>(INITIAL_PROMOTIONS);
+  const [hotelId, setHotelId] = useState<string | null>(null);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  // null = not attempted; true = endpoint exists; false = not yet available
+  const [apiAvailable, setApiAvailable] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const [formOpen, setFormOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showExpired, setShowExpired] = useState(false);
 
-  // Form state
+  // Form fields
   const [formName, setFormName] = useState('');
-  const [formDiscountType, setFormDiscountType] = useState<DiscountType>('percentage');
+  const [formDiscountType, setFormDiscountType] = useState<DiscountType>('PERCENTAGE');
   const [formDiscountValue, setFormDiscountValue] = useState('');
   const [formValidFrom, setFormValidFrom] = useState('');
   const [formValidTo, setFormValidTo] = useState('');
   const [formMinNights, setFormMinNights] = useState('1');
   const [formAdvanceDays, setFormAdvanceDays] = useState('0');
-  const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState('');
 
-  function togglePromo(id: string) {
-    setPromotions(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
+  // ── Load hotel + promotions ───────────────────────────────────────────────
+
+  const load = useCallback(async (hid: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchPromotions(hid);
+      setPromotions(data);
+      setApiAvailable(true);
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 404 || status === 501 || status === 405) {
+        // Backend endpoint not yet implemented
+        setApiAvailable(false);
+      } else {
+        setError('Failed to load promotions. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    getMyHotel().then(hotel => {
+      if (hotel) {
+        setHotelId(hotel.id);
+        load(hotel.id);
+      } else {
+        setIsLoading(false);
+      }
+    }).catch(() => setIsLoading(false));
+  }, [load]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  async function handleToggle(id: string, currentActive: boolean) {
+    if (!hotelId) return;
+    // Optimistic update
+    setPromotions(prev => prev.map(p => p.id === id ? { ...p, active: !currentActive } : p));
+    try {
+      await togglePromotion(hotelId, id, !currentActive);
+    } catch {
+      // Revert on failure
+      setPromotions(prev => prev.map(p => p.id === id ? { ...p, active: currentActive } : p));
+    }
   }
 
-  function openForm() {
-    setFormOpen(true);
-    setFormSuccess(false);
-    setFormError('');
-  }
-
-  function cancelForm() {
-    setFormOpen(false);
-    resetForm();
+  async function handleDelete(id: string) {
+    if (!hotelId) return;
+    if (!confirm('Delete this promotion?')) return;
+    setPromotions(prev => prev.filter(p => p.id !== id));
+    try {
+      await deletePromotion(hotelId, id);
+    } catch {
+      setError('Failed to delete promotion.');
+      load(hotelId);
+    }
   }
 
   function resetForm() {
     setFormName('');
-    setFormDiscountType('percentage');
+    setFormDiscountType('PERCENTAGE');
     setFormDiscountValue('');
     setFormValidFrom('');
     setFormValidTo('');
@@ -175,29 +212,49 @@ export default function PromotionsPage() {
     setFormError('');
   }
 
-  function savePromo() {
+  async function handleSave() {
+    if (!hotelId) return;
     if (!formName.trim()) { setFormError('Promotion name is required.'); return; }
-    if (!formDiscountValue.trim() || isNaN(Number(formDiscountValue))) { setFormError('Enter a valid discount value.'); return; }
-    if (!formValidFrom || !formValidTo) { setFormError('Valid from and to dates are required.'); return; }
-    const newPromo: Promotion = {
-      id: `promo-new-${Date.now()}`,
-      name: formName.trim(),
-      discountType: formDiscountType,
-      discountValue: Number(formDiscountValue),
-      validFrom: formValidFrom,
-      validTo: formValidTo,
-      conditions: `Min. ${formMinNights} nights${formAdvanceDays !== '0' ? `, ${formAdvanceDays} days advance` : ''}`,
-      active: true,
-      badgeColor: '#3d6b4f',
-    };
-    setPromotions(prev => [newPromo, ...prev]);
-    setFormSuccess(true);
-    resetForm();
-    setTimeout(() => {
+    const val = Number(formDiscountValue);
+    if (!formDiscountValue || isNaN(val) || val <= 0) {
+      setFormError('Enter a valid discount value greater than 0.');
+      return;
+    }
+    if (formDiscountType === 'PERCENTAGE' && val > 100) {
+      setFormError('Percentage discount cannot exceed 100%.');
+      return;
+    }
+    if (!formValidFrom || !formValidTo) { setFormError('Both dates are required.'); return; }
+    if (formValidFrom >= formValidTo) { setFormError('Valid-to date must be after valid-from.'); return; }
+
+    setFormError('');
+    setSubmitting(true);
+    try {
+      const created = await createPromotion(hotelId, {
+        name: formName.trim(),
+        discountType: formDiscountType,
+        discountValue: val,
+        validFrom: formValidFrom,
+        validTo: formValidTo,
+        minNights: Number(formMinNights),
+        advanceBookingDays: Number(formAdvanceDays),
+        active: true,
+      });
+      setPromotions(prev => [created, ...prev]);
       setFormOpen(false);
-      setFormSuccess(false);
-    }, 1500);
+      resetForm();
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message;
+      setFormError(msg ?? 'Failed to create promotion.');
+    } finally {
+      setSubmitting(false);
+    }
   }
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  const active = promotions.filter(p => !isExpired(p));
+  const expired = promotions.filter(p => isExpired(p));
 
   const inputStyle: React.CSSProperties = {
     borderRadius: 8,
@@ -210,6 +267,73 @@ export default function PromotionsPage() {
     width: '100%',
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: 32 }}>
+        <div style={{ height: 28, width: 180, background: 'var(--db-muted)', borderRadius: 6, marginBottom: 24 }} />
+        <div style={{ height: 120, background: 'var(--db-muted)', borderRadius: 12 }} />
+      </div>
+    );
+  }
+
+  // Backend endpoint not yet implemented — honest state instead of data loss
+  if (apiAvailable === false) {
+    return (
+      <div className="flex flex-col gap-8" style={{ color: 'var(--db-primary)' }}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">Promotions</h1>
+        </div>
+        <div
+          className="rounded-xl border p-8 text-center"
+          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: 'var(--db-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+          </div>
+          <h2 className="text-base font-semibold mb-2" style={{ color: 'var(--db-primary)' }}>
+            Promotions coming soon
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--db-secondary)', maxWidth: 420, margin: '0 auto' }}>
+            The promotions feature is under development. Once available, you will be able to create
+            percentage and fixed discounts, set validity windows, and control minimum-night requirements —
+            all synced with the booking engine automatically.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4 items-center py-16">
+        <p style={{ color: 'var(--db-danger)' }}>{error}</p>
+        <button
+          onClick={() => hotelId && load(hotelId)}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style={{ background: 'var(--db-accent)', border: 'none', cursor: 'pointer' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8" style={{ color: 'var(--db-primary)' }}>
 
@@ -221,11 +345,11 @@ export default function PromotionsPage() {
             className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
             style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)' }}
           >
-            {promotions.length}
+            {active.length}
           </span>
         </div>
         <button
-          onClick={openForm}
+          onClick={() => { setFormOpen(true); resetForm(); }}
           className="rounded-lg px-4 py-2 text-sm font-medium"
           style={{ background: 'var(--db-accent)', color: '#fff', border: 'none', cursor: 'pointer' }}
         >
@@ -233,30 +357,25 @@ export default function PromotionsPage() {
         </button>
       </div>
 
-      {/* Create promotion form */}
+      {/* Create form */}
       {formOpen && (
         <div
           className="rounded-xl border p-5"
           style={{ background: 'var(--db-surface)', borderColor: 'var(--db-accent)' }}
         >
           <h2 className="mb-4 text-sm font-semibold">New Promotion</h2>
-          {formSuccess && (
-            <p className="mb-3 text-sm font-medium" style={{ color: 'var(--db-success)' }}>
-              Promotion created!
-            </p>
-          )}
           {formError && (
             <p className="mb-3 text-sm" style={{ color: 'var(--db-danger)' }}>{formError}</p>
           )}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Promotion name *</label>
-              <input style={inputStyle} value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Summer Special" />
+              <input style={inputStyle} value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Weekend Special" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Discount type *</label>
               <div className="flex gap-2">
-                {(['percentage', 'fixed'] as DiscountType[]).map(t => (
+                {(['PERCENTAGE', 'FIXED'] as DiscountType[]).map(t => (
                   <button
                     key={t}
                     onClick={() => setFormDiscountType(t)}
@@ -268,46 +387,72 @@ export default function PromotionsPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    {t === 'percentage' ? 'Percentage' : 'Fixed amount'}
+                    {t === 'PERCENTAGE' ? 'Percentage' : 'Fixed (₦)'}
                   </button>
                 ))}
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Discount value *</label>
-              <input style={inputStyle} type="number" value={formDiscountValue} onChange={e => setFormDiscountValue(e.target.value)} placeholder={formDiscountType === 'percentage' ? 'e.g. 15' : 'e.g. 5000'} />
+              <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>
+                Discount value * {formDiscountType === 'PERCENTAGE' ? '(%)' : '(₦)'}
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min={1}
+                max={formDiscountType === 'PERCENTAGE' ? 100 : undefined}
+                value={formDiscountValue}
+                onChange={e => setFormDiscountValue(e.target.value)}
+                placeholder={formDiscountType === 'PERCENTAGE' ? 'e.g. 15' : 'e.g. 5000'}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Min nights</label>
               <select style={inputStyle} value={formMinNights} onChange={e => setFormMinNights(e.target.value)}>
-                {[1,2,3,4,5,6,7,14].map(n => <option key={n} value={n}>{n}</option>)}
+                {[1, 2, 3, 4, 5, 6, 7, 14].map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Valid from *</label>
-              <input style={inputStyle} type="date" value={formValidFrom} onChange={e => setFormValidFrom(e.target.value)} />
+              <input
+                style={inputStyle}
+                type="date"
+                value={formValidFrom}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => setFormValidFrom(e.target.value)}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Valid to *</label>
-              <input style={inputStyle} type="date" value={formValidTo} onChange={e => setFormValidTo(e.target.value)} />
+              <input
+                style={inputStyle}
+                type="date"
+                value={formValidTo}
+                min={formValidFrom || new Date().toISOString().split('T')[0]}
+                onChange={e => setFormValidTo(e.target.value)}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>Advance booking (days)</label>
               <select style={inputStyle} value={formAdvanceDays} onChange={e => setFormAdvanceDays(e.target.value)}>
-                {[0,1,2,3,7,14,30,60].map(n => <option key={n} value={n}>{n === 0 ? 'Any time' : `${n} days`}</option>)}
+                {[0, 1, 2, 3, 7, 14, 30, 60].map(n => (
+                  <option key={n} value={n}>{n === 0 ? 'Any time' : `${n} days`}</option>
+                ))}
               </select>
             </div>
           </div>
           <div className="mt-4 flex gap-3">
             <button
-              onClick={savePromo}
+              onClick={handleSave}
+              disabled={submitting}
               className="rounded-lg px-4 py-2 text-sm font-medium"
-              style={{ background: 'var(--db-accent)', color: '#fff', border: 'none', cursor: 'pointer' }}
+              style={{ background: 'var(--db-accent)', color: '#fff', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
             >
-              Save promotion
+              {submitting ? 'Saving…' : 'Save promotion'}
             </button>
             <button
-              onClick={cancelForm}
+              onClick={() => { setFormOpen(false); resetForm(); }}
+              disabled={submitting}
               className="rounded-lg px-4 py-2 text-sm font-medium"
               style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)', border: '1px solid var(--db-border)', cursor: 'pointer' }}
             >
@@ -318,8 +463,24 @@ export default function PromotionsPage() {
       )}
 
       {/* Active promotions */}
+      {active.length === 0 && !formOpen && (
+        <div
+          className="rounded-xl border py-12 text-center"
+          style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+        >
+          <p className="text-sm mb-3" style={{ color: 'var(--db-secondary)' }}>No active promotions yet.</p>
+          <button
+            onClick={() => { setFormOpen(true); resetForm(); }}
+            className="rounded-lg px-4 py-2 text-sm font-medium"
+            style={{ background: 'var(--db-accent)', color: '#fff', border: 'none', cursor: 'pointer' }}
+          >
+            Create your first promotion
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
-        {promotions.map(promo => (
+        {active.map(promo => (
           <div
             key={promo.id}
             className="rounded-xl border p-5"
@@ -331,15 +492,9 @@ export default function PromotionsPage() {
                   <span className="font-semibold text-base">{promo.name}</span>
                   <span
                     className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{
-                      background: promo.badgeColor === '#2563eb' ? '#dbeafe'
-                        : promo.badgeColor === '#7c3aed' ? '#ede9fe'
-                        : promo.badgeColor === '#16a34a' ? '#dcfce7'
-                        : '#f3f4f6',
-                      color: promo.badgeColor,
-                    }}
+                    style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)' }}
                   >
-                    {promo.discountType === 'percentage' ? '% off' : '₦ off'}
+                    {promo.discountType === 'PERCENTAGE' ? '% off' : '₦ off'}
                   </span>
                 </div>
                 <p className="text-3xl font-bold" style={{ color: 'var(--db-accent)' }}>
@@ -349,7 +504,8 @@ export default function PromotionsPage() {
                   Valid: {promo.validFrom} — {promo.validTo}
                 </p>
                 <p className="text-xs" style={{ color: 'var(--db-secondary)' }}>
-                  {promo.conditions}
+                  Min {promo.minNights} night{promo.minNights !== 1 ? 's' : ''}
+                  {promo.advanceBookingDays > 0 ? ` · ${promo.advanceBookingDays} days advance` : ''}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -357,22 +513,19 @@ export default function PromotionsPage() {
                   <span className="text-xs" style={{ color: 'var(--db-secondary)' }}>
                     {promo.active ? 'Active' : 'Inactive'}
                   </span>
-                  <CSSToggle checked={promo.active} onChange={() => togglePromo(promo.id)} id={`toggle-${promo.id}`} />
+                  <CSSToggle
+                    checked={promo.active}
+                    onChange={() => handleToggle(promo.id, promo.active)}
+                    id={`toggle-${promo.id}`}
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    className="rounded-lg px-3 py-1 text-xs font-medium"
-                    style={{ background: 'var(--db-muted)', color: 'var(--db-primary)', border: '1px solid var(--db-border)', cursor: 'pointer' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="rounded-lg px-3 py-1 text-xs font-medium"
-                    style={{ background: 'var(--db-muted)', color: 'var(--db-danger)', border: '1px solid var(--db-border)', cursor: 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleDelete(promo.id)}
+                  className="rounded-lg px-3 py-1 text-xs font-medium"
+                  style={{ background: 'var(--db-muted)', color: 'var(--db-danger)', border: '1px solid var(--db-border)', cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -380,54 +533,53 @@ export default function PromotionsPage() {
       </div>
 
       {/* Expired promotions */}
-      <div>
-        <button
-          onClick={() => setShowExpired(v => !v)}
-          className="flex items-center gap-2 text-sm font-medium mb-4"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--db-secondary)' }}
-        >
-          <span>{showExpired ? '▾' : '▸'}</span>
-          {showExpired ? 'Hide expired' : 'Show expired'}
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
-            style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)' }}
+      {expired.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowExpired(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium mb-4"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--db-secondary)' }}
           >
-            {EXPIRED_PROMOTIONS.length}
-          </span>
-        </button>
-        {showExpired && (
-          <div
-            className="rounded-xl border overflow-hidden"
-            style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ background: 'var(--db-muted)' }}>
-                    <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--db-secondary)' }}>Name</th>
-                    <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--db-secondary)' }}>Discount</th>
-                    <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--db-secondary)' }}>Valid From</th>
-                    <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--db-secondary)' }}>Valid To</th>
-                    <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--db-secondary)' }}>Conditions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {EXPIRED_PROMOTIONS.map((promo, idx) => (
-                    <tr key={promo.id} style={{ background: idx % 2 === 1 ? 'var(--db-muted)' : 'var(--db-surface)' }}>
-                      <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.name}</td>
-                      <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{formatDiscount(promo)}</td>
-                      <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.validFrom}</td>
-                      <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.validTo}</td>
-                      <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.conditions}</td>
+            <span>{showExpired ? '▾' : '▸'}</span>
+            {showExpired ? 'Hide expired' : 'Show expired'}
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
+              style={{ background: 'var(--db-muted)', color: 'var(--db-secondary)' }}
+            >
+              {expired.length}
+            </span>
+          </button>
+          {showExpired && (
+            <div
+              className="rounded-xl border overflow-hidden"
+              style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: 'var(--db-muted)' }}>
+                      {['Name', 'Discount', 'Valid From', 'Valid To', 'Min Nights'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={{ color: 'var(--db-secondary)' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {expired.map((promo, idx) => (
+                      <tr key={promo.id} style={{ background: idx % 2 === 1 ? 'var(--db-muted)' : 'var(--db-surface)' }}>
+                        <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.name}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{formatDiscount(promo)}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.validFrom}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.validTo}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--db-secondary)' }}>{promo.minNights}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
+          )}
+        </div>
+      )}
     </div>
   );
 }

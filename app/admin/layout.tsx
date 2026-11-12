@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import { AdminSidebarWrapper } from './components/AdminSidebarWrapper';
+import { AdminAuthGuard } from './components/AdminAuthGuard';
 
 export const instant = false;
 
@@ -9,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminSidebarWrapper>{children}</AdminSidebarWrapper>;
+  return (
+    <AdminAuthGuard>
+      <AdminSidebarWrapper>{children}</AdminSidebarWrapper>
+    </AdminAuthGuard>
+  );
 }
