@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
 import "./globals.css";
 import { AuthProvider } from './lib/auth-context';
+import { NotificationProvider } from './components/NotificationProvider';
 
 // ── Sans-serif — Geist (interface / body copy) ────────────────────────────────
 const geistSans = Geist({
@@ -61,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         Instead globals.css sets `font-family: var(--font-sans)` on body directly.
       */}
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><NotificationProvider>{children}</NotificationProvider></AuthProvider>
       </body>
     </html>
   );
