@@ -23,9 +23,7 @@ export default function OnboardingLayout({
             >
               {/* Logo */}
               <div className="mb-8">
-                <span className="text-xl font-bold tracking-tight text-[var(--ob-primary)]">
-                  Hotel<span className="text-[var(--ob-accent)]">OS</span>
-                </span>
+                <img src="/logo.png" alt="Lodgen" style={{ height: 28, width: 'auto', display: 'block', marginBottom: 4 }} />
                 <p className="mt-0.5 text-xs text-[var(--ob-secondary)]">Property Onboarding</p>
               </div>
               <StepIndicator />

@@ -163,9 +163,11 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-5">
-          <span className="text-lg font-bold tracking-tight text-white">
-            Lod<span style={{ color: 'var(--ad-accent)' }}>gen</span>
-          </span>
+          <img
+            src="/logo.png"
+            alt="Lodgen"
+            style={{ height: 26, width: 'auto', display: 'block', filter: 'brightness(0) invert(1)' }}
+          />
           <span
             className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
             style={{ background: 'var(--ad-accent)' }}

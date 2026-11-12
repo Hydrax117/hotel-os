@@ -177,9 +177,7 @@ export default function HotelReviewPage() {
           background: '#fff',
         }}
       >
-        <span style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>
-          Lod<span style={{ color: '#3d6b4f' }}>gen</span>
-        </span>
+        <img src="/logo.png" alt="Lodgen" style={{ height: 28, width: 'auto', display: 'block' }} />
         <button
           onClick={handleSignOut}
           style={{

@@ -22,7 +22,7 @@ export default function HotelHomePage() {
           className="text-xl font-bold tracking-tight"
           style={{ color: 'var(--tp-primary)' }}
         >
-          Hotel<span style={{ color: 'var(--tp-accent)' }}>OS</span>
+          <img src="/logo.png" alt="Lodgen" style={{ height: 30, width: 'auto', display: 'block' }} />
         </Link>
 
         <div className="flex items-center gap-4">

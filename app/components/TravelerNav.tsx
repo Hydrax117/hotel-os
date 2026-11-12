@@ -244,26 +244,14 @@ export function TravelerNav() {
           {/* ── Logo ── */}
           <Link
             href="/"
-            className="flex items-baseline gap-0.5 shrink-0"
+            className="flex items-center shrink-0"
             aria-label="Lodgen home"
           >
-            <span
-              className="text-xl tracking-tight"
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontWeight: 500,
-                color: 'var(--color-text-primary)',
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Lod
-            </span>
-            <span
-              className="text-xl font-bold tracking-tight"
-              style={{ color: 'var(--color-brand)' }}
-            >
-              gen
-            </span>
+            <img
+              src="/logo.png"
+              alt="Lodgen"
+              style={{ height: 32, width: 'auto', display: 'block' }}
+            />
           </Link>
 
           {/* ── Desktop nav links ── */}
