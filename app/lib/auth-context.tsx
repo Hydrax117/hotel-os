@@ -24,7 +24,7 @@ function normalizeUser(raw: any): AuthUser {
     email:     u.email     ?? '',
     firstName: u.firstName ?? u.first_name ?? '',
     lastName:  u.lastName  ?? u.last_name  ?? '',
-    role:      u.role      ?? 'HOTEL_OWNER',
+    role:      u.role      ?? 'TRAVELER',
   };
 }
 

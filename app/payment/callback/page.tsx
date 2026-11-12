@@ -72,17 +72,18 @@ function CallbackInner() {
 
     void (async () => {
       try {
-        // Verify the payment — backend confirms the booking
-        await verifyPayment(reference);
+        // Verify the payment — backend confirms the booking and returns the bookingId
+        const verifyResult = await verifyPayment(reference);
 
-        // Fetch the user's bookings to find the one we just confirmed so we can
-        // pass the details to the confirmation page.
+        // The verify endpoint returns { status, bookingId } — use that directly
+        // so we always redirect to the correct booking, even when the user has
+        // multiple active reservations.
+        const bookingId = verifyResult.bookingId;
+
+        // Fetch the user's bookings and find the confirmed one by its exact ID.
         const bookings = await getMyBookings();
-        // Find the booking whose payment reference matches (reference contains bookingReference)
-        // or fall back to the most recent CONFIRMED booking.
-        const confirmed = bookings.find(b =>
-          b.reference && reference.includes(b.reference)
-        ) ?? bookings.find(b => b.status === 'CONFIRMED') ?? bookings[0];
+        const confirmed = bookings.find(b => b.id === bookingId)
+          ?? bookings.find(b => b.reference && reference.includes(b.reference));
 
         if (confirmed) {
           const params = new URLSearchParams({
@@ -96,7 +97,8 @@ function CallbackInner() {
           });
           router.replace(`/booking/confirmation?${params.toString()}`);
         } else {
-          // Booking confirmed but couldn't find details — still go to confirmation
+          // Payment confirmed but booking not yet visible (propagation delay) —
+          // go to confirmation with the reference so the page can still display.
           router.replace(`/booking/confirmation?ref=${encodeURIComponent(reference)}`);
         }
 

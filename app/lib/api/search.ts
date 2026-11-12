@@ -64,7 +64,7 @@ export type CityCount = {
 
 // ── Server-side fetch helper (no auth token, for server components) ───────────
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://hotel-os-api-52qe.onrender.com';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 async function serverFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, { cache: 'no-store' });
