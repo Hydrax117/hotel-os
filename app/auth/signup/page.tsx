@@ -157,7 +157,7 @@ function SignUpForm() {
     try {
       const res = await register({ email, password, firstName, lastName, phone, role: isOwnerContext ? 'HOTEL_OWNER' : 'TRAVELER' });
       setUser(res.user);
-      showToast('Account created! Welcome to Hotel OS.', 'success');
+      showToast('Account created! Welcome to Lodgen.', 'success');
       await new Promise(r => setTimeout(r, 700));
       router.push(isOwnerContext ? '/onboarding/steps/step-2' : '/');
     } catch (err) {
@@ -178,7 +178,7 @@ function SignUpForm() {
 
       <div className="mb-7">
         <h1 className="text-2xl font-semibold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
-          {isOwnerContext ? 'Create your Hotel OS account' : 'Create your account'}
+          {isOwnerContext ? 'Create your Lodgen account' : 'Create your account'}
         </h1>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {isOwnerContext ? 'Start listing your hotel in minutes.' : 'Join travelers booking verified hotels across Nigeria.'}

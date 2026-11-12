@@ -47,16 +47,12 @@ export function Footer() {
 
             {/* Brand column */}
             <div className="col-span-2 flex flex-col gap-4 lg:col-span-1">
-              <Link href="/" className="flex items-baseline gap-0.5 w-fit" aria-label="Hotel OS home">
-                <span
-                  className="text-xl tracking-tight text-white"
-                  style={{ fontFamily: 'var(--font-serif)', fontWeight: 500 }}
-                >
-                  Hotel
-                </span>
-                <span className="text-xl font-bold" style={{ color: 'var(--color-brand-secondary)' }}>
-                  OS
-                </span>
+              <Link href="/" className="flex items-center w-fit" aria-label="Lodgen home">
+                <img
+                  src="/logo.png"
+                  alt="Lodgen"
+                  style={{ height: 28, width: 'auto', display: 'block', filter: 'brightness(0) invert(1)' }}
+                />
               </Link>
 
               <p className="max-w-[220px] text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
@@ -110,7 +106,7 @@ export function Footer() {
             style={{ borderColor: 'rgba(255,255,255,0.08)' }}
           >
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              © 2025 Hotel OS. All rights reserved.
+              © 2025 Lodgen. All rights reserved.
             </p>
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
               Built for African hospitality.

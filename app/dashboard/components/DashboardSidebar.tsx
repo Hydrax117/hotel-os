@@ -129,9 +129,12 @@ export function DashboardSidebar({ mobileOpen, onClose }: Props) {
     >
       {/* Logo */}
       <div className="flex h-14 shrink-0 items-center gap-2.5 px-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-        <Link href="/dashboard/overview" className="flex items-baseline gap-0.5" onClick={onClose}>
-          <span className="text-lg font-medium text-white" style={{ fontFamily: 'var(--font-serif)' }}>Hotel</span>
-          <span className="text-lg font-bold" style={{ color: 'var(--color-brand-secondary)' }}>OS</span>
+        <Link href="/dashboard/overview" className="flex items-center" onClick={onClose}>
+          <img
+            src="/logo.png"
+            alt="Lodgen"
+            style={{ height: 28, width: 'auto', display: 'block', filter: 'brightness(0) invert(1)' }}
+          />
         </Link>
       </div>
 

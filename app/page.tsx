@@ -99,7 +99,7 @@ export default async function HomePage() {
 
           <div className="relative mx-auto w-full max-w-4xl text-center">
             <p className="text-label mb-6" style={{ color: 'var(--color-brand-secondary)' }}>
-              Hotel OS — Nigeria&apos;s hospitality platform
+              Lodgen — Nigeria&apos;s hospitality platform
             </p>
 
             <h1 className="text-display-xl mb-6" style={{ color: 'var(--color-text-primary)' }}>
@@ -253,12 +253,12 @@ export default async function HomePage() {
         </section>
 
         {/* ════════ TRUST ════════ */}
-        <section aria-label="Why book with Hotel OS" className="py-20" style={{ background: 'var(--color-bg-alt)' }}>
+        <section aria-label="Why book with Lodgen" className="py-20" style={{ background: 'var(--color-bg-alt)' }}>
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="mb-12 text-center">
               <h2 className="text-display-md" style={{ color: 'var(--color-text-primary)' }}>Built for trust</h2>
               <p className="mx-auto mt-3 max-w-lg text-base" style={{ color: 'var(--color-text-secondary)' }}>
-                Hotel OS is designed around the things that matter most when booking accommodation.
+                Lodgen is designed around the things that matter most when booking accommodation.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -282,7 +282,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="mb-12 max-w-xl">
               <p className="text-label mb-3" style={{ color: 'var(--color-brand-secondary)' }}>For hotel owners</p>
-              <h2 className="text-display-md text-white mb-4">Grow your hotel with Hotel OS</h2>
+              <h2 className="text-display-md text-white mb-4">Grow your hotel with Lodgen</h2>
               <p className="text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
                 Reach travelers across Nigeria. Manage bookings, rooms and rates from one professional dashboard.
               </p>

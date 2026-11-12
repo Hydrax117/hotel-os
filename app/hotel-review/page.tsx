@@ -177,9 +177,7 @@ export default function HotelReviewPage() {
           background: '#fff',
         }}
       >
-        <span style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>
-          Hotel<span style={{ color: '#3d6b4f' }}>OS</span>
-        </span>
+        <img src="/logo.png" alt="Lodgen" style={{ height: 28, width: 'auto', display: 'block' }} />
         <button
           onClick={handleSignOut}
           style={{
@@ -437,10 +435,10 @@ export default function HotelReviewPage() {
                   Make sure your contact email is reachable &mdash; we&apos;ll send your approval or any
                   follow-up questions there. Haven&apos;t heard back after 3 business days? Email{' '}
                   <a
-                    href="mailto:support@hotelos.com"
+                    href="mailto:support@lodgen.com"
                     style={{ color: '#3d6b4f', textDecoration: 'none', fontWeight: 600 }}
                   >
-                    support@hotelos.com
+                    support@lodgen.com
                   </a>
                   .
                 </p>

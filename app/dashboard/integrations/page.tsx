@@ -340,7 +340,7 @@ export default function IntegrationsPage() {
                 </div>
               </div>
               <p style={{ fontSize: 12, color: 'var(--db-secondary)', margin: 0, lineHeight: 1.5 }}>{integ.description}</p>
-              <p style={{ fontSize: 12, color: 'var(--db-secondary)', margin: 0, fontStyle: 'italic' }}>Use your Hotel OS API key to connect.</p>
+              <p style={{ fontSize: 12, color: 'var(--db-secondary)', margin: 0, fontStyle: 'italic' }}>Use your Lodgen API key to connect.</p>
             </div>
           ))}
         </div>

@@ -5,7 +5,7 @@ import { AdminSidebarWrapper } from './components/AdminSidebarWrapper';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Hotel OS Admin',
+  title: 'Lodgen Admin',
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
