@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     "Discover and book premium hotels across Lagos, Abuja, Port Harcourt and more Nigerian cities.",
   icons: {
     icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico",        sizes: "any",           rel: "shortcut icon" },
+      { url: "/favicon-16x16.png",  sizes: "16x16",  type: "image/png" },
+      { url: "/favicon-32x32.png",  sizes: "32x32",  type: "image/png" },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
