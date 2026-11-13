@@ -125,10 +125,9 @@ export default async function HomePage() {
           aria-label="Hero"
           className="relative w-full overflow-hidden"
           style={{
-            /* 16:9 on desktop, taller on mobile so hotel stays visible */
             aspectRatio: '16 / 9',
-            minHeight: '520px',
-            maxHeight: '90vh',
+            minHeight: '600px',
+            maxHeight: '92vh',
           }}
         >
           {/* Background image */}
@@ -155,15 +154,13 @@ export default async function HomePage() {
             aria-hidden="true"
           />
 
-          {/* Nav sits on top of the hero */}
-          <div className="absolute inset-x-0 top-0 z-10">
-            {/* TravelerNav is fixed-positioned so it already overlays */}
-          </div>
-
-          {/* Hero content */}
+          {/* Hero content — padded top so it clears the fixed nav */}
           <div
             className="absolute inset-0 flex flex-col justify-end"
-            style={{ paddingBottom: '7%' }}
+            style={{
+              paddingTop: 'var(--nav-height)',
+              paddingBottom: '7%',
+            }}
           >
             <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
 
