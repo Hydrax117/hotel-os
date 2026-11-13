@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TravelerNav } from '../components/TravelerNav';
 import { Footer } from '../components/Footer';
-import { TravelerBooking, BookingStatus } from './mock';
+import { type BookingStatus, type TravelerBooking } from './mock';
 import { useAuth } from '../lib/auth-context';
 import { getMyBookings, cancelBooking, type BookingResponse } from '../lib/api/bookings';
 import { ApiError } from '../lib/api/client';
@@ -13,532 +14,155 @@ import { calcNights } from '../lib/booking';
 
 // ── Status mapping ────────────────────────────────────────────────────────────
 
-function mapStatus(apiStatus: BookingResponse['status']): BookingStatus {
-  switch (apiStatus) {
-    case 'CHECKED_IN':
-      return 'checked-in';
-    case 'CONFIRMED':
-    case 'HELD':
-    case 'PAYMENT_PENDING':
-    case 'PENDING':
-      return 'upcoming';
-    case 'CHECKED_OUT':
-      return 'completed';
-    case 'CANCELLED':
-    case 'NO_SHOW':
-      return 'cancelled';
+function mapStatus(s: BookingResponse['status']): BookingStatus {
+  switch (s) {
+    case 'CHECKED_IN':                                      return 'checked-in';
+    case 'CONFIRMED': case 'HELD':
+    case 'PAYMENT_PENDING': case 'PENDING':                 return 'upcoming';
+    case 'CHECKED_OUT':                                     return 'completed';
+    case 'CANCELLED': case 'NO_SHOW': default:              return 'cancelled';
   }
 }
 
-// ── API → UI mapping ──────────────────────────────────────────────────────────
-
 function mapApiBooking(b: BookingResponse): TravelerBooking {
   return {
-    id: b.id,
-    hotelId: b.hotel?.id ?? b.hotelId,
-    hotelName: b.hotel?.name ?? 'Hotel',
-    hotelCity: b.hotel?.city ?? '—',
-    hotelState: b.hotel?.state ?? '—',
-    roomName: b.roomType?.name ?? 'Room',
-    roomId: b.roomTypeId,
-    checkIn: b.checkIn,
-    checkOut: b.checkOut,
-    nights: calcNights(b.checkIn, b.checkOut),
-    guests: b.guests,
-    totalNgn: Number(b.totalNgn),
-    status: mapStatus(b.status),
-    createdAt: b.createdAt,
+    id:           b.id,
+    hotelId:      b.hotel?.id ?? b.hotelId,
+    hotelName:    b.hotel?.name ?? 'Hotel',
+    hotelCity:    b.hotel?.city ?? '',
+    hotelState:   b.hotel?.state ?? '',
+    roomName:     b.roomType?.name ?? 'Room',
+    roomId:       b.roomTypeId,
+    checkIn:      b.checkIn,
+    checkOut:     b.checkOut,
+    nights:       calcNights(b.checkIn, b.checkOut),
+    guests:       b.guests,
+    totalNgn:     Number(b.totalNgn),
+    status:       mapStatus(b.status),
+    createdAt:    b.createdAt,
     specialRequests: b.specialRequests,
-    hasReview: (b as BookingResponse & { hasReview?: boolean }).hasReview ?? false,
+    hasReview:    (b as BookingResponse & { hasReview?: boolean }).hasReview ?? false,
   };
 }
 
-// ── Gradient helper ───────────────────────────────────────────────────────────
-
-const GRADIENTS = [
-  'linear-gradient(135deg, #c9a96e 0%, #8b5e3c 100%)',
-  'linear-gradient(135deg, #7c9b6e 0%, #3d6b4f 100%)',
-  'linear-gradient(135deg, #6e7fa3 0%, #3d4f6b 100%)',
-  'linear-gradient(135deg, #9b6e7c 0%, #6b3d4f 100%)',
-];
-
-function hotelGradient(hotelId: string): string {
-  const hash = hotelId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return GRADIENTS[hash % GRADIENTS.length];
-}
-
-// ── Date & currency helpers ───────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string): string {
+  if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
 }
 
-function fmtNgn(amount: number): string {
-  return '\u20A6' + Number(amount).toLocaleString('en-NG');
+function fmtNgn(n: number): string {
+  return '\u20A6' + Number(n).toLocaleString('en-NG');
+}
+
+// Deterministic warm gradient for hotels with no image
+const HOTEL_GRADIENTS = [
+  ['#c9a96e','#8b5e3c'],
+  ['#7c9b6e','#3d6b4f'],
+  ['#9b8b6e','#6b5035'],
+  ['#6e8b9b','#3d5f6b'],
+];
+function hotelGradient(id: string): string {
+  const h = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const [a, b] = HOTEL_GRADIENTS[h % HOTEL_GRADIENTS.length];
+  return `linear-gradient(140deg, ${a} 0%, ${b} 100%)`;
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
+const STATUS_CONFIG: Record<BookingStatus, { bg: string; color: string; dot?: string; label: string }> = {
+  'checked-in': { bg: '#dcfce7', color: '#15803d', dot: '#16a34a', label: 'Checked in'  },
+  upcoming:     { bg: '#dbeafe', color: '#1d4ed8',                  label: 'Upcoming'    },
+  completed:    { bg: 'var(--color-muted)', color: 'var(--color-text-secondary)', label: 'Completed' },
+  cancelled:    { bg: '#fee2e2', color: '#dc2626',                  label: 'Cancelled'   },
+};
+
 function StatusBadge({ status }: { status: BookingStatus }) {
-  const styles: Record<BookingStatus, { background: string; color: string; label: string }> = {
-    upcoming:    { background: '#dbeafe', color: '#1d4ed8', label: 'Upcoming' },
-    'checked-in':{ background: '#dcfce7', color: '#15803d', label: '● Checked In' },
-    completed:   { background: '#f3f4f6', color: '#6b7280', label: 'Completed' },
-    cancelled:   { background: '#fee2e2', color: '#dc2626', label: 'Cancelled' },
-  };
-  const s = styles[status];
+  const c = STATUS_CONFIG[status];
   return (
     <span
       style={{
-        background: s.background,
-        color: s.color,
-        fontSize: '12px',
-        fontWeight: 600,
-        padding: '3px 10px',
-        borderRadius: '999px',
-        whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        background: c.bg, color: c.color,
+        fontSize: 12, fontWeight: 600,
+        padding: '3px 10px', borderRadius: 999,
+        whiteSpace: 'nowrap', flexShrink: 0,
       }}
     >
-      {s.label}
+      {c.dot && (
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.dot, flexShrink: 0 }} aria-hidden="true" />
+      )}
+      {c.label}
     </span>
   );
 }
 
-// ── SVG Icons ─────────────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
-function IconBed({ size = 24 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
-    >
-      <path d="M2 9V19" />
-      <path d="M22 9V19" />
-      <path d="M2 19H22" />
-      <path d="M2 9H22" />
-      <path d="M2 9C2 6.8 3.8 5 6 5H18C20.2 5 22 6.8 22 9" />
-      <rect x="6" y="9" width="12" height="5" rx="1" fill="currentColor" fillOpacity="0.15" />
-    </svg>
-  );
-}
-
-function IconMapPin({ size = 24 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
-    >
-      <path d="M12 2C8.7 2 6 4.7 6 8c0 5.2 6 13 6 13s6-7.8 6-13c0-3.3-2.7-6-6-6z" />
-      <circle cx="12" cy="8" r="2" />
-    </svg>
-  );
-}
-
-function IconCalendar({ size = 24 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
-    >
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
-
-function IconPerson({ size = 24 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
-    >
-      <circle cx="12" cy="7" r="4" />
-      <path d="M5 21v-2a7 7 0 0 1 14 0v2" />
-    </svg>
-  );
-}
-
-// ── Booking card ──────────────────────────────────────────────────────────────
-
-type BookingCardProps = {
-  booking: TravelerBooking;
-  onCancel: (id: string) => Promise<void>;
-  cancellingId: string | null;
-};
-
-function BookingCard({ booking, onCancel, cancellingId }: BookingCardProps) {
-  const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelName=${encodeURIComponent(booking.hotelName)}&roomName=${encodeURIComponent(booking.roomName)}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}&total=${booking.totalNgn}`;
-  const isCancelling = cancellingId === booking.id;
-
+function SkeletonCard() {
   return (
     <div
-      style={{
-        background: 'white',
-        border: '1px solid var(--tp-border)',
-        borderRadius: '14px',
-        overflow: 'hidden',
-        marginBottom: '16px',
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-      }}
-    >
-      {/* Image placeholder */}
-      <div
-        style={{
-          background: hotelGradient(booking.hotelId),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          width: '180px',
-          minHeight: '120px',
-        }}
-        className="booking-card-img"
-      >
-        <div
-          style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            fontWeight: 700,
-            color: 'white',
-          }}
-          aria-hidden="true"
-        >
-          {booking.hotelName.charAt(0)}
-        </div>
-      </div>
-
-      {/* Card content */}
-      <div
-        style={{
-          padding: '20px',
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-        }}
-      >
-        {/* Row 1: Hotel name + status */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-          <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--tp-primary)' }}>
-            {booking.hotelName}
-          </span>
-          <StatusBadge status={booking.status} />
-        </div>
-
-        {/* Row 2: Room name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--tp-secondary)' }}>
-          <IconBed size={16} />
-          <span style={{ fontSize: '14px' }}>{booking.roomName}</span>
-        </div>
-
-        {/* Row 3: Location */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--tp-secondary)' }}>
-          <IconMapPin size={16} />
-          <span style={{ fontSize: '14px' }}>{booking.hotelCity}, {booking.hotelState}</span>
-        </div>
-
-        {/* Row 4: Dates */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: 'var(--tp-secondary)' }}>
-          <IconCalendar size={16} />
-          <span style={{ fontSize: '14px' }}>
-            {fmtDate(booking.checkIn)} → {fmtDate(booking.checkOut)}
-          </span>
-          <span
-            style={{
-              background: 'var(--tp-muted)',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '12px',
-              color: 'var(--tp-secondary)',
-            }}
-          >
-            {booking.nights} night{booking.nights !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Row 5: Guests */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--tp-secondary)' }}>
-          <IconPerson size={16} />
-          <span style={{ fontSize: '14px' }}>
-            {booking.guests} guest{booking.guests !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Row 6: Price + actions */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-            marginTop: '4px',
-          }}
-        >
-          <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--tp-primary)' }}>
-            {fmtNgn(booking.totalNgn)}
-          </span>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {booking.status === 'upcoming' && (
-              <>
-                <Link
-                  href={detailsHref}
-                  style={{
-                    border: '1px solid var(--tp-border)',
-                    background: 'transparent',
-                    color: 'var(--tp-primary)',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  View details
-                </Link>
-                <button
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: isCancelling ? 'var(--tp-secondary)' : '#dc2626',
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    cursor: isCancelling ? 'not-allowed' : 'pointer',
-                    opacity: isCancelling ? 0.6 : 1,
-                  }}
-                  type="button"
-                  disabled={isCancelling}
-                  onClick={() => { void onCancel(booking.id); }}
-                >
-                  {isCancelling ? 'Cancelling…' : 'Cancel booking'}
-                </button>
-              </>
-            )}
-
-            {booking.status === 'checked-in' && (
-              <>
-                <Link
-                  href={`/room-service?bookingId=${booking.id}&hotelId=${booking.hotelId}`}
-                  style={{
-                    background: 'var(--tp-accent)',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  🍽 Room Service
-                </Link>
-                <Link
-                  href={`/bookings/${booking.id}/extend`}
-                  style={{
-                    border: '1px solid var(--tp-accent)',
-                    color: 'var(--tp-accent)',
-                    background: 'transparent',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  Extend stay
-                </Link>
-                <Link
-                  href={detailsHref}
-                  style={{
-                    border: '1px solid var(--tp-border)',
-                    background: 'transparent',
-                    color: 'var(--tp-primary)',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  View details
-                </Link>
-              </>
-            )}
-
-            {booking.status === 'completed' && (
-              <>
-                <Link
-                  href={detailsHref}
-                  style={{
-                    border: '1px solid var(--tp-border)',
-                    background: 'transparent',
-                    color: 'var(--tp-primary)',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                  }}
-                >
-                  View details
-                </Link>
-                {!booking.hasReview && (
-                  <Link
-                    href={`/reviews/new?hotelId=${booking.hotelId}&bookingId=${booking.id}`}
-                    style={{
-                      border: '1px solid var(--tp-accent)',
-                      color: 'var(--tp-accent)',
-                      background: 'transparent',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    Leave a review
-                  </Link>
-                )}
-                {booking.hasReview && (
-                  <span
-                    style={{
-                      fontSize: '13px',
-                      color: '#15803d',
-                      fontWeight: 500,
-                      padding: '8px 0',
-                    }}
-                  >
-                    ✓ Review submitted
-                  </span>
-                )}
-              </>
-            )}
-
-            {booking.status === 'cancelled' && (
-              <Link
-                href={detailsHref}
-                style={{
-                  border: '1px solid var(--tp-border)',
-                  background: 'transparent',
-                  color: 'var(--tp-secondary)',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  display: 'inline-block',
-                }}
-              >
-                View details
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-
-    </div>
+      className="skeleton"
+      style={{ height: 160, borderRadius: 'var(--radius-lg)', marginBottom: 12 }}
+      aria-hidden="true"
+    />
   );
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-const EMPTY_MESSAGES: Record<BookingStatus, string> = {
-  'checked-in': 'You are not currently checked in anywhere.',
-  upcoming: 'You have no upcoming reservations. Start exploring hotels and plan your next stay.',
-  completed: 'You have no completed stays yet. Your past reservations will appear here.',
-  cancelled: 'You have no cancelled bookings.',
+const EMPTY_COPY: Record<BookingStatus | 'all', { heading: string; body: string; cta: boolean }> = {
+  all:          { heading: 'No bookings yet',           body: 'Your confirmed reservations will appear here.',                           cta: true  },
+  upcoming:     { heading: 'No upcoming stays',         body: 'Once you book a hotel, your upcoming reservations will appear here.',     cta: true  },
+  'checked-in': { heading: 'Not currently checked in',  body: 'Active stays will show here when you are at the hotel.',                  cta: false },
+  completed:    { heading: 'No completed stays yet',    body: 'Past stays will appear here after check-out.',                           cta: false },
+  cancelled:    { heading: 'No cancelled bookings',     body: 'Cancelled reservations will appear here if you ever cancel a booking.',  cta: false },
 };
 
-function EmptyState({ status }: { status: BookingStatus }) {
+function EmptyState({ tab }: { tab: BookingStatus | 'all' }) {
+  const e = EMPTY_COPY[tab];
   return (
     <div
       style={{
+        padding: '72px 24px',
         textAlign: 'center',
-        padding: '60px 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '16px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
       }}
     >
       <div
         style={{
-          width: '96px',
-          height: '96px',
-          background: 'var(--tp-muted)',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--tp-secondary)',
+          width: 64, height: 64, borderRadius: '50%',
+          background: 'var(--color-brand-light)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
+        aria-hidden="true"
       >
-        <IconCalendar size={40} />
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
       </div>
-      <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--tp-primary)', margin: 0 }}>
-        No {status} bookings
-      </h3>
-      <p style={{ fontSize: '14px', color: 'var(--tp-secondary)', margin: 0, maxWidth: '360px' }}>
-        {EMPTY_MESSAGES[status]}
-      </p>
-      {(status === 'upcoming' || status === 'checked-in') && (
+      <div>
+        <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>
+          {e.heading}
+        </p>
+        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', margin: 0, maxWidth: 320 }}>
+          {e.body}
+        </p>
+      </div>
+      {e.cta && (
         <Link
           href="/search"
           style={{
-            background: 'var(--tp-accent)',
-            color: 'white',
-            padding: '10px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 500,
-            textDecoration: 'none',
             display: 'inline-block',
+            background: 'var(--color-brand)', color: '#fff',
+            padding: '10px 24px', borderRadius: 'var(--radius-md)',
+            fontSize: 14, fontWeight: 600, textDecoration: 'none',
           }}
         >
           Explore hotels
@@ -548,313 +172,559 @@ function EmptyState({ status }: { status: BookingStatus }) {
   );
 }
 
-// ── Reviewed toast banner ─────────────────────────────────────────────────────
+// ── Booking card ──────────────────────────────────────────────────────────────
+
+function BookingCard({
+  booking,
+  onCancel,
+  cancellingId,
+}: {
+  booking: TravelerBooking;
+  onCancel: (id: string) => Promise<void>;
+  cancellingId: string | null;
+}) {
+  const isCancelling = cancellingId === booking.id;
+  const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelName=${encodeURIComponent(booking.hotelName)}&roomName=${encodeURIComponent(booking.roomName)}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}&total=${booking.totalNgn}`;
+  const isCheckedIn  = booking.status === 'checked-in';
+  const isUpcoming   = booking.status === 'upcoming';
+  const isCompleted  = booking.status === 'completed';
+  const isCancelled  = booking.status === 'cancelled';
+
+  return (
+    <article
+      style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'row',
+        transition: 'box-shadow 0.15s',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-md)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
+    >
+      {/* Property image */}
+      <Link
+        href={detailsHref}
+        aria-hidden="true"
+        tabIndex={-1}
+        className="relative shrink-0 overflow-hidden"
+        style={{
+          width: 'clamp(120px, 20vw, 200px)',
+          minHeight: 160,
+          display: 'block',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: hotelGradient(booking.hotelId),
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 60%)',
+          }}
+        />
+        <span
+          style={{
+            position: 'absolute', bottom: 12, left: 14,
+            fontFamily: 'var(--font-serif)',
+            fontWeight: 300, fontSize: '3rem', lineHeight: 1,
+            color: 'rgba(255,255,255,0.22)',
+            userSelect: 'none',
+          }}
+          aria-hidden="true"
+        >
+          {booking.hotelName.charAt(0)}
+        </span>
+      </Link>
+
+      {/* Content */}
+      <div style={{ flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+
+        {/* Row 1: name + badge */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <Link href={detailsHref} style={{ textDecoration: 'none', minWidth: 0 }}>
+            <h2
+              style={{
+                fontSize: 16, fontWeight: 600,
+                color: 'var(--color-text-primary)',
+                margin: 0, lineHeight: 1.3,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              {booking.hotelName}
+            </h2>
+          </Link>
+          <StatusBadge status={booking.status} />
+        </div>
+
+        {/* Row 2: meta row — room · location · dates · guests */}
+        <div
+          style={{
+            display: 'flex', flexWrap: 'wrap',
+            gap: '6px 20px', fontSize: 13,
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 9V19M22 9V19M2 19H22M2 9H22M2 9C2 6.8 3.8 5 6 5H18C20.2 5 22 6.8 22 9"/>
+              <rect x="6" y="9" width="12" height="5" rx="1" fill="currentColor" fillOpacity=".12"/>
+            </svg>
+            {booking.roomName}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            {booking.hotelCity}{booking.hotelState ? `, ${booking.hotelState}` : ''}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {fmtDate(booking.checkIn)} &rarr; {fmtDate(booking.checkOut)}
+            <span
+              style={{
+                background: 'var(--color-muted)',
+                borderRadius: 999, padding: '1px 7px',
+                fontSize: 11, fontWeight: 500,
+              }}
+            >
+              {booking.nights} night{booking.nights !== 1 ? 's' : ''}
+            </span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+            </svg>
+            {booking.guests} guest{booking.guests !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {/* Row 3: amount + actions */}
+        <div
+          style={{
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+            marginTop: 'auto', paddingTop: 12,
+            borderTop: '1px solid var(--color-border)',
+          }}
+        >
+          <div>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              {fmtNgn(booking.totalNgn)}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginLeft: 4 }}>total</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+
+            {/* Checked-in actions */}
+            {isCheckedIn && (
+              <>
+                <Link
+                  href={`/room-service?bookingId=${booking.id}&hotelId=${booking.hotelId}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: 'var(--color-brand)', color: '#fff',
+                    padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                    fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                    <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+                  </svg>
+                  Room service
+                </Link>
+                <Link
+                  href={`/bookings/${booking.id}/extend`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    border: '1px solid var(--color-brand)', color: 'var(--color-brand)',
+                    background: 'transparent',
+                    padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                  }}
+                >
+                  Extend stay
+                </Link>
+                <Link
+                  href={detailsHref}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    border: '1px solid var(--color-border)', color: 'var(--color-text-primary)',
+                    background: 'transparent',
+                    padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                  }}
+                >
+                  Details
+                </Link>
+              </>
+            )}
+
+            {/* Upcoming actions */}
+            {isUpcoming && (
+              <>
+                <Link
+                  href={detailsHref}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    border: '1px solid var(--color-border)', color: 'var(--color-text-primary)',
+                    background: 'transparent',
+                    padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                  }}
+                >
+                  View details
+                </Link>
+                <button
+                  type="button"
+                  disabled={isCancelling}
+                  onClick={() => void onCancel(booking.id)}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    color: isCancelling ? 'var(--color-text-secondary)' : '#dc2626',
+                    fontSize: 13, fontWeight: 500,
+                    cursor: isCancelling ? 'not-allowed' : 'pointer',
+                    opacity: isCancelling ? 0.55 : 1,
+                    padding: '7px 4px',
+                  }}
+                >
+                  {isCancelling ? 'Cancelling…' : 'Cancel'}
+                </button>
+              </>
+            )}
+
+            {/* Completed actions */}
+            {isCompleted && (
+              <>
+                <Link
+                  href={detailsHref}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    border: '1px solid var(--color-border)', color: 'var(--color-text-primary)',
+                    background: 'transparent',
+                    padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                  }}
+                >
+                  View details
+                </Link>
+                {!booking.hasReview ? (
+                  <Link
+                    href={`/reviews/new?hotelId=${booking.hotelId}&bookingId=${booking.id}`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      border: '1px solid var(--color-brand)', color: 'var(--color-brand)',
+                      background: 'transparent',
+                      padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                      fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                    }}
+                  >
+                    Leave a review
+                  </Link>
+                ) : (
+                  <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Reviewed
+                  </span>
+                )}
+              </>
+            )}
+
+            {/* Cancelled */}
+            {isCancelled && (
+              <Link
+                href={detailsHref}
+                style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
+                  background: 'transparent',
+                  padding: '7px 14px', borderRadius: 'var(--radius-md)',
+                  fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                }}
+              >
+                View details
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ── Review banner ─────────────────────────────────────────────────────────────
 
 function ReviewedBanner() {
   const searchParams = useSearchParams();
   const [visible, setVisible] = useState(true);
-  const reviewed = searchParams.get('reviewed');
-
-  if (!reviewed || !visible) return null;
-
+  if (!searchParams.get('reviewed') || !visible) return null;
   return (
     <div
       role="status"
       aria-live="polite"
       style={{
-        background: '#dcfce7',
-        border: '1px solid #86efac',
-        borderRadius: '10px',
-        padding: '14px 20px',
-        marginBottom: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        background: '#f0fdf4', border: '1px solid #bbf7d0',
+        borderRadius: 'var(--radius-md)',
+        padding: '12px 16px', marginBottom: 24,
+        fontSize: 14, fontWeight: 500, color: '#15803d',
       }}
     >
-      <span style={{ fontSize: '14px', fontWeight: 500, color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-          <polyline points="20 6 9 17 4 12" />
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12"/>
         </svg>
         Your review has been submitted. Thank you!
       </span>
       <button
         type="button"
         onClick={() => setVisible(false)}
-        aria-label="Dismiss notification"
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#15803d', padding: '4px', lineHeight: 1 }}
+        aria-label="Dismiss"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#15803d', lineHeight: 1, padding: 2 }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Tab types ─────────────────────────────────────────────────────────────────
 
-const TABS: { status: BookingStatus; label: string }[] = [
-  { status: 'checked-in', label: 'Checked In' },
-  { status: 'upcoming',   label: 'Upcoming' },
-  { status: 'completed',  label: 'Completed' },
-  { status: 'cancelled',  label: 'Cancelled' },
+type TabKey = BookingStatus | 'all';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'all',         label: 'All'             },
+  { key: 'upcoming',    label: 'Upcoming'        },
+  { key: 'checked-in',  label: 'Staying now'     },
+  { key: 'completed',   label: 'Completed'       },
+  { key: 'cancelled',   label: 'Cancelled'       },
 ];
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<BookingStatus>('upcoming');
-  const [bookings, setBookings] = useState<TravelerBooking[]>([]);
-  const [loadingBookings, setLoadingBookings] = useState(true);
-  const [fetchError, setFetchError] = useState('');
+  const [activeTab, setActiveTab]       = useState<TabKey>('all');
+  const [bookings, setBookings]         = useState<TravelerBooking[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [fetchError, setFetchError]     = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  // Auth gate
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/signin?redirect=/bookings');
-    }
+    if (!authLoading && !user) router.push('/auth/signin?redirect=/bookings');
   }, [authLoading, user, router]);
 
-  // Fetch bookings once user is known
   useEffect(() => {
     if (!user) return;
-    setLoadingBookings(true);
+    setLoading(true);
     getMyBookings()
       .then(raw => setBookings(raw.map(mapApiBooking)))
-      .catch(err => {
-        const msg = err instanceof ApiError ? err.message : 'Failed to load bookings.';
-        setFetchError(msg);
-      })
-      .finally(() => setLoadingBookings(false));
+      .catch(err => setFetchError(err instanceof ApiError ? err.message : 'Failed to load bookings.'))
+      .finally(() => setLoading(false));
   }, [user]);
 
-  // Cancel handler
-  const handleCancelBooking = useCallback(async (bookingId: string): Promise<void> => {
+  const handleCancel = useCallback(async (bookingId: string) => {
     setCancellingId(bookingId);
     try {
       await cancelBooking(bookingId);
-      setBookings(prev =>
-        prev.map(b =>
-          b.id === bookingId ? { ...b, status: 'cancelled' as BookingStatus } : b
-        )
-      );
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' as BookingStatus } : b));
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Failed to cancel booking.';
-      alert(msg);
+      alert(err instanceof ApiError ? err.message : 'Failed to cancel booking.');
     } finally {
       setCancellingId(null);
     }
   }, []);
 
-  const counts = {
+  // Counts per tab
+  const counts: Record<TabKey, number> = {
+    all:          bookings.length,
+    upcoming:     bookings.filter(b => b.status === 'upcoming').length,
     'checked-in': bookings.filter(b => b.status === 'checked-in').length,
-    upcoming:  bookings.filter(b => b.status === 'upcoming').length,
-    completed: bookings.filter(b => b.status === 'completed').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length,
+    completed:    bookings.filter(b => b.status === 'completed').length,
+    cancelled:    bookings.filter(b => b.status === 'cancelled').length,
   };
 
-  const nightsStayed = bookings
-    .filter(b => b.status === 'completed')
-    .reduce((sum, b) => sum + b.nights, 0);
+  // Stats — from real data
+  const totalNights = bookings
+    .filter(b => b.status === 'completed' || b.status === 'checked-in')
+    .reduce((s, b) => s + b.nights, 0);
 
-  const totalSpent = bookings
-    .filter(b => b.status === 'completed')
-    .reduce((sum, b) => sum + b.totalNgn, 0);
+  // "Total value" = all non-cancelled bookings (booked amount, not just paid)
+  const totalValue = bookings
+    .filter(b => b.status !== 'cancelled')
+    .reduce((s, b) => s + b.totalNgn, 0);
 
-  const filtered = bookings.filter(b => b.status === activeTab);
+  const filtered = activeTab === 'all'
+    ? bookings
+    : bookings.filter(b => b.status === activeTab);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--tp-bg)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <TravelerNav />
-
-      {/* Spacer for fixed nav */}
-      <div style={{ paddingTop: '64px' }} />
+      <div style={{ paddingTop: 'var(--nav-height)' }} />
 
       <main>
-        <div
-          style={{ maxWidth: '64rem', margin: '0 auto', padding: '40px 16px' }}
-          className="md:px-6"
-        >
-          {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" style={{ marginBottom: '16px' }}>
-            <ol
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                listStyle: 'none',
-                margin: 0,
-                padding: 0,
-                fontSize: '14px',
-                color: 'var(--tp-secondary)',
-              }}
-            >
-              <li>
-                <Link href="/" style={{ color: 'var(--tp-secondary)', textDecoration: 'none' }}>
-                  Home
-                </Link>
-              </li>
-              <li aria-hidden="true" style={{ userSelect: 'none' }}>/</li>
-              <li style={{ color: 'var(--tp-primary)', fontWeight: 500 }}>My Bookings</li>
-            </ol>
-          </nav>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 20px 80px' }}>
 
-          {/* Reviewed toast banner */}
           <Suspense fallback={null}>
             <ReviewedBanner />
           </Suspense>
 
-          {/* Heading */}
-          <h1
-            style={{
-              fontSize: '28px',
-              fontWeight: 700,
-              color: 'var(--tp-primary)',
-              margin: '0 0 8px',
-            }}
-          >
-            My Bookings
-          </h1>
-          <p style={{ fontSize: '15px', color: 'var(--tp-secondary)', margin: '0 0 24px' }}>
-            Manage your upcoming and past reservations.
-          </p>
+          {/* Page header */}
+          <header style={{ marginBottom: 36 }}>
+            <h1
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontWeight: 400,
+                fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+                lineHeight: 1.1,
+                color: 'var(--color-text-primary)',
+                margin: '0 0 10px',
+              }}
+            >
+              Your stays, all in one place.
+            </h1>
+            <p style={{ fontSize: 15, color: 'var(--color-text-secondary)', margin: 0, maxWidth: 480 }}>
+              Manage reservations, discover upcoming stays and revisit your travel history.
+            </p>
+          </header>
 
-          {/* Summary strip (desktop only) */}
-          <div
-            style={{ gap: '16px', marginBottom: '24px' }}
-            className="hidden md:flex"
-          >
-            {[
-              { label: 'Total Bookings', value: String(bookings.length) },
-              { label: 'Nights Stayed', value: String(nightsStayed) },
-              { label: 'Total Spent', value: fmtNgn(totalSpent) },
-            ].map(chip => (
-              <div
-                key={chip.label}
-                style={{
-                  background: 'var(--tp-surface)',
-                  border: '1px solid var(--tp-border)',
-                  borderRadius: '12px',
-                  padding: '16px 24px',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: 'var(--tp-secondary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: '4px',
-                  }}
-                >
-                  {chip.label}
-                </div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--tp-primary)' }}>
-                  {chip.value}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Error banner */}
-          {fetchError && !loadingBookings && (
+          {/* Stats strip */}
+          {!loading && bookings.length > 0 && (
             <div
               style={{
-                background: '#fee2e2',
-                color: '#dc2626',
-                borderRadius: '10px',
-                padding: '14px 20px',
-                marginBottom: '16px',
-                fontSize: '14px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 1,
+                background: 'var(--color-border)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+                marginBottom: 32,
+              }}
+            >
+              {[
+                { label: 'Total bookings',   value: String(bookings.length)   },
+                { label: 'Nights booked',    value: String(totalNights)       },
+                { label: 'Total value',      value: fmtNgn(totalValue)        },
+              ].map(stat => (
+                <div
+                  key={stat.label}
+                  style={{
+                    background: 'var(--color-surface)',
+                    padding: '20px 24px',
+                  }}
+                >
+                  <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-secondary)', margin: '0 0 6px' }}>
+                    {stat.label}
+                  </p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, letterSpacing: '-0.01em' }}>
+                    {stat.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error */}
+          {fetchError && !loading && (
+            <div
+              style={{
+                background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)',
+                borderRadius: 'var(--radius-md)', padding: '12px 16px',
+                fontSize: 14, marginBottom: 24,
               }}
             >
               {fetchError}
             </div>
           )}
 
-          {/* Tab bar */}
+          {/* Filter tabs */}
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: '8px',
-              marginBottom: '24px',
-              borderBottom: '1px solid var(--tp-border)',
+              display: 'flex', gap: 2,
+              borderBottom: '1px solid var(--color-border)',
+              marginBottom: 28,
+              overflowX: 'auto',
             }}
           >
             {TABS.map(tab => {
-              const isActive = activeTab === tab.status;
+              const isActive = activeTab === tab.key;
+              const count = counts[tab.key];
               return (
                 <button
-                  key={tab.status}
-                  onClick={() => setActiveTab(tab.status)}
+                  key={tab.key}
                   type="button"
+                  onClick={() => setActiveTab(tab.key)}
                   style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px 8px 0 0',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    border: 'none',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '10px 14px',
+                    background: 'none', border: 'none',
+                    borderBottom: isActive
+                      ? '2px solid var(--color-brand)'
+                      : '2px solid transparent',
+                    color: isActive ? 'var(--color-brand)' : 'var(--color-text-secondary)',
+                    fontSize: 13, fontWeight: isActive ? 600 : 400,
                     cursor: 'pointer',
-                    background: isActive
-                      ? tab.status === 'checked-in' ? '#15803d' : 'var(--tp-primary)'
-                      : 'transparent',
-                    color: isActive ? 'white' : 'var(--tp-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'background 0.15s',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.15s',
+                    marginBottom: -1,
                   }}
+                  aria-selected={isActive}
                 >
                   {tab.label}
-                  <span
-                    style={{
-                      background: isActive ? 'rgba(0,0,0,0.15)' : 'var(--tp-muted)',
-                      color: 'inherit',
-                      padding: '1px 7px',
-                      borderRadius: '999px',
-                      fontSize: '12px',
-                      marginLeft: '6px',
-                    }}
-                  >
-                    {counts[tab.status]}
-                  </span>
+                  {count > 0 && (
+                    <span
+                      style={{
+                        background: isActive ? 'var(--color-brand-light)' : 'var(--color-muted)',
+                        color: isActive ? 'var(--color-brand)' : 'var(--color-text-secondary)',
+                        borderRadius: 999, padding: '1px 7px',
+                        fontSize: 11, fontWeight: 600,
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
           {/* Booking list */}
-          <div>
-            {loadingBookings ? (
-              <div>
-                <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-                {[0, 1, 2].map(i => (
-                  <div
-                    key={i}
-                    style={{
-                      height: 120,
-                      background: 'var(--tp-muted)',
-                      borderRadius: '14px',
-                      marginBottom: '16px',
-                      animation: 'pulse 1.5s ease-in-out infinite',
-                    }}
-                  />
-                ))}
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {loading ? (
+              [0,1,2].map(i => <SkeletonCard key={i} />)
             ) : filtered.length === 0 ? (
-              <EmptyState status={activeTab} />
+              <div
+                style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                }}
+              >
+                <EmptyState tab={activeTab} />
+              </div>
             ) : (
-              filtered.map(booking => (
+              filtered.map(b => (
                 <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onCancel={handleCancelBooking}
+                  key={b.id}
+                  booking={b}
+                  onCancel={handleCancel}
                   cancellingId={cancellingId}
                 />
               ))
