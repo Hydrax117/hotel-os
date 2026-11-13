@@ -35,33 +35,31 @@ function NavLink({
   href,
   children,
   onClick,
+  transparent = false,
 }: {
   href: string;
   children: React.ReactNode;
   onClick?: () => void;
+  transparent?: boolean;
 }) {
   const pathname = usePathname();
   const isActive = href !== '/' && pathname.startsWith(href);
+
+  const baseColor = transparent
+    ? 'rgba(255,255,255,0.85)'
+    : isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)';
 
   return (
     <Link
       href={href}
       onClick={onClick}
       className="relative text-sm font-medium transition-colors duration-150"
-      style={{
-        color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.color = 'var(--color-text-primary)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.color = isActive
-          ? 'var(--color-text-primary)'
-          : 'var(--color-text-secondary)';
-      }}
+      style={{ color: baseColor }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = transparent ? '#fff' : 'var(--color-text-primary)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = baseColor; }}
     >
       {children}
-      {isActive && (
+      {isActive && !transparent && (
         <span
           className="absolute -bottom-[22px] left-0 right-0 h-[2px] rounded-full"
           style={{ background: 'var(--color-brand)' }}
@@ -190,18 +188,14 @@ function UserMenu({
 
 // ── Main nav component ────────────────────────────────────────────────────────
 
-export function TravelerNav() {
+export function TravelerNav({ forceTransparent = false }: { forceTransparent?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      // ignore API errors — clear locally regardless
-    }
+    try { await logout(); } catch { /* ignore */ }
     signOut();
     router.push('/');
   };
@@ -211,6 +205,20 @@ export function TravelerNav() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth >= 768) setMobileOpen(false); };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  // When forceTransparent, start in transparent mode and only solidify on scroll
+  const isTransparent = forceTransparent && !scrolled;
 
   useEffect(() => {
     const onResize = () => { if (window.innerWidth >= 768) setMobileOpen(false); };
@@ -232,7 +240,7 @@ export function TravelerNav() {
         className="fixed left-0 right-0 top-0 z-[300] transition-all duration-200"
         style={{
           height: 'var(--nav-height)',
-          background: scrolled ? 'rgba(255,255,255,0.96)' : 'var(--color-surface)',
+          background: scrolled ? 'rgba(255,255,255,0.96)' : isTransparent ? 'transparent' : 'var(--color-surface)',
           borderBottom: `1px solid ${scrolled ? 'var(--color-border)' : 'transparent'}`,
           backdropFilter: scrolled ? 'blur(12px)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(12px)' : 'none',
@@ -250,20 +258,23 @@ export function TravelerNav() {
             <img
               src="/logo.png"
               alt="Lodgen"
-              style={{ height: 32, width: 'auto', display: 'block' }}
+              style={{
+                height: 32, width: 'auto', display: 'block',
+                filter: isTransparent ? 'brightness(0) invert(1)' : 'none',
+              }}
             />
           </Link>
 
           {/* ── Desktop nav links ── */}
           <div className="hidden items-center gap-8 md:flex">
-            <NavLink href="/search">Explore stays</NavLink>
-            <NavLink href="/bookings">My bookings</NavLink>
+            <NavLink href="/search" transparent={isTransparent}>Explore stays</NavLink>
+            <NavLink href="/bookings" transparent={isTransparent}>My bookings</NavLink>
             <a
               href="http://hotel.localhost:3000"
               className="text-sm font-medium transition-colors"
-              style={{ color: 'var(--color-text-secondary)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-primary)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-secondary)'; }}
+              style={{ color: isTransparent ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = isTransparent ? '#fff' : 'var(--color-text-primary)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = isTransparent ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)'; }}
             >
               List your property
             </a>
@@ -283,9 +294,9 @@ export function TravelerNav() {
                 <Link
                   href="/auth/signin"
                   className="text-sm font-medium transition-colors"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-primary)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-secondary)'; }}
+                  style={{ color: isTransparent ? 'rgba(255,255,255,0.9)' : 'var(--color-text-secondary)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = isTransparent ? '#fff' : 'var(--color-text-primary)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = isTransparent ? 'rgba(255,255,255,0.9)' : 'var(--color-text-secondary)'; }}
                 >
                   Sign in
                 </Link>
@@ -294,7 +305,7 @@ export function TravelerNav() {
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-85"
                   style={{ background: 'var(--color-brand)' }}
                 >
-                  Get started
+                  List Your Property
                 </Link>
               </>
             )}
