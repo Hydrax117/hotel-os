@@ -125,9 +125,10 @@ export default async function HomePage() {
           aria-label="Hero"
           className="relative w-full overflow-hidden"
           style={{
+            /* 16:9 on desktop, taller on mobile so hotel stays visible */
             aspectRatio: '16 / 9',
-            minHeight: '600px',
-            maxHeight: '92vh',
+            minHeight: '520px',
+            maxHeight: '90vh',
           }}
         >
           {/* Background image */}
@@ -154,27 +155,17 @@ export default async function HomePage() {
             aria-hidden="true"
           />
 
-          {/* Hero content — padded top so it clears the fixed nav */}
+          {/* Nav sits on top of the hero */}
+          <div className="absolute inset-x-0 top-0 z-10">
+            {/* TravelerNav is fixed-positioned so it already overlays */}
+          </div>
+
+          {/* Hero content */}
           <div
             className="absolute inset-0 flex flex-col justify-end"
-            style={{
-              paddingTop: 'var(--nav-height)',
-              paddingBottom: '7%',
-            }}
+            style={{ paddingBottom: '7%' }}
           >
             <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-
-              {/* Badge */}
-              <div
-                className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold text-white"
-                style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                Nigeria&apos;s Premier Hospitality Platform
-              </div>
 
               {/* Headline */}
               <h1
