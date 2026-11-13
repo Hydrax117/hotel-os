@@ -156,9 +156,8 @@ export function HotelCard({
           type="button"
           className="hotel-card-save absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full transition-colors"
           style={{
-            background: 'rgba(255,255,255,0.9)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255,255,255,0.6)',
+            background: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(255,255,255,0.5)',
             color: 'var(--color-text-secondary)',
           }}
           aria-label={`Save ${name}`}
