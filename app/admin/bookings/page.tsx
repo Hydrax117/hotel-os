@@ -219,7 +219,7 @@ export default function AdminBookingsPage() {
                       {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)}
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--ad-secondary)' }}>
-                      {b.roomType?.name ?? '—'}
+                      {b.resource?.name ?? b.roomType?.name ?? '—'}
                     </td>
                     <td className="px-4 py-3 font-medium" style={{ color: 'var(--ad-primary)' }}>
                       {fmtNgn(Number(b.totalNgn))}

@@ -14,7 +14,7 @@ export type ApiBookingStatus =
 
 export type CreateBookingPayload = {
   hotelId: string;
-  roomTypeId: string;
+  resourceId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -27,15 +27,14 @@ export type CreateBookingPayload = {
 
 export type BookingResponse = {
   id: string;
-  /** Human-readable reference, e.g. HOS-12345 */
   reference?: string;
   hotelId: string;
-  /** The backend returns this field as roomTypeId, not roomId */
-  roomTypeId: string;
+  resourceId?: string;
+  /** Legacy — present on old bookings */
+  roomTypeId?: string;
   checkIn: string;
   checkOut: string;
   guests: number;
-  /** The backend stores this as totalNgn (Decimal) */
   totalNgn: number;
   subtotalNgn?: number;
   serviceFeeNgn?: number;
@@ -53,7 +52,18 @@ export type BookingResponse = {
     checkInTime?: string;
     checkOutTime?: string;
   };
-  /** The backend includes room type as roomType, not room */
+  /** Resource — new bookings */
+  resource?: {
+    id: string;
+    name: string;
+    bookingUnit?: string;
+    description?: string | null;
+    capacity?: number | null;
+    attributes?: Record<string, unknown> | null;
+    images?: { url: string; isPrimary: boolean; caption: string | null }[];
+    category?: { name: string; resourceType?: { name: string } };
+  };
+  /** Legacy room type — old bookings only */
   roomType?: {
     id: string;
     name: string;

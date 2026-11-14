@@ -32,10 +32,12 @@ export type DashboardReservation = {
   id: string;
   guestName: string;
   guestEmail: string;
+  resourceName: string;
+  /** @deprecated use resourceName */
   roomTypeName: string;
   roomNumber: string;
-  checkIn: string;      // ISO date
-  checkOut: string;     // ISO date
+  checkIn: string;
+  checkOut: string;
   nights: number;
   amountNgn: number;
   status: BookingStatus;
@@ -53,16 +55,29 @@ export type DashboardRoomType = {
   imageUrl?: string;
 };
 
-export type DashboardInventoryDay = {
-  date: string;
-  available: number;
-  held: number;
-  booked: number;
+export type DashboardResource = {
+  id: string;
+  name: string;
+  code: string;
+  categoryName: string;
+  resourceTypeName: string;
+  bookingUnit: string;
+  lifecycleStatus: string;
+  operationalStatus: string;
+  marketplaceVisibility: string;
+  isBookable: boolean;
+  capacity: number | null;
+  primaryImageUrl?: string;
 };
 
-export type DashboardRoomInventory = {
-  roomTypeId: string;
-  roomTypeName: string;
+export type DashboardInventoryDay = {
+  date: string;
+  available: boolean;
+};
+
+export type DashboardResourceAvailability = {
+  resourceId: string;
+  resourceName: string;
   days: DashboardInventoryDay[];
 };
 
@@ -95,22 +110,19 @@ function normalizeStatus(apiStatus: string): BookingStatus {
 type ApiBooking = {
   id: string;
   reference?: string;
-  // Backend includes guest details on the booking itself (not nested under user)
   guestFirstName?: string;
   guestLastName?: string;
   guestEmail?: string;
-  // user is only present if backend joins it (not in getHotelBookings)
   user?: { firstName?: string; lastName?: string; email?: string };
-  // Backend uses roomType (not room)
+  resource?: { name?: string };
   roomType?: { name?: string };
-  room?: { name?: string; number?: string };  // kept for backwards compat
+  room?: { name?: string; number?: string };
   roomNumber?: string;
   checkIn: string;
   checkOut: string;
   nights?: number;
-  // Backend stores as totalNgn (Decimal), not totalAmount
   totalNgn?: number;
-  totalAmount?: number;  // kept for backwards compat
+  totalAmount?: number;
   status: string;
   createdAt: string;
 };
@@ -180,8 +192,8 @@ export async function getDashboardReservations(hotelId: string): Promise<Dashboa
     const guestName = (firstName + ' ' + lastName).trim() || 'Unknown Guest';
     const guestEmail = booking.guestEmail ?? booking.user?.email ?? '';
 
-    // Room type name: backend returns roomType (not room)
-    const roomTypeName = booking.roomType?.name ?? booking.room?.name ?? 'Room';
+    // Resource name: prefer new resource field, fall back to legacy roomType
+    const resourceName = booking.resource?.name ?? booking.roomType?.name ?? booking.room?.name ?? 'Room';
 
     // Total: backend stores as totalNgn
     const amountNgn = Number(booking.totalNgn ?? booking.totalAmount ?? 0);
@@ -190,7 +202,8 @@ export async function getDashboardReservations(hotelId: string): Promise<Dashboa
       id:          booking.id,
       guestName,
       guestEmail,
-      roomTypeName,
+      resourceName,
+      roomTypeName: resourceName,
       roomNumber:  booking.roomNumber ?? booking.room?.number ?? '–',
       checkIn:     booking.checkIn.slice(0, 10),
       checkOut:    booking.checkOut.slice(0, 10),
@@ -227,31 +240,57 @@ export async function getDashboardRoomTypes(hotelId: string): Promise<DashboardR
 }
 
 /**
- * Returns room inventory calendar data for a given hotel.
- * The backend inventory endpoint is per-room-type (/api/v1/room-types/:roomTypeId/inventory).
- * This function fetches room types first, then aggregates inventory per type.
- * Returns [] gracefully if unavailable.
+ * Returns all resources for a hotel.
+ * GET /api/v1/hotels/:hotelId/resources
  */
-export async function getDashboardInventory(hotelId: string): Promise<DashboardRoomInventory[]> {
+export async function getDashboardResources(hotelId: string): Promise<DashboardResource[]> {
   try {
-    // First get room types for this hotel
-    const roomTypes = await getDashboardRoomTypes(hotelId);
-    if (roomTypes.length === 0) return [];
+    type ApiResource = {
+      id: string; name: string; code: string; bookingUnit: string;
+      lifecycleStatus: string; operationalStatus: string;
+      marketplaceVisibility: string; isBookable: boolean; capacity?: number | null;
+      images?: { url: string; isPrimary: boolean }[];
+      category?: { name: string; resourceType?: { name: string } };
+    };
+    const raw = await apiClient.get<ApiResource[]>(`/api/v1/hotels/${hotelId}/resources`);
+    return (Array.isArray(raw) ? raw : []).map(r => ({
+      id: r.id, name: r.name, code: r.code,
+      categoryName: r.category?.name ?? '',
+      resourceTypeName: r.category?.resourceType?.name ?? '',
+      bookingUnit: r.bookingUnit,
+      lifecycleStatus: r.lifecycleStatus,
+      operationalStatus: r.operationalStatus,
+      marketplaceVisibility: r.marketplaceVisibility,
+      isBookable: r.isBookable,
+      capacity: r.capacity ?? null,
+      primaryImageUrl: r.images?.find(img => img.isPrimary)?.url ?? r.images?.[0]?.url,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns availability calendar data for each resource.
+ * GET /api/v1/resources/:resourceId/inventory/calendar
+ */
+export async function getDashboardInventory(hotelId: string): Promise<DashboardResourceAvailability[]> {
+  try {
+    const resources = await getDashboardResources(hotelId);
+    if (resources.length === 0) return [];
+
+    const today = new Date().toISOString().slice(0, 10);
+    const end = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
 
     const results = await Promise.all(
-      roomTypes.map(async (rt) => {
+      resources.filter(r => r.isBookable && r.lifecycleStatus === 'ACTIVE').map(async (r) => {
         try {
-          const raw = await apiClient.get<{ days?: DashboardInventoryDay[]; calendar?: DashboardInventoryDay[] }>(
-            `/api/v1/room-types/${rt.id}/inventory/calendar`,
+          const days = await apiClient.get<{ date: string; available: boolean }[]>(
+            `/api/v1/resources/${r.id}/inventory/calendar?from=${today}&to=${end}`,
           );
-          const days = raw.days ?? raw.calendar ?? [];
-          return {
-            roomTypeId: rt.id,
-            roomTypeName: rt.name,
-            days: Array.isArray(days) ? days : [],
-          } satisfies DashboardRoomInventory;
+          return { resourceId: r.id, resourceName: r.name, days: Array.isArray(days) ? days : [] };
         } catch {
-          return { roomTypeId: rt.id, roomTypeName: rt.name, days: [] } satisfies DashboardRoomInventory;
+          return { resourceId: r.id, resourceName: r.name, days: [] };
         }
       }),
     );
