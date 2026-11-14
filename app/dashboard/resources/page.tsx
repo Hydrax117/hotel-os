@@ -5,6 +5,7 @@ import { getMyHotel } from '@/app/lib/api/dashboard';
 import { ApiError } from '@/app/lib/api/client';
 import {
   resourcesApi,
+  uploadResourceImage,
   type Resource,
   type ResourceCategory,
   type ResourceType,
@@ -269,6 +270,10 @@ function CreateResourceModal({
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
+  // Images — users pick files; we upload after resource creation
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -280,6 +285,24 @@ function CreateResourceModal({
 
   const selectedBuilding = buildings.find((b) => b.id === buildingId);
 
+  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setImageFiles((prev) => [...prev, ...files]);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImagePreviews((prev) => [...prev, ev.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    // Reset the input so the same file can be selected again if needed
+    e.target.value = '';
+  }
+
+  function removeImagePreview(idx: number) {
+    setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== idx));
+  }
   function handleBackdrop(e: React.MouseEvent) {
     if (e.target === backdropRef.current) onClose();
   }
@@ -311,12 +334,34 @@ function CreateResourceModal({
         floorId: floorId || undefined,
         internalNotes: internalNotes.trim() || undefined,
       });
-      onCreated(created);
+
+      // Upload images if any were selected
+      if (imageFiles.length > 0) {
+        setUploadStatus(`Uploading ${imageFiles.length} photo${imageFiles.length > 1 ? 's' : ''}…`);
+        for (let i = 0; i < imageFiles.length; i++) {
+          try {
+            const url = await uploadResourceImage(imageFiles[i], created.id);
+            await resourcesApi.addImage(created.id, {
+              url,
+              isPrimary: i === 0, // first image is primary
+              sortOrder: i,
+            });
+          } catch {
+            // Don't block the whole operation if one upload fails
+          }
+        }
+        // Reload the resource to get the images
+        const withImages = await resourcesApi.getResource(created.id);
+        onCreated(withImages);
+      } else {
+        onCreated(created);
+      }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Failed to create resource.';
       setError(msg);
     } finally {
       setSubmitting(false);
+      setUploadStatus('');
     }
   }
 
@@ -461,6 +506,59 @@ function CreateResourceModal({
             />
           </div>
 
+          {/* Photos */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1/-1' }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--db-secondary)' }}>
+              Photos
+              <span style={{ fontWeight: 400, marginLeft: 6 }}>(optional — up to 5)</span>
+            </label>
+            {/* Previews */}
+            {imagePreviews.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {imagePreviews.map((src, idx) => (
+                  <div key={idx} style={{ position: 'relative', width: 80, height: 60, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--db-border)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {idx === 0 && (
+                      <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'var(--db-accent)', color: '#fff', fontSize: 8, fontWeight: 700, borderRadius: 3, padding: '1px 4px' }}>PRIMARY</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImagePreview(idx)}
+                      style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 16, height: 16, fontSize: 10, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {imageFiles.length < 5 && (
+              <label
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', padding: '8px 14px', borderRadius: 8,
+                  border: '1px dashed var(--db-border)', fontSize: 13,
+                  color: 'var(--db-secondary)', width: 'fit-content',
+                  background: 'var(--db-bg)',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                Choose photo{imageFiles.length > 0 ? 's' : ''}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleImagePick}
+                />
+              </label>
+            )}
+          </div>
+
           {/* Internal notes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: '1/-1' }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--db-secondary)' }}>Internal notes (staff only)</label>
@@ -470,7 +568,7 @@ function CreateResourceModal({
 
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={handleSubmit} disabled={submitting} style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1, flex: 1 }}>
-            {submitting ? 'Creating…' : 'Create resource'}
+            {submitting ? (uploadStatus || 'Creating…') : 'Create resource'}
           </button>
           <button onClick={onClose} disabled={submitting} style={btnSecondary}>
             Cancel
