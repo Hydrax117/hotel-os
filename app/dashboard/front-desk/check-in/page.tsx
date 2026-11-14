@@ -65,7 +65,8 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
       const raw = await apiClient.post<{
         id: string; reference?: string; status: string;
         guestFirstName: string; guestLastName: string; guestEmail: string;
-        roomType?: { name?: string }; checkIn: string; checkOut: string;
+        resource?: { name?: string }; roomType?: { name?: string };
+        checkIn: string; checkOut: string;
         nights: number; guests: number; totalNgn: number; createdAt: string;
       }>(`/api/v1/bookings/hotel/${hotelId}/walk-in`, {
         roomTypeId, checkIn, checkOut,
@@ -81,11 +82,13 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
         (new Date(raw.checkOut).getTime() - new Date(raw.checkIn).getTime()) / 86_400_000
       );
 
+      const resourceName = raw.resource?.name ?? raw.roomType?.name ?? 'Resource';
       onCreated({
         id:           raw.id,
         guestName:    `${raw.guestFirstName} ${raw.guestLastName}`,
         guestEmail:   raw.guestEmail,
-        roomTypeName: raw.roomType?.name ?? roomTypes.find(r => r.id === roomTypeId)?.name ?? 'Room',
+        resourceName,
+        roomTypeName: resourceName,
         roomNumber:   '—',
         checkIn:      raw.checkIn.slice(0, 10),
         checkOut:     raw.checkOut.slice(0, 10),

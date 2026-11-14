@@ -61,8 +61,9 @@ export type InventoryDay = {
 
 export type RoomInventory = {
   roomTypeId: string;
-  roomTypeName: string;
-  days: InventoryDay[]; // 30 days of data
+  roomTypeName?: string;
+  resourceName?: string;
+  days: InventoryDay[];
 };
 
 // ── Staff ─────────────────────────────────────────────────────────────────────
