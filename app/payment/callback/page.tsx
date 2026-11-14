@@ -89,7 +89,7 @@ function CallbackInner() {
           const params = new URLSearchParams({
             ref:       confirmed.reference ?? confirmed.id,
             hotelName: confirmed.hotel?.name ?? 'Hotel',
-            roomName:  confirmed.roomType?.name ?? 'Room',
+            roomName:  confirmed.resource?.name ?? confirmed.roomType?.name ?? 'Resource',
             checkIn:   confirmed.checkIn,
             checkOut:  confirmed.checkOut,
             guests:    String(confirmed.guests),

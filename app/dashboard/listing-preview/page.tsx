@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/app/lib/auth-context';
-import { getMyHotel, getDashboardRoomTypes, type DashboardHotel, type DashboardRoomType } from '@/app/lib/api/dashboard';
+import { getMyHotel, getDashboardResources, type DashboardHotel, type DashboardResource } from '@/app/lib/api/dashboard';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ function StarRating({ rating }: { rating: number }) {
 export default function ListingPreviewPage() {
   const { user } = useAuth();
   const [hotel, setHotel] = useState<DashboardHotel | null>(null);
-  const [roomTypes, setRoomTypes] = useState<DashboardRoomType[]>([]);
+  const [resources, setResources] = useState<DashboardResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,8 +60,8 @@ export default function ListingPreviewPage() {
       .then(async h => {
         if (!h) return;
         setHotel(h);
-        const rooms = await getDashboardRoomTypes(h.id).catch(() => []);
-        setRoomTypes(rooms);
+        const rooms = await getDashboardResources(h.id).catch(() => []);
+        setResources(rooms);
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
@@ -75,7 +75,7 @@ export default function ListingPreviewPage() {
     return <div style={{ padding: 24, color: 'var(--db-secondary)' }}>Hotel data not available.</div>;
   }
 
-  const totalRooms = roomTypes.reduce((s, rt) => s + rt.totalRooms, 0);
+  const totalRooms = resources.length;
   const subscriptionPlan = hotel.subscriptionPlan
     ? hotel.subscriptionPlan.charAt(0).toUpperCase() + hotel.subscriptionPlan.slice(1).toLowerCase()
     : null;
@@ -150,35 +150,39 @@ export default function ListingPreviewPage() {
         </div>
         <p style={{ fontSize: 14, color: 'var(--db-secondary)', lineHeight: 1.7, margin: 0 }}>
           {hotel.name} offers a hospitality experience in {hotel.city}.
-          {totalRooms > 0 && ` Featuring ${totalRooms} rooms across ${roomTypes.length} room ${roomTypes.length === 1 ? 'category' : 'categories'}.`}
+          {totalRooms > 0 && ` Featuring ${totalRooms} resource${totalRooms !== 1 ? 's' : ''} across ${new Set(resources.map(r => r.categoryName)).size} categor${new Set(resources.map(r => r.categoryName)).size !== 1 ? 'ies' : 'y'}.`}
         </p>
       </div>
 
-      {/* Room types */}
-      {roomTypes.length > 0 && (
+      {/* Resources */}
+      {resources.length > 0 && (
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Room types</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {roomTypes.map(rt => {
-              const avColor = availabilityColor(rt);
-              const avLabel = availabilityLabel(rt);
-              return (
-                <div key={rt.id} style={{ borderRadius: 12, border: '1px solid var(--db-border)', background: 'var(--db-surface)', padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 15 }}>{rt.name}</span>
-                    <span style={{ borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 500, background: avColor + '20', color: avColor }}>{avLabel}</span>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Available resources</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+            {resources.filter(r => r.marketplaceVisibility === 'PUBLIC').map(r => (
+              <div key={r.id} style={{ borderRadius: 12, border: '1px solid var(--db-border)', background: 'var(--db-surface)', overflow: 'hidden' }}>
+                {r.primaryImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.primaryImageUrl} alt={r.name} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <div style={{ height: 80, background: 'var(--db-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--db-secondary)', fontSize: 11 }}>No photo</div>
+                )}
+                <div style={{ padding: 14 }}>
+                  <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{r.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--db-secondary)', marginBottom: 8 }}>{r.categoryName} · {r.resourceTypeName}</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {r.capacity && <span style={{ fontSize: 11, background: 'var(--db-muted)', borderRadius: 4, padding: '2px 8px', color: 'var(--db-secondary)' }}>Up to {r.capacity} guests</span>}
+                    <span style={{ fontSize: 11, background: 'var(--db-muted)', borderRadius: 4, padding: '2px 8px', color: 'var(--db-secondary)' }}>{r.bookingUnit.charAt(0) + r.bookingUnit.slice(1).toLowerCase()} rate</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, color: 'var(--db-secondary)' }}>{rt.bedType} bed</span>
-                    <span style={{ fontSize: 12, color: 'var(--db-secondary)' }}>{rt.capacity} guests</span>
-                  </div>
-                  <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--db-accent)', margin: 0 }}>
-                    {formatNgn(rt.pricePerNight)} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--db-secondary)' }}>/ night</span>
-                  </p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
+          {resources.filter(r => r.marketplaceVisibility !== 'PUBLIC').length > 0 && (
+            <p style={{ fontSize: 12, color: 'var(--db-secondary)', marginTop: 10 }}>
+              {resources.filter(r => r.marketplaceVisibility !== 'PUBLIC').length} resource(s) are private/unlisted and not shown to customers.
+            </p>
+          )}
         </div>
       )}
 

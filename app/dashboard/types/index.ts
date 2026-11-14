@@ -27,7 +27,7 @@ export type Reservation = {
   id: string;           // e.g. "HOS-82931"
   guestName: string;
   guestEmail: string;
-  roomTypeName: string;
+  resourceName: string;
   roomNumber: string;
   checkIn: string;      // ISO date "2024-10-12"
   checkOut: string;     // ISO date "2024-10-15"

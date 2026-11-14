@@ -244,7 +244,7 @@ function BookingDetailInner() {
   const subtotal      = booking?.subtotalNgn ?? (booking ? Number(booking.totalNgn) - (booking.serviceFeeNgn ?? 0) : 0);
   const fee           = booking?.serviceFeeNgn ?? 0;
   const total         = booking ? Number(booking.totalNgn) : 0;
-  const pricePerNight = booking?.roomType?.pricePerNight ?? (nights > 0 ? subtotal / nights : 0);
+  const pricePerNight = booking?.roomType?.pricePerNight ?? 0;
   const isCheckedIn   = uiStatus === 'checked-in';
   const isUpcoming    = uiStatus === 'upcoming';
   const isCompleted   = uiStatus === 'completed';
@@ -446,10 +446,13 @@ function BookingDetailInner() {
               <Row label="Check-in"  value={`${fmtDate(booking.checkIn)}${booking.hotel?.checkInTime ? ` · from ${booking.hotel.checkInTime}` : ''}`} />
               <Row label="Check-out" value={`${fmtDate(booking.checkOut)}${booking.hotel?.checkOutTime ? ` · by ${booking.hotel.checkOutTime}` : ''}`} />
               <Row label="Duration"  value={`${nights} night${nights !== 1 ? 's' : ''}`} />
-              <Row label="Room type" value={booking.roomType?.name ?? 'Room'} />
-              {booking.roomType?.bedType   && <Row label="Bed type"  value={booking.roomType.bedType} />}
-              {booking.roomType?.capacity  && <Row label="Sleeps"    value={`${booking.roomType.capacity} guest${booking.roomType.capacity !== 1 ? 's' : ''}`} />}
-              {booking.roomType?.sizeSqm   && <Row label="Room size" value={`${booking.roomType.sizeSqm} m²`} />}
+              <Row label="Room type" value={booking.resource?.name ?? booking.roomType?.name ?? 'Resource'} />
+              {(booking.resource?.attributes as Record<string,unknown> | undefined)?.bedConfiguration
+                ? <Row label="Bed type" value={String((booking.resource!.attributes as Record<string,unknown>).bedConfiguration)} />
+                : booking.roomType?.bedType && <Row label="Bed type" value={booking.roomType.bedType} />}
+              {(booking.resource?.capacity ?? booking.roomType?.capacity) != null && (
+                <Row label="Sleeps" value={`${booking.resource?.capacity ?? booking.roomType?.capacity} guest${(booking.resource?.capacity ?? booking.roomType?.capacity) !== 1 ? 's' : ''}`} />
+              )}
               <Row label="Guests" value={`${booking.guests} guest${booking.guests !== 1 ? 's' : ''}`} />
               {booking.specialRequests && <Row label="Special requests" value={booking.specialRequests} last />}
             </Section>

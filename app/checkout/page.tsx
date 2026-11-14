@@ -9,7 +9,8 @@ import { useAuth } from '../lib/auth-context';
 import { createBooking, initializePayment, type CreateBookingPayload } from '../lib/api/bookings';
 import { calcNights, calcBookingCost } from '../lib/booking';
 import { ApiError, apiClient } from '../lib/api/client';
-import type { HotelDetail, RoomAvailability } from '../lib/api/search';
+import type { HotelDetail } from '../lib/api/search';
+import type { Resource } from '../lib/api/resources';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
@@ -136,26 +137,20 @@ function CheckoutInner() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState('');
 
-  // Fetch hotel + room data
+  // Fetch hotel + resource data
   useEffect(() => {
     if (!hotelId || !roomId) return;
     setDataLoading(true);
     Promise.all([
       apiClient.get<HotelDetail>(`/api/v1/hotels/${hotelId}`),
-      apiClient.get<{ rooms: RoomAvailability[] } | RoomAvailability[]>(`/api/v1/hotels/${hotelId}/room-types`),
+      apiClient.get<Resource>(`/api/v1/resources/${roomId}`),
     ])
-      .then(([hotel, roomsRaw]) => {
+      .then(([hotel, resource]) => {
         setHotelName(hotel.name);
         setHotelCity(hotel.city);
-        const rooms = Array.isArray(roomsRaw) ? roomsRaw : (roomsRaw as { rooms: RoomAvailability[] }).rooms ?? [];
-        const room = rooms.find((r: RoomAvailability) => (r.roomTypeId ?? r.id) === roomId);
-        if (room) {
-          setRoomName(room.name);
-          setPricePerNight(room.pricePerNight);
-          setCancellationPolicy(room.cancellationPolicy ?? '');
-        } else {
-          setDataError('Room not found.');
-        }
+        setRoomName(resource.name);
+        setPricePerNight(0); // rate plans not yet wired
+        setCancellationPolicy('');
       })
       .catch(() => setDataError('Failed to load booking details.'))
       .finally(() => setDataLoading(false));
@@ -237,7 +232,7 @@ function CheckoutInner() {
     try {
       const payload: CreateBookingPayload = {
         hotelId,
-        roomTypeId: roomId,
+        resourceId: roomId,
         checkIn: checkInInput,
         checkOut: checkOutInput,
         guests: Number(guests),

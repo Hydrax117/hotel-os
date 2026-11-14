@@ -193,7 +193,7 @@ function ExtendStayInner() {
             }}>
               <span style={{ color: '#15803d', fontWeight: 600 }}>● Currently checked in</span>
               <div style={{ color: '#374151', marginTop: 6 }}>
-                {booking.roomType?.name} · Check-in: {fmtDate(booking.checkIn)} · Check-out: {fmtDate(currentCheckOut)}
+                {booking.resource?.name} · Check-in: {fmtDate(booking.checkIn)} · Check-out: {fmtDate(currentCheckOut)}
               </div>
             </div>
 

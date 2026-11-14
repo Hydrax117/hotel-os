@@ -49,7 +49,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Overview',     href: '/dashboard/overview',    icon: Icons.overview },
       { label: 'Reservations', href: '/dashboard/reservations', icon: Icons.calendar },
       { label: 'Calendar',     href: '/dashboard/inventory',   icon: Icons.calendar },
-      { label: 'Rooms',        href: '/dashboard/rooms',       icon: Icons.rooms },
       { label: 'Resources',    href: '/dashboard/resources',   icon: Icons.resources },
       { label: 'Rates',        href: '/dashboard/rates',       icon: Icons.rates },
       { label: 'Promotions',   href: '/dashboard/promotions',  icon: Icons.promotions },
