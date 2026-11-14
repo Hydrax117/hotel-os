@@ -251,3 +251,44 @@ export const resourcesApi = {
       `/api/v1/resources/${resourceId}/images/${imageId}/primary`,
     ),
 };
+
+// ── Supabase Storage upload helper ────────────────────────────────────────────
+
+/**
+ * Uploads a file to Supabase Storage and returns the public URL.
+ * Uses the anon key so it works from the browser without a service role key.
+ * The bucket must have a public read policy for the returned URL to be accessible.
+ */
+export async function uploadResourceImage(file: File, resourceId: string): Promise<string> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'hotel-images';
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase environment variables are not configured.');
+  }
+
+  // Unique filename: resources/<resourceId>/<timestamp>-<originalname>
+  const ext = file.name.split('.').pop() ?? 'jpg';
+  const path = `resources/${resourceId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
+
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': file.type,
+      'x-upsert': 'false',
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${body}`);
+  }
+
+  // Return the public URL
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}

@@ -145,17 +145,24 @@ export async function fetchCityCounts(): Promise<CityCount[]> {
 
 export type RoomAvailability = {
   roomTypeId: string;
-  id?: string;             // alias, not always present
+  id?: string;
   name: string;
   bedType: string;
   capacity: number;
   sizeSqm?: number;
   pricePerNight: number;
   availableRooms: number;
-  available: boolean;          // true if at least one room is available
+  available: boolean;
   amenities?: string[];
   breakfastIncluded?: boolean;
   cancellationPolicy?: string;
+  /** Photos from the resource model */
+  images?: { url: string; isPrimary: boolean; caption: string | null }[];
+  /** e.g. NIGHT, HOUR, DAY — used to format the price label */
+  bookingUnit?: string;
+  /** True when this row comes from the new Resource model (not a RoomType) */
+  isResource?: boolean;
+  description?: string | null;
 };
 
 export type NearbyAttraction = { name: string; distance: string };
