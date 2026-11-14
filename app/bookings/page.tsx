@@ -184,7 +184,7 @@ function BookingCard({
   cancellingId: string | null;
 }) {
   const isCancelling = cancellingId === booking.id;
-  const detailsHref = `/booking/confirmation?ref=${booking.id}&hotelName=${encodeURIComponent(booking.hotelName)}&roomName=${encodeURIComponent(booking.roomName)}&checkIn=${booking.checkIn}&checkOut=${booking.checkOut}&guests=${booking.guests}&total=${booking.totalNgn}`;
+  const detailsHref = `/bookings/${booking.id}`;
   const isCheckedIn  = booking.status === 'checked-in';
   const isUpcoming   = booking.status === 'upcoming';
   const isCompleted  = booking.status === 'completed';
