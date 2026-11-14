@@ -47,13 +47,29 @@ export type BookingResponse = {
     name: string;
     city: string;
     state: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    checkInTime?: string;
+    checkOutTime?: string;
   };
   /** The backend includes room type as roomType, not room */
   roomType?: {
     id: string;
     name: string;
+    bedType?: string;
+    capacity?: number;
+    sizeSqm?: number;
     pricePerNight: number;
   };
+  payment?: {
+    id: string;
+    reference: string;
+    amountNgn: number;
+    status: string;
+    paidAt?: string;
+  };
+  hasReview?: boolean;
 };
 
 export type InitPaymentResponse = {
@@ -116,4 +132,12 @@ export async function getMyBookings(): Promise<BookingResponse[]> {
  */
 export function cancelBooking(bookingId: string): Promise<void> {
   return apiClient.post<void>(`/api/v1/bookings/${bookingId}/cancel`);
+}
+
+/**
+ * Get a single booking by ID (full detail including hotel, roomType, payment).
+ * GET /api/v1/bookings/{bookingId}
+ */
+export function getBookingById(bookingId: string): Promise<BookingResponse> {
+  return apiClient.get<BookingResponse>(`/api/v1/bookings/${bookingId}`);
 }
