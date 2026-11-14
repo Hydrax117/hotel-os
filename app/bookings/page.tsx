@@ -32,7 +32,7 @@ function mapApiBooking(b: BookingResponse): TravelerBooking {
     hotelCity:    b.hotel?.city ?? '',
     hotelState:   b.hotel?.state ?? '',
     roomName:     b.resource?.name ?? b.roomType?.name ?? 'Resource',
-    roomId:       b.resourceId ?? b.roomTypeId,
+    roomId:       b.resourceId ?? b.roomTypeId ?? '',
     checkIn:      b.checkIn,
     checkOut:     b.checkOut,
     nights:       calcNights(b.checkIn, b.checkOut),

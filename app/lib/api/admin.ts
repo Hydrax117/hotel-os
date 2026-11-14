@@ -52,6 +52,7 @@ export type AdminBooking = {
   user: { firstName: string; lastName: string; email: string } | null;
   hotel: { name: string; city: string } | null;
   roomType: { name: string } | null;
+  resource?: { name: string } | null;
 };
 
 export type AdminHotelsResponse = { hotels: AdminHotel[]; total: number };
