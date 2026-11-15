@@ -197,6 +197,18 @@ function ResourceCard({
           )}
         </div>
 
+        {/* Price */}
+        {resource.pricePerNight != null && Number(resource.pricePerNight) > 0 ? (
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--db-accent)', marginTop: 8 }}>
+            ₦{Number(resource.pricePerNight).toLocaleString('en-NG')}
+            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--db-secondary)', marginLeft: 4 }}>
+              / {BOOKING_UNIT_LABELS[resource.bookingUnit].toLowerCase().replace('ly', '').replace('ion', '')}
+            </span>
+          </p>
+        ) : (
+          <p style={{ fontSize: 11, color: 'var(--db-secondary)', marginTop: 8, fontStyle: 'italic' }}>No price set</p>
+        )}
+
         {/* Expand / actions */}
         <button
           onClick={() => setExpanded((e) => !e)}
@@ -267,6 +279,7 @@ function CreateResourceModal({
   const [isBookable, setIsBookable] = useState(true);
   const [visibility, setVisibility] = useState<ResourceMarketplaceVisibility>('PRIVATE');
   const [capacity, setCapacity] = useState('');
+  const [pricePerNight, setPricePerNight] = useState('');
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
@@ -330,6 +343,7 @@ function CreateResourceModal({
         isBookable,
         marketplaceVisibility: visibility,
         capacity: capacity ? Number(capacity) : undefined,
+        pricePerNight: pricePerNight ? Number(pricePerNight) : undefined,
         buildingId: buildingId || undefined,
         floorId: floorId || undefined,
         internalNotes: internalNotes.trim() || undefined,
@@ -463,6 +477,14 @@ function CreateResourceModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--db-secondary)' }}>Capacity</label>
             <input style={inputStyle} type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="e.g. 2" />
+          </div>
+
+          {/* Price per booking unit */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--db-secondary)' }}>
+              Price (₦) per {BOOKING_UNIT_LABELS[bookingUnit].toLowerCase().replace('ly', '').replace('ion', '')}
+            </label>
+            <input style={inputStyle} type="number" min={0} step={500} value={pricePerNight} onChange={(e) => setPricePerNight(e.target.value)} placeholder="e.g. 45000" />
           </div>
 
           {/* Building */}

@@ -128,10 +128,15 @@ function CheckoutInner() {
     }
   }, [user]);
 
-  // Hotel/room data state (replaces mock lookup)
+  // Hotel/room data state
   const [hotelName, setHotelName] = useState('');
   const [hotelCity, setHotelCity] = useState('');
   const [roomName, setRoomName] = useState('');
+  const [roomDescription, setRoomDescription] = useState('');
+  const [roomCapacity, setRoomCapacity] = useState<number | null>(null);
+  const [roomCategory, setRoomCategory] = useState('');
+  const [roomBookingUnit, setRoomBookingUnit] = useState('night');
+  const [roomPrimaryImage, setRoomPrimaryImage] = useState<string | null>(null);
   const [pricePerNight, setPricePerNight] = useState(0);
   const [cancellationPolicy, setCancellationPolicy] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
@@ -149,7 +154,13 @@ function CheckoutInner() {
         setHotelName(hotel.name);
         setHotelCity(hotel.city);
         setRoomName(resource.name);
-        setPricePerNight(0); // rate plans not yet wired
+        setRoomDescription(resource.description ?? '');
+        setRoomCapacity(resource.capacity ?? null);
+        setRoomCategory(resource.category?.name ?? '');
+        setRoomBookingUnit(resource.bookingUnit?.toLowerCase() ?? 'night');
+        const primary = resource.images?.find(img => img.isPrimary) ?? resource.images?.[0];
+        setRoomPrimaryImage(primary?.url ?? null);
+        setPricePerNight(resource.pricePerNight ? Number(resource.pricePerNight) : 0);
         setCancellationPolicy('');
       })
       .catch(() => setDataError('Failed to load booking details.'))
@@ -524,12 +535,16 @@ function CheckoutInner() {
                   )}
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (!dataLoading && pricePerNight === 0)}
                     className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     style={{ background: 'var(--tp-primary)' }}
                   >
                     <LockIcon size={18} />
-                    {submitting ? 'Processing…' : `Pay ₦${total.toLocaleString()}`}
+                    {submitting
+                      ? 'Processing…'
+                      : pricePerNight === 0 && !dataLoading
+                      ? 'Price not set — cannot book'
+                      : `Pay ₦${total.toLocaleString()}`}
                   </button>
                   <p className="text-center text-sm" style={{ color: 'var(--tp-secondary)' }}>
                     You won&apos;t be charged until payment is completed on Paystack
@@ -578,12 +593,40 @@ function CheckoutInner() {
                   </p>
                 </div>
 
-                {/* Room info */}
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium" style={{ color: 'var(--tp-primary)' }}>
-                    {dataLoading ? '—' : roomName}
-                  </span>
-                </div>
+                {/* Resource info with image */}
+                {!dataLoading && (
+                  <div className="mb-4 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--tp-border)' }}>
+                    {roomPrimaryImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={roomPrimaryImage}
+                        alt={roomName}
+                        style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <div style={{ height: 80, background: 'var(--tp-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--tp-secondary)' }} aria-hidden="true">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                      </div>
+                    )}
+                    <div style={{ padding: '10px 12px' }}>
+                      <p className="font-semibold text-sm" style={{ color: 'var(--tp-primary)' }}>{roomName}</p>
+                      {roomCategory && <p className="text-xs mt-0.5" style={{ color: 'var(--tp-secondary)' }}>{roomCategory}</p>}
+                      {roomDescription && <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--tp-secondary)' }}>{roomDescription}</p>}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {roomCapacity && (
+                          <span className="text-xs rounded-full px-2 py-0.5" style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}>
+                            Up to {roomCapacity} guest{roomCapacity !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        <span className="text-xs rounded-full px-2 py-0.5" style={{ background: 'var(--tp-muted)', color: 'var(--tp-secondary)' }}>
+                          Per {roomBookingUnit}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <hr style={{ borderColor: 'var(--tp-border)' }} />
 
@@ -620,19 +663,21 @@ function CheckoutInner() {
                     <span style={{ color: 'var(--tp-primary)' }}>
                       {dataLoading
                         ? '—'
-                        : `₦${pricePerNight.toLocaleString()} × ${nights} night${nights !== 1 ? 's' : ''}`}
+                        : pricePerNight > 0
+                          ? `₦${pricePerNight.toLocaleString()} × ${nights} ${roomBookingUnit}${nights !== 1 ? 's' : ''}`
+                          : 'Contact for pricing'}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Subtotal</span>
                     <span style={{ color: 'var(--tp-primary)' }}>
-                      {dataLoading ? '—' : `₦${subtotal.toLocaleString()}`}
+                      {dataLoading ? '—' : pricePerNight > 0 ? `₦${subtotal.toLocaleString()}` : '—'}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span style={{ color: 'var(--tp-secondary)' }}>Service fee (3%)</span>
                     <span style={{ color: 'var(--tp-primary)' }}>
-                      {dataLoading ? '—' : `₦${fee.toLocaleString()}`}
+                      {dataLoading ? '—' : pricePerNight > 0 ? `₦${fee.toLocaleString()}` : '—'}
                     </span>
                   </div>
                 </div>
@@ -644,13 +689,16 @@ function CheckoutInner() {
                   <span className="text-lg font-bold" style={{ color: 'var(--tp-primary)' }}>
                     Total
                   </span>
-                  <span
-                    className="text-xl font-bold"
-                    style={{ color: 'var(--tp-accent)' }}
-                  >
-                    {dataLoading ? '—' : `₦${total.toLocaleString()}`}
+                  <span className="text-xl font-bold" style={{ color: 'var(--tp-accent)' }}>
+                    {dataLoading ? '—' : pricePerNight > 0 ? `₦${total.toLocaleString()}` : 'TBD'}
                   </span>
                 </div>
+
+                {!dataLoading && pricePerNight === 0 && (
+                  <div className="mb-4 rounded-lg px-3 py-2 text-xs" style={{ background: '#fef3c7', color: '#92400e' }}>
+                    Price not set for this resource. Contact the hotel directly or the owner must set a price in the dashboard before booking.
+                  </div>
+                )}
 
                 {/* Cancellation policy chip */}
                 {!dataLoading && cancellationPolicy && (

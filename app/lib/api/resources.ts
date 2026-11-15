@@ -96,6 +96,7 @@ export type Resource = {
   attributes: Record<string, unknown> | null;
   internalNotes: string | null;
   archivedAt: string | null;
+  pricePerNight: number | null;
   images: ResourceImage[];
   createdAt: string;
   updatedAt: string;
@@ -198,6 +199,7 @@ export const resourcesApi = {
       isBookable?: boolean;
       marketplaceVisibility?: ResourceMarketplaceVisibility;
       capacity?: number;
+      pricePerNight?: number;
       attributes?: Record<string, unknown>;
       internalNotes?: string;
     },
