@@ -151,3 +151,26 @@ export function cancelBooking(bookingId: string): Promise<void> {
 export function getBookingById(bookingId: string): Promise<BookingResponse> {
   return apiClient.get<BookingResponse>(`/api/v1/bookings/${bookingId}`);
 }
+
+// ── Inventory calendar ────────────────────────────────────────────────────────
+
+export type CalendarDay = {
+  date: string;      // YYYY-MM-DD
+  available: boolean;
+};
+
+/**
+ * Fetch day-by-day availability for a resource (room) over a date range.
+ * GET /api/v1/resources/:resourceId/inventory/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * Public — no auth required.
+ */
+export async function getResourceCalendar(
+  resourceId: string,
+  from: string,
+  to: string,
+): Promise<CalendarDay[]> {
+  const qs = new URLSearchParams({ from, to });
+  return apiClient.get<CalendarDay[]>(
+    `/api/v1/resources/${encodeURIComponent(resourceId)}/inventory/calendar?${qs}`,
+  );
+}
