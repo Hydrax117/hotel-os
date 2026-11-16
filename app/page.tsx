@@ -30,20 +30,44 @@ const websiteJsonLd = {
   },
 };
 
-const CITY_GRADIENTS: Record<string, { gradientFrom: string; gradientTo: string }> = {
-  'Lagos':         { gradientFrom: '#c9a96e', gradientTo: '#7c5c3a' },
-  'Abuja':         { gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
-  'Port Harcourt': { gradientFrom: '#6b8cba', gradientTo: '#2d4a6b' },
-  'Uyo':           { gradientFrom: '#c4956a', gradientTo: '#7a5035' },
-  'Kano':          { gradientFrom: '#b8956a', gradientTo: '#6b4e2a' },
-  'Kaduna':        { gradientFrom: '#8a9e8a', gradientTo: '#4a6b4a' },
+const CITY_DATA: Record<string, { gradientFrom: string; gradientTo: string; imageUrl: string }> = {
+  'Lagos': {
+    gradientFrom: '#c9a96e', gradientTo: '#7c5c3a',
+    // Lagos skyline / Victoria Island waterfront
+    imageUrl: 'https://images.unsplash.com/photo-1555994450-b8b965ca37c8?w=800&q=80',
+  },
+  'Abuja': {
+    gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f',
+    // Zuma Rock, Abuja
+    imageUrl: 'https://images.unsplash.com/photo-1620338301254-acf36c08fda3?w=800&q=80',
+  },
+  'Port Harcourt': {
+    gradientFrom: '#6b8cba', gradientTo: '#2d4a6b',
+    // Tropical waterfront / greenery
+    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+  },
+  'Uyo': {
+    gradientFrom: '#c4956a', gradientTo: '#7a5035',
+    // Resort-style hotel pool in a tropical setting
+    imageUrl: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
+  },
+  'Kano': {
+    gradientFrom: '#b8956a', gradientTo: '#6b4e2a',
+    // Warm sandy tones / historic architecture
+    imageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80',
+  },
+  'Kaduna': {
+    gradientFrom: '#8a9e8a', gradientTo: '#4a6b4a',
+    // Lush green landscape
+    imageUrl: 'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=800&q=80',
+  },
 };
 
 const FALLBACK_DESTINATIONS = [
-  { city: 'Lagos',         gradientFrom: '#c9a96e', gradientTo: '#7c5c3a' },
-  { city: 'Abuja',         gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
-  { city: 'Port Harcourt', gradientFrom: '#6b8cba', gradientTo: '#2d4a6b' },
-  { city: 'Uyo',           gradientFrom: '#c4956a', gradientTo: '#7a5035' },
+  { city: 'Lagos',         ...CITY_DATA['Lagos'] },
+  { city: 'Abuja',         ...CITY_DATA['Abuja'] },
+  { city: 'Port Harcourt', ...CITY_DATA['Port Harcourt'] },
+  { city: 'Uyo',           ...CITY_DATA['Uyo'] },
 ];
 
 const TRUST_ITEMS = [
@@ -98,7 +122,7 @@ export default async function HomePage() {
   const destinations = apiCities.length > 0
     ? apiCities.slice(0, 4).map(({ city, hotelCount }) => ({
         city, hotelCount,
-        ...(CITY_GRADIENTS[city] ?? { gradientFrom: '#a0a094', gradientTo: '#606058' }),
+        ...(CITY_DATA[city] ?? { gradientFrom: '#a0a094', gradientTo: '#606058', imageUrl: undefined }),
       }))
     : FALLBACK_DESTINATIONS.map(d => ({ ...d, hotelCount: 0 }));
 
