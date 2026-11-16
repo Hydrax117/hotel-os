@@ -67,6 +67,7 @@ export type DashboardResource = {
   marketplaceVisibility: string;
   isBookable: boolean;
   capacity: number | null;
+  pricePerNight: number | null;
   primaryImageUrl?: string;
 };
 
@@ -249,6 +250,7 @@ export async function getDashboardResources(hotelId: string): Promise<DashboardR
       id: string; name: string; code: string; bookingUnit: string;
       lifecycleStatus: string; operationalStatus: string;
       marketplaceVisibility: string; isBookable: boolean; capacity?: number | null;
+      pricePerNight?: number | null;
       images?: { url: string; isPrimary: boolean }[];
       category?: { name: string; resourceType?: { name: string } };
     };
@@ -263,6 +265,7 @@ export async function getDashboardResources(hotelId: string): Promise<DashboardR
       marketplaceVisibility: r.marketplaceVisibility,
       isBookable: r.isBookable,
       capacity: r.capacity ?? null,
+      pricePerNight: r.pricePerNight != null ? Number(r.pricePerNight) : null,
       primaryImageUrl: r.images?.find(img => img.isPrimary)?.url ?? r.images?.[0]?.url,
     }));
   } catch {

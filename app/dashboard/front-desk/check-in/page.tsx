@@ -5,9 +5,9 @@ import { useAuth } from '@/app/lib/auth-context';
 import {
   getMyHotel,
   getDashboardReservations,
-  getDashboardRoomTypes,
+  getDashboardResources,
   type DashboardReservation,
-  type DashboardRoomType,
+  type DashboardResource,
 } from '@/app/lib/api/dashboard';
 import { apiClient, ApiError } from '@/app/lib/api/client';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -28,25 +28,26 @@ function tomorrow() {
 
 type WalkInModalProps = {
   hotelId: string;
-  roomTypes: DashboardRoomType[];
+  resources: DashboardResource[];
   onClose: () => void;
   onCreated: (reservation: DashboardReservation) => void;
 };
 
-function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProps) {
+function WalkInModal({ hotelId, resources, onClose, onCreated }: WalkInModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  const [roomTypeId, setRoomTypeId] = useState(roomTypes[0]?.id ?? '');
-  const [checkIn, setCheckIn]       = useState(today());
-  const [checkOut, setCheckOut]     = useState(tomorrow());
-  const [guests, setGuests]         = useState('1');
-  const [firstName, setFirstName]   = useState('');
-  const [lastName, setLastName]     = useState('');
-  const [email, setEmail]           = useState('');
-  const [phone, setPhone]           = useState('');
-  const [requests, setRequests]     = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState('');
+  const [resourceId, setResourceId] = useState(resources[0]?.id ?? '');
+  const [checkIn, setCheckIn]           = useState(today());
+  const [checkOut, setCheckOut]         = useState(tomorrow());
+  const [guests, setGuests]             = useState('1');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [firstName, setFirstName]       = useState('');
+  const [lastName, setLastName]         = useState('');
+  const [email, setEmail]               = useState('');
+  const [phone, setPhone]               = useState('');
+  const [requests, setRequests]         = useState('');
+  const [submitting, setSubmitting]     = useState(false);
+  const [error, setError]               = useState('');
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -59,7 +60,8 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim()) {
       setError('Please fill in all required guest fields.'); return;
     }
-    if (!roomTypeId) { setError('Please select a room type.'); return; }
+    if (!resourceId) { setError('Please select a room type.'); return; }
+    if (!paymentMethod) { setError('Please select a payment method.'); return; }
     setError(''); setSubmitting(true);
     try {
       const raw = await apiClient.post<{
@@ -69,8 +71,9 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
         checkIn: string; checkOut: string;
         nights: number; guests: number; totalNgn: number; createdAt: string;
       }>(`/api/v1/bookings/hotel/${hotelId}/walk-in`, {
-        roomTypeId, checkIn, checkOut,
+        resourceId, checkIn, checkOut,
         guests: Number(guests),
+        walkInPaymentMethod: paymentMethod,
         guestFirstName: firstName.trim(),
         guestLastName:  lastName.trim(),
         guestEmail:     email.trim(),
@@ -132,8 +135,12 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={lbl}>Room type <span style={{ color: 'var(--db-accent)' }}>*</span></label>
-              <select value={roomTypeId} onChange={e => setRoomTypeId(e.target.value)} style={inp} required>
-                {roomTypes.map(r => <option key={r.id} value={r.id}>{r.name} — ₦{r.pricePerNight.toLocaleString()}/night</option>)}
+              <select value={resourceId} onChange={e => setResourceId(e.target.value)} style={inp} required>
+                {resources.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}{r.pricePerNight != null ? ` — ₦${r.pricePerNight.toLocaleString()}/${r.bookingUnit === 'NIGHT' ? 'night' : r.bookingUnit.toLowerCase()}` : ''}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -147,6 +154,17 @@ function WalkInModal({ hotelId, roomTypes, onClose, onCreated }: WalkInModalProp
             <div>
               <label style={lbl}>Guests <span style={{ color: 'var(--db-accent)' }}>*</span></label>
               <input type="number" value={guests} min={1} max={10} onChange={e => setGuests(e.target.value)} style={inp} required />
+            </div>
+            <div>
+              <label style={lbl}>Payment method <span style={{ color: 'var(--db-accent)' }}>*</span></label>
+              <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={inp} required>
+                <option value="CASH">Cash</option>
+                <option value="POS">POS / Card</option>
+                <option value="BANK_TRANSFER">Bank transfer</option>
+                <option value="MOBILE_MONEY">Mobile money</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="OTHER">Other</option>
+              </select>
             </div>
           </div>
 
@@ -201,7 +219,7 @@ export default function CheckInPage() {
 
   const [hotelId, setHotelId]           = useState<string | null>(null);
   const [reservations, setReservations] = useState<DashboardReservation[]>([]);
-  const [roomTypes, setRoomTypes]       = useState<DashboardRoomType[]>([]);
+  const [resources, setResources]       = useState<DashboardResource[]>([]);
   const [searchQuery, setSearchQuery]   = useState('');
   const [isLoading, setIsLoading]       = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -217,10 +235,13 @@ export default function CheckInPage() {
         setHotelId(hotel.id);
         return Promise.all([
           getDashboardReservations(hotel.id),
-          getDashboardRoomTypes(hotel.id),
+          getDashboardResources(hotel.id),
         ]);
       })
-      .then(([res, rts]) => { setReservations(res); setRoomTypes(rts); })
+      .then(([res, rts]) => {
+        setReservations(res);
+        setResources(rts.filter(r => r.isBookable && r.lifecycleStatus === 'ACTIVE'));
+      })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load data.'))
       .finally(() => setIsLoading(false));
   }, [user]);
@@ -257,7 +278,7 @@ export default function CheckInPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Front Desk — Check In</h1>
-        {hotelId && roomTypes.length > 0 && (
+        {hotelId && resources.length > 0 && (
           <button
             onClick={() => setShowWalkIn(true)}
             style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', background: 'var(--db-accent)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -284,7 +305,7 @@ export default function CheckInPage() {
       {displayed.length === 0 ? (
         <div className="rounded-xl border p-10 text-center flex flex-col items-center gap-4" style={{ background: 'var(--db-surface)', borderColor: 'var(--db-border)' }}>
           <p className="text-sm" style={{ color: 'var(--db-secondary)' }}>No upcoming check-ins found.</p>
-          {hotelId && roomTypes.length > 0 && (
+          {hotelId && resources.length > 0 && (
             <button onClick={() => setShowWalkIn(true)} style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid var(--db-accent)', background: 'transparent', color: 'var(--db-accent)', cursor: 'pointer' }}>
               + Add walk-in guest
             </button>
@@ -328,7 +349,7 @@ export default function CheckInPage() {
       {showWalkIn && hotelId && (
         <WalkInModal
           hotelId={hotelId}
-          roomTypes={roomTypes}
+          resources={resources}
           onClose={() => setShowWalkIn(false)}
           onCreated={newRes => setReservations(prev => [newRes, ...prev])}
         />
