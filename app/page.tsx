@@ -128,9 +128,10 @@ export default async function HomePage() {
           aria-label="Hero"
           className="relative w-full overflow-hidden"
           style={{
-            aspectRatio: '16 / 9',
-            minHeight: '540px',
-            maxHeight: '92vh',
+            /* On mobile: tall enough to show headline + search bar + nav clearance.
+               On desktop: keep the cinematic 16/9 feel. */
+            minHeight: 'calc(100svh - 0px)',
+            maxHeight: '100svh',
           }}
         >
           <Image
@@ -140,23 +141,27 @@ export default async function HomePage() {
             priority
             sizes="100vw"
             className="object-cover"
-            style={{ objectPosition: 'center center' }}
+            style={{ objectPosition: 'center 40%' }}
           />
 
-          {/* Gradient — heavier on the left where text sits */}
+          {/* Gradient — stronger at top (nav area) and bottom (text area) on mobile */}
           <div
             className="absolute inset-0"
             style={{
-              background:
-                'linear-gradient(100deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.40) 45%, rgba(0,0,0,0.08) 100%)',
+              background: [
+                'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.0) 50%, rgba(0,0,0,0.65) 100%)',
+              ].join(', '),
             }}
             aria-hidden="true"
           />
 
-          {/* Content — anchored to the lower-left of the image */}
+          {/* Content — centred on mobile, bottom-left anchored on desktop */}
           <div
-            className="absolute inset-0 flex flex-col justify-end"
-            style={{ paddingBottom: '6%' }}
+            className="absolute inset-0 flex flex-col justify-end sm:justify-end"
+            style={{
+              paddingTop: 'calc(var(--nav-height) + 1rem)',
+              paddingBottom: 'clamp(2rem, 6%, 4rem)',
+            }}
           >
             <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
 
@@ -165,11 +170,12 @@ export default async function HomePage() {
                   fontFamily: 'var(--font-serif)',
                   fontWeight: 400,
                   color: '#ffffff',
-                  fontSize: 'clamp(2.4rem, 5.5vw, 4rem)',
-                  lineHeight: 1.08,
+                  fontSize: 'clamp(2rem, 7vw, 4rem)',
+                  lineHeight: 1.1,
                   letterSpacing: '-0.01em',
-                  maxWidth: '11ch',
-                  marginBottom: '1rem',
+                  maxWidth: '12ch',
+                  marginBottom: '0.75rem',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.3)',
                 }}
               >
                 Stay somewhere{' '}
@@ -185,8 +191,8 @@ export default async function HomePage() {
               </h1>
 
               <p
-                className="mb-8 max-w-md text-base leading-relaxed"
-                style={{ color: 'rgba(255,255,255,0.78)' }}
+                className="mb-6 max-w-sm text-sm leading-relaxed sm:mb-8 sm:max-w-md sm:text-base"
+                style={{ color: 'rgba(255,255,255,0.82)' }}
               >
                 Discover exceptional stays across Nigeria. Find the right hotel,
                 compare your options and book with confidence.

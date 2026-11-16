@@ -309,7 +309,7 @@ export function SearchBar({
         {/* ── Mobile: stacked ── */}
         <div className="flex flex-col md:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {/* Destination */}
-          <div className="flex items-center gap-3 px-4 py-3.5">
+          <div className="flex items-center gap-3 px-4 py-3">
             <span style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }}><IconLocation /></span>
             <div className="flex flex-col flex-1">
               <label htmlFor="sb-destination-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Where</label>
@@ -327,7 +327,7 @@ export function SearchBar({
 
           {/* Dates */}
           <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'var(--color-border)' }}>
-            <div className="flex flex-col px-4 py-3.5">
+            <div className="flex flex-col px-4 py-3">
               <label htmlFor="sb-checkin-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Check-in</label>
               <input
                 id="sb-checkin-m"
@@ -339,7 +339,7 @@ export function SearchBar({
                 style={{ color: checkIn ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
               />
             </div>
-            <div className="flex flex-col px-4 py-3.5">
+            <div className="flex flex-col px-4 py-3">
               <label htmlFor="sb-checkout-m" className="text-label mb-0.5" style={{ color: 'var(--color-text-secondary)' }}>Check-out</label>
               <input
                 id="sb-checkout-m"
@@ -355,12 +355,12 @@ export function SearchBar({
 
           {/* Guests + Rooms */}
           <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'var(--color-border)' }}>
-            <div className="flex flex-col px-4 py-3.5">
-              <span className="text-label mb-2" style={{ color: 'var(--color-text-secondary)' }}>Guests</span>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-label" style={{ color: 'var(--color-text-secondary)' }}>Guests</span>
               <Counter id="sb-guests-m" label="guests" value={guests} min={1} max={30} onChange={setGuests} />
             </div>
-            <div className="flex flex-col px-4 py-3.5">
-              <span className="text-label mb-2" style={{ color: 'var(--color-text-secondary)' }}>Rooms</span>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-label" style={{ color: 'var(--color-text-secondary)' }}>Rooms</span>
               <Counter id="sb-rooms-m" label="rooms" value={rooms} min={1} max={10} onChange={setRooms} />
             </div>
           </div>
@@ -370,7 +370,7 @@ export function SearchBar({
             <button
               type="button"
               onClick={handleSearch}
-              className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-85"
               style={{ background: 'var(--color-brand)' }}
             >
               <IconSearch />

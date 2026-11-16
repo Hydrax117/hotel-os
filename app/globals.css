@@ -297,12 +297,12 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
-/* Minimum 44×44 touch target for small interactive controls */
-button:not(.no-min-touch),
+/* Minimum 44×44 touch target for small interactive controls
+   Only applied to standalone buttons, not inline form controls */
+button:not([data-compact]):not(.no-min-touch):not([class*="rounded-full"]),
 input[type="checkbox"],
 input[type="radio"] {
   min-height: 44px;
-  min-width: 44px;
 }
 
 /* Prevent overscroll bounce leaking through fixed overlays */
