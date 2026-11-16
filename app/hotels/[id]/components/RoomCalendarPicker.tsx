@@ -16,7 +16,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getResourceCalendar, type CalendarDay } from '@/app/lib/api/bookings';
+import { getResourceCalendar } from '@/app/lib/api/bookings';
 
 // ── Date utilities ────────────────────────────────────────────────────────────
 
@@ -33,10 +33,6 @@ function addMonths(date: Date, n: number): Date {
   d.setDate(1);
   d.setMonth(d.getMonth() + n);
   return d;
-}
-
-function isBefore(a: string, b: string): boolean {
-  return a < b;
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -186,34 +182,32 @@ function MonthGrid({
                 className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                 style={{
                   cursor: isDisabled ? 'default' : 'pointer',
-                  color: isDisabled
+                  /* Booked: red-tinted fill + dashed ring */
+                  background: state === 'unavailable'
+                    ? 'rgba(239,68,68,0.1)'
+                    : (isCheckIn || isCheckOut)
+                    ? 'var(--color-brand)'
+                    : 'transparent',
+                  border: state === 'unavailable'
+                    ? '1px dashed rgba(239,68,68,0.45)'
+                    : '1px solid transparent',
+                  color: state === 'unavailable'
+                    ? 'rgba(239,68,68,0.65)'
+                    : isDisabled
                     ? 'var(--color-text-secondary)'
                     : (isCheckIn || isCheckOut)
                     ? '#fff'
-                    : isInRange
-                    ? 'var(--color-brand)'
-                    : isToday
+                    : (isInRange || isToday)
                     ? 'var(--color-brand)'
                     : 'var(--color-text-primary)',
-                  background: (isCheckIn || isCheckOut)
-                    ? 'var(--color-brand)'
-                    : 'transparent',
                   opacity: state === 'past' ? 0.3 : 1,
                   textDecoration: state === 'unavailable' ? 'line-through' : 'none',
-                  fontWeight: isToday ? 700 : undefined,
+                  fontWeight: (isToday || isCheckIn || isCheckOut) ? 700 : undefined,
                   outlineColor: 'var(--color-brand)',
                 }}
               >
                 {new Date(ymd + 'T00:00:00').getDate()}
               </button>
-              {/* Booked dot indicator */}
-              {state === 'unavailable' && (
-                <span
-                  className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full"
-                  style={{ background: 'var(--color-warning-text)', zIndex: 11 }}
-                  aria-hidden="true"
-                />
-              )}
             </div>
           );
         })}
@@ -236,9 +230,16 @@ function Legend() {
         <span>Stay range</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="relative inline-flex h-6 w-6 items-center justify-center rounded-full text-xs" style={{ color: 'var(--color-text-secondary)', textDecoration: 'line-through', opacity: 0.5 }}>7
-          <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full" style={{ background: 'var(--color-warning-text)' }} />
-        </span>
+        <span
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
+          style={{
+            background: 'rgba(239,68,68,0.1)',
+            color: 'rgba(239,68,68,0.65)',
+            border: '1px dashed rgba(239,68,68,0.45)',
+            textDecoration: 'line-through',
+            fontSize: '0.65rem',
+          }}
+        >7</span>
         <span>Already booked</span>
       </div>
     </div>
