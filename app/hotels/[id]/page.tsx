@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
 import { RoomCard } from './components/RoomCard';
@@ -9,6 +10,37 @@ import { fetchHotelDetail, fetchHotelRooms } from '@/app/lib/api/search';
 
 // @next-codemod-ignore
 export const instant = false;
+
+// ── SEO metadata ──────────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const detail = await fetchHotelDetail(id);
+  if (!detail) return { title: 'Hotel not found' };
+
+  const title = `${detail.name} — ${detail.city} | Lodgen`;
+  const description =
+    detail.description?.slice(0, 155) ??
+    `Book ${detail.name} in ${detail.city}, ${detail.state}. ${detail.amenities?.slice(0, 3).join(', ')} and more.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/hotels/${id}` },
+    openGraph: {
+      title,
+      description,
+      url: `/hotels/${id}`,
+      images: detail.imageUrl ? [{ url: detail.imageUrl, alt: detail.name }] : [],
+      type: 'website',
+    },
+    twitter: { card: 'summary_large_image', title, description },
+  };
+}
 
 // ── Amenity helpers ───────────────────────────────────────────────────────────
 
@@ -92,8 +124,49 @@ export default async function HotelDetailPage({
     .hd-cta:hover { opacity: 0.85; }
   `;
 
+  // ── JSON-LD structured data (Hotel + LodgingBusiness) ─────────────────────
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://lodgen.com.ng';
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LodgingBusiness',
+    name: detail.name,
+    description: detail.description ?? undefined,
+    url: `${BASE_URL}/hotels/${id}`,
+    image: detail.imageUrl ?? undefined,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: detail.address,
+      addressLocality: detail.city,
+      addressRegion: detail.state,
+      addressCountry: 'NG',
+    },
+    ...(detail.rating > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: detail.rating,
+        reviewCount: detail.reviewCount ?? 1,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
+    ...(isFinite(lowestPrice) && {
+      priceRange: `₦${lowestPrice.toLocaleString()}+`,
+    }),
+    checkInTime: detail.checkInTime ?? undefined,
+    checkOutTime: detail.checkOutTime ?? undefined,
+    amenityFeature: (detail.amenities ?? []).map(a => ({
+      '@type': 'LocationFeatureSpecification',
+      name: a,
+      value: true,
+    })),
+  };
+
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <TravelerNav />
       <div style={{ paddingTop: 'var(--nav-height)' }}>
         <div

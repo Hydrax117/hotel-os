@@ -24,10 +24,56 @@ const geistMono = Geist_Mono({
 // environments). It is used only for display headings (.font-display, .text-display-*)
 // so it degrades gracefully to Georgia when unavailable.
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://lodgen.com.ng';
+
 export const metadata: Metadata = {
-  title: "Lodgen — Book verified hotels across Nigeria",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "Lodgen — Book verified hotels across Nigeria",
+    template: "%s | Lodgen",
+  },
   description:
-    "Discover and book premium hotels across Lagos, Abuja, Port Harcourt and more Nigerian cities.",
+    "Discover and book premium hotels across Lagos, Abuja, Port Harcourt and more Nigerian cities. Secure payment via Paystack. Instant confirmation.",
+  keywords: [
+    "hotels Nigeria", "book hotel Lagos", "book hotel Abuja",
+    "hotel booking Nigeria", "Nigerian hotels", "Lodgen",
+  ],
+  authors: [{ name: "Lodgen" }],
+  creator: "Lodgen",
+  publisher: "Lodgen",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_NG",
+    siteName: "Lodgen",
+    url: BASE_URL,
+    title: "Lodgen — Book verified hotels across Nigeria",
+    description:
+      "Discover and book premium hotels across Lagos, Abuja, Port Harcourt and more. Secure payment, instant confirmation.",
+    images: [
+      {
+        url: "/og-default.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Lodgen — Book verified hotels across Nigeria",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Lodgen — Book verified hotels across Nigeria",
+    description:
+      "Discover and book premium hotels across Nigeria. Secure payment via Paystack.",
+    images: ["/og-default.jpg"],
+    site: "@lodgen",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico",        sizes: "any",           rel: "shortcut icon" },
@@ -41,6 +87,20 @@ export const metadata: Metadata = {
       { rel: "manifest", url: "/site.webmanifest" },
     ],
   },
+  verification: {
+    // Add Google / Bing verification tokens here when available
+    // google: "XXXXX",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",         // notch / Dynamic Island safe-area support
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#244735" },
+    { media: "(prefers-color-scheme: dark)",  color: "#244735" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

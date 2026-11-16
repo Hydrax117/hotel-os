@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import { TravelerNav } from '@/app/components/TravelerNav';
 import { SearchBar } from '@/app/components/SearchBar';
 import { SearchResults } from './components/SearchResults';
@@ -11,6 +12,23 @@ type SearchPageProps = {
     guests?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: SearchPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const dest = params.destination;
+  const title = dest
+    ? `Hotels in ${dest} — Lodgen`
+    : 'Search hotels across Nigeria — Lodgen';
+  const description = dest
+    ? `Browse and book verified hotels in ${dest}. Compare prices, amenities and availability.`
+    : 'Search and book verified hotels across Nigeria. Lagos, Abuja, Port Harcourt and more.';
+  return {
+    title,
+    description,
+    alternates: { canonical: dest ? `/search?destination=${encodeURIComponent(dest)}` : '/search' },
+    openGraph: { title, description },
+  };
+}
 
 // Inner async component that reads searchParams (kept inside Suspense)
 async function SearchPageContent({ searchParams }: SearchPageProps) {

@@ -10,6 +10,26 @@ import { fetchFeaturedHotels, fetchCityCounts, type HotelSummary } from './lib/a
 
 export const instant = false;
 
+// ── SEO metadata ──────────────────────────────────────────────────────────────
+
+export const metadata = {
+  alternates: { canonical: '/' },
+};
+
+// ── JSON-LD: WebSite + SearchAction ──────────────────────────────────────────
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://lodgen.com.ng';
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Lodgen',
+  url: BASE_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/search?destination={search_term_string}` },
+    'query-input': 'required name=search_term_string',
+  },
+};
+
 const CITY_GRADIENTS: Record<string, { gradientFrom: string; gradientTo: string }> = {
   'Lagos':         { gradientFrom: '#c9a96e', gradientTo: '#7c5c3a' },
   'Abuja':         { gradientFrom: '#7a9e7e', gradientTo: '#3d6b4f' },
@@ -86,6 +106,10 @@ export default async function HomePage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <style>{`
         .hp-cta:hover  { opacity: 0.88; }
         .hp-link:hover { opacity: 0.7; }
