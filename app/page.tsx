@@ -10,6 +10,7 @@ import HeroParticlesLazy from './components/HeroParticlesLazy';
 import HeroSceneLazy from './components/HeroSceneLazy';
 import { ScrollReveal } from './components/ScrollReveal';
 import { TiltCard } from './components/TiltCard';
+import StatCounter3DLazy from './components/StatCounter3DLazy';
 
 export const instant = false;
 
@@ -240,22 +241,22 @@ export default async function HomePage() {
             {/* Bento grid */}
             <div className="hidden gap-3 md:grid md:grid-cols-12" style={{ gridTemplateRows: '260px 260px' }}>
               {destinations[0] && (
-                <ScrollReveal variant="fade-up" delay={0} className="col-span-5 row-span-2 dest-shine" style={{ borderRadius: 16 }}>
+                <ScrollReveal variant="fade-depth" delay={0} className="col-span-5 row-span-2 dest-shine" style={{ borderRadius: 16 }}>
                   <TiltCard className="h-full" maxTilt={5}><DestinationCard {...destinations[0]} /></TiltCard>
                 </ScrollReveal>
               )}
               {destinations[1] && (
-                <ScrollReveal variant="fade-up" delay={70} className="col-span-4 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
+                <ScrollReveal variant="fade-depth" delay={90} className="col-span-4 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
                   <TiltCard className="h-full" maxTilt={7}><DestinationCard {...destinations[1]} /></TiltCard>
                 </ScrollReveal>
               )}
               {destinations[2] && (
-                <ScrollReveal variant="fade-up" delay={110} className="col-span-3 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
+                <ScrollReveal variant="fade-depth" delay={150} className="col-span-3 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
                   <TiltCard className="h-full" maxTilt={7}><DestinationCard {...destinations[2]} /></TiltCard>
                 </ScrollReveal>
               )}
               {destinations[3] && (
-                <ScrollReveal variant="fade-up" delay={150} className="col-span-7 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
+                <ScrollReveal variant="fade-depth" delay={210} className="col-span-7 row-span-1 dest-shine" style={{ borderRadius: 16 }}>
                   <TiltCard className="h-full" maxTilt={5}><DestinationCard {...destinations[3]} /></TiltCard>
                 </ScrollReveal>
               )}
@@ -450,6 +451,17 @@ export default async function HomePage() {
                     bookings from travellers across the country.
                     Free to list — no monthly fees.
                   </p>
+
+                  {/* Animated hotel count stat */}
+                  <div className="mb-10" style={{ maxWidth: 300 }}>
+                    <StatCounter3DLazy
+                      value={120}
+                      suffix="+"
+                      label="Hotels across Nigeria"
+                      height={120}
+                    />
+                  </div>
+
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <Link href="http://hotel.localhost:3000/auth/signup"
                       className="hp-btn inline-flex items-center justify-center gap-2 rounded-xl px-7 py-3.5 text-sm font-semibold text-white"

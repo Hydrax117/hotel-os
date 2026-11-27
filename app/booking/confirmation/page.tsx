@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { TravelerNav } from '../../components/TravelerNav';
 import { Footer } from '../../components/Footer';
+import BookingConfettiWrapper from '../../components/BookingConfettiWrapper';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,8 @@ async function Page({
   return (
     <div style={{ background: 'var(--tp-bg)', minHeight: '100vh' }}>
       <TravelerNav />
+
+      <BookingConfettiWrapper />
 
       <main style={{ paddingTop: '64px' }}>
         <div

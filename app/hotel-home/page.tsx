@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ScrollReveal } from '../components/ScrollReveal';
+import StatCounter3DLazy from '../components/StatCounter3DLazy';
 
 // Served at hotel.domain.com via proxy.ts rewrite
 // Server Component — no 'use client'
@@ -313,6 +314,16 @@ export default function HotelHomePage() {
               <p className="mb-10 text-base leading-relaxed" style={{ color: TEXT_MID, fontWeight: 300 }}>
                 Join hotels across Nigeria already managing bookings on Lodgen.
               </p>
+
+              {/* Animated 3D stat — hotels on the platform */}
+              <div className="mb-10" style={{ maxWidth: 420, margin: '0 auto 2.5rem' }}>
+                <StatCounter3DLazy
+                  value={120}
+                  suffix="+"
+                  label="Hotels already listed on Lodgen"
+                  height={130}
+                />
+              </div>
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link href="/auth/signup"
                   className="hh-btn inline-flex items-center gap-2 rounded-xl px-8 py-4 text-base font-semibold text-white"

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties, type ElementType } from 'react';
 
-type Variant = 'fade-up' | 'fade-in' | 'fade-left' | 'fade-right';
+type Variant = 'fade-up' | 'fade-in' | 'fade-left' | 'fade-right' | 'fade-depth';
 
 interface ScrollRevealProps {
   children: React.ReactNode;
@@ -19,9 +19,11 @@ const INITIAL: Record<Variant, CSSProperties> = {
   'fade-in':    { opacity: 0, transform: 'scale(0.97)'      },
   'fade-left':  { opacity: 0, transform: 'translateX(-28px)'},
   'fade-right': { opacity: 0, transform: 'translateX(28px)' },
+  // Flies in from "depth" — scales up and fades in, like arriving from a Z axis
+  'fade-depth': { opacity: 0, transform: 'scale(0.82) translateY(24px)', filter: 'blur(4px)' },
 };
 
-const VISIBLE: CSSProperties = { opacity: 1, transform: 'none' };
+const VISIBLE: CSSProperties = { opacity: 1, transform: 'none', filter: 'none' };
 
 export function ScrollReveal({
   children,
@@ -67,7 +69,9 @@ export function ScrollReveal({
       className={className}
       style={{
         ...INITIAL[variant],
-        transition: `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        transformOrigin: 'center center',
+        transition: `opacity 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}ms, filter 0.75s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+        willChange: 'opacity, transform, filter',
         ...style,
       }}
     >

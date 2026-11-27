@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { HotelSummary, searchHotels } from '@/app/lib/api/search';
 import { SearchFilters } from './SearchFilters';
 import { HotelListCard } from './HotelListCard';
+import MarkerPulseLazy from './MarkerPulseLazy';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -241,6 +242,13 @@ export function SearchResults({
               ← Back to home
             </Link>
           </div>
+        )}
+
+        {/* Marker pulse banner — shown when results are loaded */}
+        {!loading && !error && sorted.length > 0 && destination && (
+          <MarkerPulseLazy
+            markerLabels={Array.from(new Set(sorted.map(h => h.city))).slice(0, 6)}
+          />
         )}
 
         {/* Hotel list */}
