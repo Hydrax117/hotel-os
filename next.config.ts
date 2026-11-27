@@ -19,7 +19,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' blob: data: https://hotel-os-api-52qe.onrender.com https://*.supabase.co https://*.arenax.com.ng",
+      "img-src 'self' blob: data: https://hotel-os-api-52qe.onrender.com https://*.supabase.co https://*.arenax.com.ng https://images.unsplash.com",
       "connect-src 'self' https://hotel-os-api-52qe.onrender.com https://*.supabase.co wss://*.supabase.co",
       "frame-src https://js.paystack.co https://checkout.paystack.com",
     ].join("; "),
@@ -82,6 +82,12 @@ const nextConfig: NextConfig = {
         // Production custom domain images (arenax.com.ng CDN or similar)
         protocol: "https",
         hostname: "*.arenax.com.ng",
+        pathname: "/**",
+      },
+      {
+        // Unsplash CDN — used for destination card fallback images
+        protocol: "https",
+        hostname: "images.unsplash.com",
         pathname: "/**",
       },
     ],

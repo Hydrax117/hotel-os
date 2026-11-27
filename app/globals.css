@@ -520,3 +520,58 @@ input[type="radio"] {
   --ad-warning:        var(--color-warning-text);
   --ad-success:        var(--color-success-text);
 }
+
+/* ============================================================
+   VISUAL EFFECTS — parallax, scroll-reveal, tilt, gradient mesh
+   ============================================================ */
+
+/* ── Animated gradient mesh (owner / dark section) ──────────── */
+@keyframes mesh-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.owner-gradient-mesh::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(36, 71, 53, 0.55) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(201, 169, 110, 0.18) 0%, transparent 55%),
+              radial-gradient(ellipse at 60% 80%, rgba(28, 56, 41, 0.45) 0%, transparent 50%);
+  background-size: 200% 200%;
+  animation: mesh-shift 12s ease infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.owner-gradient-mesh > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Reduced-motion safety net ──────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .owner-gradient-mesh::before {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   DARK PAGE OVERRIDES
+   Applied when cards/sections appear on the ink homepage.
+   These override the default light-surface card tokens.
+   ============================================================ */
+
+/* Hotel cards on dark background */
+.hp-hotel-card article {
+  background: #1a1917 !important;
+  border-color: rgba(240,237,230,0.08) !important;
+}
+.hp-hotel-card article .hotel-card-name {
+  color: #f0ede6 !important;
+}
+.hp-hotel-card article span[style*="color-text-secondary"],
+.hp-hotel-card article p[style*="color-text-secondary"] {
+  color: rgba(240,237,230,0.5) !important;
+}
