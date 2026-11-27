@@ -24,6 +24,7 @@ import { RoomAvailability } from '@/app/lib/api/search';
 import { resourcesApi, type Resource } from '@/app/lib/api/resources';
 import { getResourceCalendar } from '@/app/lib/api/bookings';
 import { apiClient, ApiError } from '@/app/lib/api/client';
+import RoomScene3DLazy from './RoomScene3DLazy';
 
 // ── Utility types ─────────────────────────────────────────────────────────────
 
@@ -718,6 +719,28 @@ export function RoomDetailDrawer({
               </div>
             </div>
           )}
+
+          {/* ── 3D Room Preview ── */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              Room preview
+            </h3>
+            <div
+              style={{
+                height: 280,
+                borderRadius: 14,
+                overflow: 'hidden',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <RoomScene3DLazy
+                bedType={room.bedType}
+                sizeSqm={room.sizeSqm}
+                amenities={room.amenities ?? []}
+                name={room.name}
+              />
+            </div>
+          </div>
 
           {/* Policies (breakfast / cancellation) — traveler-facing */}
           {!room.isResource && (room.breakfastIncluded != null || room.cancellationPolicy) && (
